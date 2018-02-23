@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <vector>
+#include <atomic>
 
 #include "offset.h"
 

@@ -2,6 +2,9 @@
 
 #include <iostream>
 #include <algorithm>
+#include <vector>
+
+#include "utils.h"
 
 template<typename KeyT>
 bool compare_func(std::pair<KeyT, Uint64> &lhs, std::pair<KeyT, Uint64> &rhs) {

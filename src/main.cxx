@@ -26,7 +26,6 @@ void usage(FILE *out) {
           "   -t --time_duration     :  time duration (default: 10) \n"
           "   -m --max_key_count     :  max key count (default: 0) \n"
           "   -n --init_key_count    :  init key count (default: 1<<20) \n"
-          "   -p --alloc_key_count   :  preallocated key count (default: 1) \n"
           "   -r --reader_count      :  reader count (default: 0) \n"
           "   -s --inserter_count    :  inserter count (default: 1) \n"
   );
@@ -36,7 +35,6 @@ static struct option opts[] = {
     { "time_duration",   optional_argument, NULL, 't' },
     { "max_key_count",   optional_argument, NULL, 'm' },
     { "init_key_count",  optional_argument, NULL, 'n' },
-    { "alloc_key_count", optional_argument, NULL, 'p' },
     { "reader_count",    optional_argument, NULL, 'r' },
     { "inserter_count",  optional_argument, NULL, 's' },
     { NULL, 0, NULL, 0 }
@@ -47,9 +45,8 @@ struct Config {
   double profile_duration_ = 0.5;
   uint64_t max_key_count_ = 0; // if max_key_count_ is set to 0, then generate insert key randomly.
   uint64_t init_key_count_ = 1ull<<20;
-  uint64_t alloc_key_count_ = 1; // # of preallocated keys
-  uint64_t reader_count_ = 0;
-  uint64_t inserter_count_ = 1;
+  uint64_t reader_count_ = 1;
+  uint64_t inserter_count_ = 0;
   uint64_t thread_count_ = 1;
 };
 
@@ -57,7 +54,7 @@ void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "ht:m:n:p:r:s:", opts, &idx);
+    int c = getopt_long(argc, argv, "ht:m:n:r:s:", opts, &idx);
 
     if (c == -1) break;
 
@@ -72,10 +69,6 @@ void parse_args(int argc, char* argv[], Config &config) {
       }
       case 'n': {
         config.init_key_count_ = (uint64_t)atoi(optarg);
-        break;
-      }
-      case 'p': {
-        config.alloc_key_count_ = (uint64_t)atoi(optarg);
         break;
       }
       case 'r': {
@@ -199,6 +192,7 @@ void run_inserter_thread(const uint64_t &thread_id, const Config &config) {
 }
 
 void run_reader_thread(const uint64_t &thread_id, const Config &config) {
+
   pin_to_core(thread_id);
 
   BatchKeys batch_keys(thread_id);
@@ -235,6 +229,8 @@ void run_workload(const Config &config) {
 
     data_index->insert(key, offset.raw_data());
   }
+
+  data_index->reorganize();
 
   operation_counts = new uint64_t[config.thread_count_];
   uint64_t profile_round = (uint64_t)(config.time_duration_ / config.profile_duration_);
