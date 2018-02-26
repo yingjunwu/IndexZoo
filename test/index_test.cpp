@@ -4,6 +4,7 @@
 
 #include "harness.h"
 #include "fast_random.h"
+#include "time_measurer.h"
 
 #include "data_table.h"
 #include "learned_index.h"
@@ -31,7 +32,7 @@ typedef uint64_t ValueT;
 
 TEST_F(IndexTest, UniqueKeyTest) {
 
-  size_t n = 10000;
+  size_t n = 100000;
 
   std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
     new DataTable<uint64_t, uint64_t>());

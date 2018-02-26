@@ -11,11 +11,11 @@ public:
   TimeMeasurer(){}
   ~TimeMeasurer(){}
 
-  void Tic(){
+  void tic(){
     start_time_ = high_resolution_clock::now();
   }
 
-  void Toc(){
+  void toc(){
     end_time_ = high_resolution_clock::now();
   }
 

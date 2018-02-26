@@ -21,7 +21,7 @@
 
 void usage(FILE *out) {
   fprintf(out,
-          "Command line options : benchmark <options> \n"
+          "Command line options : oltp_benchmark <options> \n"
           "   -h --help              :  print help message \n"
           "   -t --time_duration     :  time duration (default: 10) \n"
           "   -m --max_key_count     :  max key count (default: 0) \n"
@@ -40,10 +40,16 @@ static struct option opts[] = {
     { NULL, 0, NULL, 0 }
 };
 
+enum class InsertType {
+  SequenceInsertType,
+  RandomUniqueInsertType,
+  RandomNonuniqueInsertType,
+};
+
 struct Config {
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
-  uint64_t max_key_count_ = 0; // if max_key_count_ is set to 0, then generate insert key randomly.
+  uint64_t max_key_count_ = 0; // if max_key_count_ is set to 0, then generate insert key sequentially.
   uint64_t init_key_count_ = 1ull<<20;
   uint64_t reader_count_ = 1;
   uint64_t inserter_count_ = 0;
@@ -230,7 +236,7 @@ void run_workload(const Config &config) {
     data_index->insert(key, offset.raw_data());
   }
 
-  data_index->reorganize();
+  // data_index->reorganize();
 
   operation_counts = new uint64_t[config.thread_count_];
   uint64_t profile_round = (uint64_t)(config.time_duration_ / config.profile_duration_);
@@ -287,6 +293,7 @@ void run_workload(const Config &config) {
       for (; thread_count < config.inserter_count_ + config.reader_count_; ++thread_count) {
         read_count += operation_counts_profiles[0][thread_count];
       }
+      // std::cout << "read count = " << read_count << std::endl;
       insert_counts.push_back(insert_count);
       read_counts.push_back(read_count);
 
@@ -304,6 +311,7 @@ void run_workload(const Config &config) {
       for (; thread_count < config.inserter_count_ + config.reader_count_; ++thread_count) {
         read_count += operation_counts_profiles[round_id][thread_count] - operation_counts_profiles[round_id - 1][thread_count];
       }
+      // std::cout << "read count = " << read_count << std::endl;
       insert_counts.push_back(insert_count);
       read_counts.push_back(read_count);
     }

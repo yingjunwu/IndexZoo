@@ -38,7 +38,7 @@ public:
     }
 
     // guess where the data lives
-    int guess = ((key - min_) / (max_ - min_)) * (entry_count_ - 1);
+    int guess = int((key - min_) * 1.0 / (max_ - min_) * (entry_count_ - 1));
     
     // if the guess is correct
     if (container_.at(guess).first == key) {
