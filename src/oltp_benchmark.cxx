@@ -293,7 +293,6 @@ void run_workload(const Config &config) {
       for (; thread_count < config.inserter_count_ + config.reader_count_; ++thread_count) {
         read_count += operation_counts_profiles[0][thread_count];
       }
-      // std::cout << "read count = " << read_count << std::endl;
       insert_counts.push_back(insert_count);
       read_counts.push_back(read_count);
 
@@ -311,7 +310,6 @@ void run_workload(const Config &config) {
       for (; thread_count < config.inserter_count_ + config.reader_count_; ++thread_count) {
         read_count += operation_counts_profiles[round_id][thread_count] - operation_counts_profiles[round_id - 1][thread_count];
       }
-      // std::cout << "read count = " << read_count << std::endl;
       insert_counts.push_back(insert_count);
       read_counts.push_back(read_count);
     }

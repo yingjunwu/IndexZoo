@@ -24,15 +24,17 @@ void usage(FILE *out) {
           "Command line options : oltp_benchmark <options> \n"
           "   -h --help              :  print help message \n"
           "   -t --time_duration     :  time duration (default: 10) \n"
-          "   -m --max_key_count     :  max key count (default: 0) \n"
+          "   -m --key_count         :  key count (default: 1ull<<20) \n"
+          "   -n --unique_key_count  :  unique key count (default: 0) \n"
           "   -r --reader_count      :  reader count (default: 1) \n"
   );
 }
 
 static struct option opts[] = {
-    { "time_duration",   optional_argument, NULL, 't' },
-    { "max_key_count",   optional_argument, NULL, 'm' },
-    { "reader_count",    optional_argument, NULL, 'r' },
+    { "time_duration",     optional_argument, NULL, 't' },
+    { "key_count",         optional_argument, NULL, 'm' },
+    { "unique_key_count",  optional_argument, NULL, 'n' },
+    { "reader_count",      optional_argument, NULL, 'r' },
     { NULL, 0, NULL, 0 }
 };
 
@@ -40,18 +42,17 @@ static struct option opts[] = {
 struct Config {
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
-  uint64_t max_key_count_ = 0; // if max_key_count_ is set to 0, then generate insert key sequentially.
-  uint64_t init_key_count_ = 1ull<<20;
+  uint64_t key_count_ = 1ull<<20;
+  // if unique_key_count_ is set to 0, then generate insert key sequentially.
+  uint64_t unique_key_count_ = 0;
   uint64_t reader_count_ = 1;
-  uint64_t inserter_count_ = 0;
-  uint64_t thread_count_ = 1;
 };
 
 void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "ht:m:n:r:s:", opts, &idx);
+    int c = getopt_long(argc, argv, "ht:m:n:r:", opts, &idx);
 
     if (c == -1) break;
 
@@ -61,19 +62,15 @@ void parse_args(int argc, char* argv[], Config &config) {
         break;
       }
       case 'm': {
-        config.max_key_count_ = (uint64_t)atoi(optarg);
+        config.key_count_ = (uint64_t)atoi(optarg);
         break;
       }
       case 'n': {
-        config.init_key_count_ = (uint64_t)atoi(optarg);
+        config.unique_key_count_ = (uint64_t)atoi(optarg);
         break;
       }
       case 'r': {
         config.reader_count_ = (uint64_t)atoi(optarg);
-        break;
-      }
-      case 's': {
-        config.inserter_count_ = (uint64_t)atoi(optarg);
         break;
       }
       case 'h': {
@@ -90,11 +87,9 @@ void parse_args(int argc, char* argv[], Config &config) {
     }
   }
 
-  if (config.max_key_count_ != 0) {
-    assert(config.init_key_count_ <= config.max_key_count_);
+  if (config.unique_key_count_ != 0) {
+    assert(config.unique_key_count_ <= config.key_count_);
   }
-
-  config.thread_count_ = config.inserter_count_ + config.reader_count_;
 
 }
 
