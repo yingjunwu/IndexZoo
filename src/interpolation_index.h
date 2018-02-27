@@ -10,12 +10,12 @@ bool compare_func(std::pair<KeyT, Uint64> &lhs, std::pair<KeyT, Uint64> &rhs) {
 }
 
 template<typename KeyT>
-class LearnedIndex : public BaseIndex<KeyT> {
+class InterpolationIndex : public BaseIndex<KeyT> {
 
 public:
-  LearnedIndex(const size_t size_hint) {}
-  LearnedIndex() {}
-  virtual ~LearnedIndex() {}
+  InterpolationIndex(const size_t size_hint) {}
+  InterpolationIndex() {}
+  virtual ~InterpolationIndex() {}
 
   virtual void insert(const KeyT &key, const Uint64 &value) final {
     container_.emplace_back(std::pair<KeyT, Uint64>(key, value));

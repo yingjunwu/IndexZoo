@@ -12,8 +12,8 @@
 #include <unistd.h>
 #include <getopt.h>
 
-#include "fast_random.h"
 #include "time_measurer.h"
+#include "uint64_key_generator.h"
 
 #include "data_table.h"
 
@@ -23,33 +23,33 @@ void usage(FILE *out) {
   fprintf(out,
           "Command line options : oltp_benchmark <options> \n"
           "   -h --help              :  print help message \n"
-          "   -i --index             :  index type:\n"
-          "                              -- learned_index (default)\n"
-          "                              -- stx_btree\n"
+          "   -i --index             :  index type: \n"
+          "                              -- interpolation_index (default) \n"
+          "                              -- stx_btree \n"
           "   -t --time_duration     :  time duration (default: 10) \n"
-          "   -m --max_key_count     :  max key count (default: 0) \n"
-          "   -n --init_key_count    :  init key count (default: 1<<20) \n"
+          "   -m --init_key_count    :  init key count (default: 1<<20) \n"
+          "   -n --unique_key_count  :  unique key count (default: 0) \n"
           "   -r --reader_count      :  reader count (default: 0) \n"
           "   -s --inserter_count    :  inserter count (default: 1) \n"
   );
 }
 
 static struct option opts[] = {
-    { "index",           optional_argument, NULL, 'i' },
-    { "time_duration",   optional_argument, NULL, 't' },
-    { "max_key_count",   optional_argument, NULL, 'm' },
-    { "init_key_count",  optional_argument, NULL, 'n' },
-    { "reader_count",    optional_argument, NULL, 'r' },
-    { "inserter_count",  optional_argument, NULL, 's' },
+    { "index",             optional_argument, NULL, 'i' },
+    { "time_duration",     optional_argument, NULL, 't' },
+    { "init_key_count",    optional_argument, NULL, 'm' },
+    { "unique_key_count",  optional_argument, NULL, 'n' },
+    { "reader_count",      optional_argument, NULL, 'r' },
+    { "inserter_count",    optional_argument, NULL, 's' },
     { NULL, 0, NULL, 0 }
 };
 
 struct Config {
-  IndexType index_type_ = IndexType::LearnedIndexType;
+  IndexType index_type_ = IndexType::InterpolationIndexType;
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
-  // if max_key_count_ is set to 0, then generate insert key sequentially.
-  uint64_t max_key_count_ = 0;
+  // if unique_key_count_ is set to 0, then generate insert key sequentially.
+  uint64_t unique_key_count_ = 0;
   uint64_t init_key_count_ = 1ull<<20;
   uint64_t reader_count_ = 1;
   uint64_t inserter_count_ = 0;
@@ -69,8 +69,8 @@ void parse_args(int argc, char* argv[], Config &config) {
         char *index = optarg;
         if (strcmp(index, "stx_btree") == 0) {
           config.index_type_ = IndexType::StxBtreeIndexType;
-        } else if (strcmp(index, "learned_index") == 0) {
-          config.index_type_ = IndexType::LearnedIndexType;
+        } else if (strcmp(index, "interpolation_index") == 0) {
+          config.index_type_ = IndexType::InterpolationIndexType;
         } else {
           fprintf(stderr, "Unknown index: %s\n", index);
           exit(EXIT_FAILURE);
@@ -82,11 +82,11 @@ void parse_args(int argc, char* argv[], Config &config) {
         break;
       }
       case 'm': {
-        config.max_key_count_ = (uint64_t)atoi(optarg);
+        config.init_key_count_ = (uint64_t)atoi(optarg);
         break;
       }
       case 'n': {
-        config.init_key_count_ = (uint64_t)atoi(optarg);
+        config.unique_key_count_ = (uint64_t)atoi(optarg);
         break;
       }
       case 'r': {
@@ -111,10 +111,6 @@ void parse_args(int argc, char* argv[], Config &config) {
     }
   }
 
-  if (config.max_key_count_ != 0) {
-    assert(config.init_key_count_ <= config.max_key_count_);
-  }
-
   config.thread_count_ = config.inserter_count_ + config.reader_count_;
 
 }
@@ -122,57 +118,6 @@ void parse_args(int argc, char* argv[], Config &config) {
 typedef Uint64 KeyT;
 typedef Uint64 ValueT;
 
-/////////////////////////////////////////
-// key generation
-
-static std::atomic<uint64_t> global_curr_key;
-static uint64_t global_max_key = 0;
-
-class BatchKeys {
-public:
-  BatchKeys(const uint64_t thread_id) :
-    rand_gen_(thread_id),
-    thread_id_(thread_id), 
-    local_curr_key_(0), 
-    local_max_key_(0) {}
-  
-  KeyT get_insert_key() {
-    if (global_max_key == 0) {
-
-      if (local_curr_key_ == local_max_key_){
-        uint64_t key = global_curr_key.fetch_add(batch_key_count_, std::memory_order_relaxed);
-        local_curr_key_ = key;
-        local_max_key_ = key + batch_key_count_;
-      }
-
-      uint64_t retKey = local_curr_key_;
-      ++local_curr_key_;
-      return retKey;
-
-    } else {
-      return rand_gen_.next() % global_max_key;
-
-    }
-  }
-
-  KeyT get_random_key() {
-    if (global_max_key == 0) {
-      return rand_gen_.next() % global_curr_key;
-    } else {
-      return rand_gen_.next() % global_max_key;
-    }
-  }
-  
-private:
-  FastRandom rand_gen_;
-
-  uint64_t thread_id_;
-  
-  uint64_t local_curr_key_;
-  uint64_t local_max_key_;
-  const uint64_t batch_key_count_ = 1ull << 10;
-};
-/////////////////////////////////////////
 
 bool is_running = false;
 uint64_t *operation_counts = nullptr;
@@ -186,7 +131,7 @@ void run_inserter_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
-  BatchKeys batch_keys(thread_id);
+  Uint64KeyGenerator batch_keys(thread_id);
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -211,7 +156,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
-  BatchKeys batch_keys(thread_id);
+  Uint64KeyGenerator batch_keys(thread_id);
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -220,7 +165,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
       break;
     }
 
-    KeyT key = batch_keys.get_random_key();
+    KeyT key = batch_keys.get_read_key();
     
     std::vector<Uint64> values;
 
@@ -233,7 +178,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
 void run_workload(const Config &config) {
   
-  BatchKeys batch_keys(0);
+  Uint64KeyGenerator batch_keys(0);
   for (size_t i = 0; i < config.init_key_count_; ++i) {
 
     KeyT key = batch_keys.get_insert_key();
@@ -243,8 +188,6 @@ void run_workload(const Config &config) {
 
     data_index->insert(key, offset.raw_data());
   }
-
-  // data_index->reorganize();
 
   operation_counts = new uint64_t[config.thread_count_];
   uint64_t profile_round = (uint64_t)(config.time_duration_ / config.profile_duration_);
@@ -355,8 +298,8 @@ void run_workload(const Config &config) {
   std::string index_name;
   if (config.index_type_ == IndexType::StxBtreeIndexType) {
     index_name = "stx_btree";
-  } else if (config.index_type_ == IndexType::LearnedIndexType) {
-    index_name = "learned_index";
+  } else if (config.index_type_ == IndexType::InterpolationIndexType) {
+    index_name = "interpolation_index";
   }
   
   uint64_t total_count = 0;
@@ -388,8 +331,7 @@ int main(int argc, char* argv[]) {
 
   parse_args(argc, argv, config);
 
-  global_max_key = config.max_key_count_;
-  global_curr_key = 0;
+  Uint64KeyGenerator::set_max_key(config.unique_key_count_);
 
   data_table.reset(new DataTable<KeyT, ValueT>());
   
@@ -397,9 +339,9 @@ int main(int argc, char* argv[]) {
 
     data_index.reset(new StxBtreeIndex<KeyT>());
 
-  } else if (config.index_type_ == IndexType::LearnedIndexType) {
+  } else if (config.index_type_ == IndexType::InterpolationIndexType) {
 
-    data_index.reset(new LearnedIndex<KeyT>());
+    data_index.reset(new InterpolationIndex<KeyT>());
   
   } else {
     assert(false);

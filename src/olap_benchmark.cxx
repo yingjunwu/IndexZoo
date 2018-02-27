@@ -9,12 +9,11 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
-#include <random>
 #include <unistd.h>
 #include <getopt.h>
 
-#include "fast_random.h"
 #include "time_measurer.h"
+#include "uint64_key_generator.h"
 
 #include "data_table.h"
 
@@ -25,7 +24,7 @@ void usage(FILE *out) {
           "Command line options : olap_benchmark <options> \n"
           "   -h --help              :  print help message \n"
           "   -i --index             :  index type: \n"
-          "                              -- learned_index (default) \n"
+          "                              -- interpolation_index (default) \n"
           "                              -- stx_btree \n"
           "   -y --read_type         :  read type: \n"
           "                              -- (0) index lookup (default) \n"
@@ -66,7 +65,7 @@ enum class DistributionType {
 };
 
 struct Config {
-  IndexType index_type_ = IndexType::LearnedIndexType;
+  IndexType index_type_ = IndexType::InterpolationIndexType;
   ReadType index_read_type_ = ReadType::IndexLookupType;
   DistributionType distribution_type_ = DistributionType::UniformType;
   uint64_t time_duration_ = 10;
@@ -90,8 +89,8 @@ void parse_args(int argc, char* argv[], Config &config) {
         char *index = optarg;
         if (strcmp(index, "stx_btree") == 0) {
           config.index_type_ = IndexType::StxBtreeIndexType;
-        } else if (strcmp(index, "learned_index") == 0) {
-          config.index_type_ = IndexType::LearnedIndexType;
+        } else if (strcmp(index, "interpolation_index") == 0) {
+          config.index_type_ = IndexType::InterpolationIndexType;
         } else {
           fprintf(stderr, "Unknown index: %s\n", index);
           exit(EXIT_FAILURE);
@@ -141,64 +140,6 @@ void parse_args(int argc, char* argv[], Config &config) {
 typedef Uint64 KeyT;
 typedef Uint64 ValueT;
 
-/////////////////////////////////////////
-// key generation
-
-static std::atomic<uint64_t> global_curr_key;
-static uint64_t global_max_key = 0;
-
-class BatchKeys {
-public:
-  BatchKeys(const uint64_t thread_id) :
-    rand_gen_(thread_id),
-    thread_id_(thread_id), 
-    local_curr_key_(0), 
-    local_max_key_(0) {}
-  
-  KeyT get_insert_key() {
-    // sequence data
-    if (global_max_key == 0) {
-
-      if (local_curr_key_ == local_max_key_){
-        uint64_t key = global_curr_key.fetch_add(batch_key_count_, std::memory_order_relaxed);
-        local_curr_key_ = key;
-        local_max_key_ = key + batch_key_count_;
-      }
-
-      uint64_t ret_key = local_curr_key_;
-      ++local_curr_key_;
-      return ret_key;
-
-    } 
-    // data that follows certain distribution
-    else {
-      return rand_gen_.next() % global_max_key;
-
-    }
-  }
-
-  KeyT get_read_key() {
-    if (global_max_key == 0) {
-      return rand_gen_.next() % global_curr_key;
-    } else {
-      return rand_gen_.next() % global_max_key;
-    }
-  }
-  
-private:
-  FastRandom rand_gen_;
-
-  std::default_random_engine generator_;
-  std::uniform_int_distribution<int> uniform_dist_;
-  std::normal_distribution<int> normal_dist_;
-
-  uint64_t thread_id_;
-  
-  uint64_t local_curr_key_;
-  uint64_t local_max_key_;
-  const uint64_t batch_key_count_ = 1ull << 10;
-};
-/////////////////////////////////////////
 
 bool is_running = false;
 uint64_t *operation_counts = nullptr;
@@ -212,7 +153,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
-  BatchKeys batch_keys(thread_id);
+  Uint64KeyGenerator key_generator(thread_id);
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -224,7 +165,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
         break;
       }
 
-      KeyT key = batch_keys.get_read_key();
+      KeyT key = key_generator.get_read_key();
       
       std::vector<Uint64> values;
 
@@ -240,7 +181,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
         break;
       }
 
-      KeyT key = batch_keys.get_read_key();
+      KeyT key = key_generator.get_read_key();
       
       std::vector<Uint64> values;
 
@@ -257,7 +198,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
         break;
       }
 
-      KeyT key = batch_keys.get_read_key();
+      KeyT key = key_generator.get_read_key();
       
       std::vector<Uint64> values;
 
@@ -272,11 +213,11 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
 void run_workload(const Config &config) {
   
-  BatchKeys batch_keys(0);
+  Uint64KeyGenerator key_generator(0);
 
   for (size_t i = 0; i < config.key_count_; ++i) {
 
-    KeyT key = batch_keys.get_insert_key();
+    KeyT key = key_generator.get_insert_key();
     ValueT value = 100;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -285,8 +226,6 @@ void run_workload(const Config &config) {
   }
 
   data_index->reorganize();
-
-  // return;
 
   operation_counts = new uint64_t[config.reader_count_];
   uint64_t profile_round = (uint64_t)(config.time_duration_ / config.profile_duration_);
@@ -385,8 +324,8 @@ void run_workload(const Config &config) {
   std::string index_name;
   if (config.index_type_ == IndexType::StxBtreeIndexType) {
     index_name = "stx_btree";
-  } else if (config.index_type_ == IndexType::LearnedIndexType) {
-    index_name = "learned_index";
+  } else if (config.index_type_ == IndexType::InterpolationIndexType) {
+    index_name = "interpolation_index";
   }
   
   uint64_t total_count = 0;
@@ -417,8 +356,7 @@ int main(int argc, char* argv[]) {
 
   parse_args(argc, argv, config);
 
-  global_max_key = config.unique_key_count_;
-  global_curr_key = 0;
+  Uint64KeyGenerator::set_max_key(config.unique_key_count_);
 
   data_table.reset(new DataTable<KeyT, ValueT>());
   
@@ -426,9 +364,9 @@ int main(int argc, char* argv[]) {
 
     data_index.reset(new StxBtreeIndex<KeyT>());
 
-  } else if (config.index_type_ == IndexType::LearnedIndexType) {
+  } else if (config.index_type_ == IndexType::InterpolationIndexType) {
 
-    data_index.reset(new LearnedIndex<KeyT>());
+    data_index.reset(new InterpolationIndex<KeyT>());
   
   } else {
     assert(false);

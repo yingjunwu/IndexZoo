@@ -7,27 +7,11 @@
 #include "time_measurer.h"
 
 #include "data_table.h"
-#include "learned_index.h"
+
+#include "index_all.h"
 
 
 class IndexTest : public LearnedIndexTest {};
-
-typedef uint64_t ValueT;
-
-// TEST_F(IndexTest, LearnedIndex) {
-
-//   std::unique_ptr<LearnedIndex<uint64_t>> data_index(new LearnedIndex<uint64_t>());
-
-//   FastRandom rand_gen;
-
-//   size_t n = 10;
-//   for (size_t i = 0; i < n; ++i) {
-//     data_index->insert(rand_gen.next() % n, rand_gen.next() % n);
-//   }
-//   std::cout << data_index->size() << std::endl;
-//   data_index->reorganize();
-//   data_index->print();
-// }
 
 
 TEST_F(IndexTest, UniqueKeyTest) {
@@ -36,8 +20,8 @@ TEST_F(IndexTest, UniqueKeyTest) {
 
   std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
     new DataTable<uint64_t, uint64_t>());
-  std::unique_ptr<LearnedIndex<uint64_t>> data_index(
-    new LearnedIndex<uint64_t>());
+  std::unique_ptr<InterpolationIndex<uint64_t>> data_index(
+    new InterpolationIndex<uint64_t>());
 
   std::unordered_map<uint64_t, std::pair<Uint64, uint64_t>> validation_set;
   
