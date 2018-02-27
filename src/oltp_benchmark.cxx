@@ -17,12 +17,15 @@
 
 #include "data_table.h"
 
-#include "learned_index.h"
+#include "index_all.h"
 
 void usage(FILE *out) {
   fprintf(out,
           "Command line options : oltp_benchmark <options> \n"
           "   -h --help              :  print help message \n"
+          "   -i --index             :  index type:\n"
+          "                              -- learned_index (default)\n"
+          "                              -- stx_btree\n"
           "   -t --time_duration     :  time duration (default: 10) \n"
           "   -m --max_key_count     :  max key count (default: 0) \n"
           "   -n --init_key_count    :  init key count (default: 1<<20) \n"
@@ -32,6 +35,7 @@ void usage(FILE *out) {
 }
 
 static struct option opts[] = {
+    { "index",           optional_argument, NULL, 'i' },
     { "time_duration",   optional_argument, NULL, 't' },
     { "max_key_count",   optional_argument, NULL, 'm' },
     { "init_key_count",  optional_argument, NULL, 'n' },
@@ -40,16 +44,12 @@ static struct option opts[] = {
     { NULL, 0, NULL, 0 }
 };
 
-enum class InsertType {
-  SequenceInsertType,
-  RandomUniqueInsertType,
-  RandomNonuniqueInsertType,
-};
-
 struct Config {
+  IndexType index_type_ = IndexType::LearnedIndexType;
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
-  uint64_t max_key_count_ = 0; // if max_key_count_ is set to 0, then generate insert key sequentially.
+  // if max_key_count_ is set to 0, then generate insert key sequentially.
+  uint64_t max_key_count_ = 0;
   uint64_t init_key_count_ = 1ull<<20;
   uint64_t reader_count_ = 1;
   uint64_t inserter_count_ = 0;
@@ -60,11 +60,23 @@ void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "ht:m:n:r:s:", opts, &idx);
+    int c = getopt_long(argc, argv, "ht:m:n:r:s:i:", opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
+      case 'i': {
+        char *index = optarg;
+        if (strcmp(index, "stx_btree") == 0) {
+          config.index_type_ = IndexType::StxBtreeIndexType;
+        } else if (strcmp(index, "learned_index") == 0) {
+          config.index_type_ = IndexType::LearnedIndexType;
+        } else {
+          fprintf(stderr, "Unknown index: %s\n", index);
+          exit(EXIT_FAILURE);
+        }
+        break;
+      }
       case 't': {
         config.time_duration_ = (uint64_t)atoi(optarg);
         break;
@@ -168,15 +180,13 @@ uint64_t *operation_counts = nullptr;
 
 // table and index
 std::unique_ptr<DataTable<KeyT, ValueT>> data_table(nullptr);
-std::unique_ptr<LearnedIndex<KeyT>> data_index(nullptr);
+std::unique_ptr<BaseIndex<KeyT>> data_index(nullptr);
 
 void run_inserter_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
   BatchKeys batch_keys(thread_id);
-
-  FastRandom rand_gen(thread_id);
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -202,8 +212,6 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
   pin_to_core(thread_id);
 
   BatchKeys batch_keys(thread_id);
-
-  FastRandom rand_gen(thread_id);
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -343,13 +351,21 @@ void run_workload(const Config &config) {
   for (uint64_t i = 0; i < config.thread_count_; ++i) {
     worker_threads.at(i).join();
   }
+
+  std::string index_name;
+  if (config.index_type_ == IndexType::StxBtreeIndexType) {
+    index_name = "stx_btree";
+  } else if (config.index_type_ == IndexType::LearnedIndexType) {
+    index_name = "learned_index";
+  }
   
   uint64_t total_count = 0;
   for (uint64_t i = 0; i < config.thread_count_; ++i) {
     total_count += operation_counts[i];
   }
 
-  std::cout << "insert = " << config.inserter_count_ << ", "
+  std::cout << "index = " << index_name.c_str() << ", "
+            << "insert = " << config.inserter_count_ << ", "
             << "read = " << config. reader_count_ << ", "
             << "throughput = " << total_count * 1.0 / config.time_duration_ / 1000 / 1000 << " M ops" 
             << std::endl;
@@ -376,7 +392,18 @@ int main(int argc, char* argv[]) {
   global_curr_key = 0;
 
   data_table.reset(new DataTable<KeyT, ValueT>());
-  data_index.reset(new LearnedIndex<KeyT>());
+  
+  if (config.index_type_ == IndexType::StxBtreeIndexType) {
+
+    data_index.reset(new StxBtreeIndex<KeyT>());
+
+  } else if (config.index_type_ == IndexType::LearnedIndexType) {
+
+    data_index.reset(new LearnedIndex<KeyT>());
+  
+  } else {
+    assert(false);
+  }
 
   run_workload(config);
   

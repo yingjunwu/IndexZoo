@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <random>
 #include <unistd.h>
 #include <getopt.h>
 
@@ -17,29 +18,57 @@
 
 #include "data_table.h"
 
-#include "learned_index.h"
+#include "index_all.h"
 
 void usage(FILE *out) {
   fprintf(out,
           "Command line options : olap_benchmark <options> \n"
           "   -h --help              :  print help message \n"
+          "   -i --index             :  index type: \n"
+          "                              -- learned_index (default) \n"
+          "                              -- stx_btree \n"
+          "   -y --read_type         :  read type: \n"
+          "                              -- (0) index lookup (default) \n"
+          "                              -- (1) index scan \n"
+          "                              -- (2) index reverse scan \n"
           "   -t --time_duration     :  time duration (default: 10) \n"
           "   -m --key_count         :  key count (default: 1ull<<20) \n"
           "   -n --unique_key_count  :  unique key count (default: 0) \n"
           "   -r --reader_count      :  reader count (default: 1) \n"
+          "   -d --distribution      :  data distribution: \n"
+          "                              -- (0) uniform distribution (default) \n"
+          "                              -- (1) normal distribution \n"
+          "                              -- (2) log-normal distribution \n"
   );
 }
 
 static struct option opts[] = {
+    { "index",             optional_argument, NULL, 'i' },
+    { "read_type",         optional_argument, NULL, 'y' },
     { "time_duration",     optional_argument, NULL, 't' },
     { "key_count",         optional_argument, NULL, 'm' },
     { "unique_key_count",  optional_argument, NULL, 'n' },
     { "reader_count",      optional_argument, NULL, 'r' },
+    { "distribution",      optional_argument, NULL, 'd' },
     { NULL, 0, NULL, 0 }
 };
 
+enum class ReadType {
+  IndexLookupType = 0,
+  IndexScanType,
+  IndexScanReverseType,
+};
+
+enum class DistributionType {
+  UniformType = 0,
+  NormalType,
+  LogNormalType,
+};
 
 struct Config {
+  IndexType index_type_ = IndexType::LearnedIndexType;
+  ReadType index_read_type_ = ReadType::IndexLookupType;
+  DistributionType distribution_type_ = DistributionType::UniformType;
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
   uint64_t key_count_ = 1ull << 20;
@@ -52,11 +81,31 @@ void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "ht:m:n:r:", opts, &idx);
+    int c = getopt_long(argc, argv, "ht:m:n:r:i:y:d:", opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
+      case 'i': {
+        char *index = optarg;
+        if (strcmp(index, "stx_btree") == 0) {
+          config.index_type_ = IndexType::StxBtreeIndexType;
+        } else if (strcmp(index, "learned_index") == 0) {
+          config.index_type_ = IndexType::LearnedIndexType;
+        } else {
+          fprintf(stderr, "Unknown index: %s\n", index);
+          exit(EXIT_FAILURE);
+        }
+        break;
+      }
+      case 'y': {
+        config.index_read_type_ = (ReadType)atoi(optarg);
+        break;
+      }
+      case 'd': {
+        config.distribution_type_ = (DistributionType)atoi(optarg);
+        break;
+      }
       case 't': {
         config.time_duration_ = (uint64_t)atoi(optarg);
         break;
@@ -87,8 +136,6 @@ void parse_args(int argc, char* argv[], Config &config) {
     }
   }
 
-  assert(config.unique_key_count_ <= config.key_count_);
-
 }
 
 typedef Uint64 KeyT;
@@ -109,6 +156,7 @@ public:
     local_max_key_(0) {}
   
   KeyT get_insert_key() {
+    // sequence data
     if (global_max_key == 0) {
 
       if (local_curr_key_ == local_max_key_){
@@ -117,17 +165,19 @@ public:
         local_max_key_ = key + batch_key_count_;
       }
 
-      uint64_t retKey = local_curr_key_;
+      uint64_t ret_key = local_curr_key_;
       ++local_curr_key_;
-      return retKey;
+      return ret_key;
 
-    } else {
+    } 
+    // data that follows certain distribution
+    else {
       return rand_gen_.next() % global_max_key;
 
     }
   }
 
-  KeyT get_random_key() {
+  KeyT get_read_key() {
     if (global_max_key == 0) {
       return rand_gen_.next() % global_curr_key;
     } else {
@@ -137,6 +187,10 @@ public:
   
 private:
   FastRandom rand_gen_;
+
+  std::default_random_engine generator_;
+  std::uniform_int_distribution<int> uniform_dist_;
+  std::normal_distribution<int> normal_dist_;
 
   uint64_t thread_id_;
   
@@ -152,7 +206,7 @@ uint64_t *operation_counts = nullptr;
 
 // table and index
 std::unique_ptr<DataTable<KeyT, ValueT>> data_table(nullptr);
-std::unique_ptr<LearnedIndex<KeyT>> data_index(nullptr);
+std::unique_ptr<BaseIndex<KeyT>> data_index(nullptr);
 
 void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
@@ -162,18 +216,56 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
-  while (true) {
-    if (is_running == false) {
-      break;
+
+  if (config.index_read_type_ == ReadType::IndexLookupType) {
+
+    while (true) {
+      if (is_running == false) {
+        break;
+      }
+
+      KeyT key = batch_keys.get_read_key();
+      
+      std::vector<Uint64> values;
+
+      data_index->find(key, values);
+      
+      ++operation_count;
     }
 
-    KeyT key = batch_keys.get_random_key();
-    
-    std::vector<Uint64> values;
+  } else if (config.index_read_type_ == ReadType::IndexScanType) {
 
-    data_index->find(key, values);
-    
-    ++operation_count;
+    while (true) {
+      if (is_running == false) {
+        break;
+      }
+
+      KeyT key = batch_keys.get_read_key();
+      
+      std::vector<Uint64> values;
+
+      data_index->scan(key, values);
+      
+      ++operation_count;
+    }
+
+  } else {
+    assert(config.index_read_type_ == ReadType::IndexScanReverseType);
+
+    while (true) {
+      if (is_running == false) {
+        break;
+      }
+
+      KeyT key = batch_keys.get_read_key();
+      
+      std::vector<Uint64> values;
+
+      data_index->scan_reverse(key, values);
+      
+      ++operation_count;
+    }
+
   }
 }
 
@@ -181,6 +273,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 void run_workload(const Config &config) {
   
   BatchKeys batch_keys(0);
+
   for (size_t i = 0; i < config.key_count_; ++i) {
 
     KeyT key = batch_keys.get_insert_key();
@@ -192,6 +285,8 @@ void run_workload(const Config &config) {
   }
 
   data_index->reorganize();
+
+  // return;
 
   operation_counts = new uint64_t[config.reader_count_];
   uint64_t profile_round = (uint64_t)(config.time_duration_ / config.profile_duration_);
@@ -260,11 +355,18 @@ void run_workload(const Config &config) {
               << config.profile_duration_ * round_id << " - " 
               << std::setw(5)
               << config.profile_duration_ * (round_id + 1) 
-              << " s]:  "
-              << std::setw(5)
+              << " s]:  ";
+
+    if (read_counts.at(round_id) * 1.0 / 1000 / 1000 < 0.1) {
+      std::cout << std::setw(5)
+              << read_counts.at(round_id) * 1.0 / 1000 
+              << " K  |  "; 
+    } else {
+      std::cout << std::setw(5)
               << read_counts.at(round_id) * 1.0 / 1000 / 1000 
-              << " M  |  " 
-              << std::setw(5)
+              << " M  |  "; 
+    }  
+    std::cout << std::setw(5)
               << act_size_profiles.at(round_id) 
               << " GB  |  "
               << std::setw(5)
@@ -279,13 +381,21 @@ void run_workload(const Config &config) {
   for (uint64_t i = 0; i < config.reader_count_; ++i) {
     worker_threads.at(i).join();
   }
+
+  std::string index_name;
+  if (config.index_type_ == IndexType::StxBtreeIndexType) {
+    index_name = "stx_btree";
+  } else if (config.index_type_ == IndexType::LearnedIndexType) {
+    index_name = "learned_index";
+  }
   
   uint64_t total_count = 0;
   for (uint64_t i = 0; i < config.reader_count_; ++i) {
     total_count += operation_counts[i];
   }
 
-  std::cout << "read = " << config.reader_count_ << ", "
+  std::cout << "index = " << index_name.c_str() << ", "
+            << "read = " << config.reader_count_ << ", "
             << "throughput = " << total_count * 1.0 / config.time_duration_ / 1000 / 1000 << " M ops" 
             << std::endl;
 
@@ -311,7 +421,18 @@ int main(int argc, char* argv[]) {
   global_curr_key = 0;
 
   data_table.reset(new DataTable<KeyT, ValueT>());
-  data_index.reset(new LearnedIndex<KeyT>());
+  
+  if (config.index_type_ == IndexType::StxBtreeIndexType) {
+
+    data_index.reset(new StxBtreeIndex<KeyT>());
+
+  } else if (config.index_type_ == IndexType::LearnedIndexType) {
+
+    data_index.reset(new LearnedIndex<KeyT>());
+  
+  } else {
+    assert(false);
+  }
 
   run_workload(config);
   
