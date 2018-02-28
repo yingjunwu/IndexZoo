@@ -4,15 +4,15 @@
 
 #include "base_key_generator.h"
 
-class Uint64NormalKeyGenerator : public BaseKeyGenerator {
+class Uint64LognormalKeyGenerator : public BaseKeyGenerator {
 public:
 
-  Uint64NormalKeyGenerator(const uint64_t thread_id, const double p1, const double p2) :
+  Uint64LognormalKeyGenerator(const uint64_t thread_id, const double p1, const double p2) :
     BaseKeyGenerator(thread_id),
     dist_gen_(thread_id),
     dist_(p1, p2) {}
   
-  virtual ~Uint64NormalKeyGenerator() {}
+  virtual ~Uint64LognormalKeyGenerator() {}
 
   virtual uint64_t get_insert_key() final {
     // generate sequence data
@@ -38,6 +38,6 @@ public:
 private:
   std::default_random_engine dist_gen_;
 
-  std::normal_distribution<double> dist_;
+  std::lognormal_distribution<double> dist_;
 
 };
