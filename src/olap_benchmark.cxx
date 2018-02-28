@@ -13,7 +13,9 @@
 #include <getopt.h>
 
 #include "time_measurer.h"
-#include "uint64_key_generator.h"
+
+#include "uint64_uniform_key_generator.h"
+#include "uint64_normal_key_generator.h"
 
 #include "data_table.h"
 
@@ -38,6 +40,8 @@ void usage(FILE *out) {
           "                              -- (0) uniform distribution (default) \n"
           "                              -- (1) normal distribution \n"
           "                              -- (2) log-normal distribution \n"
+          "   -P --parameter_1       :  1st distribution parameter \n"
+          "   -Q --parameter_2       :  2nd distribution parameter \n"
   );
 }
 
@@ -49,6 +53,8 @@ static struct option opts[] = {
     { "unique_key_count",  optional_argument, NULL, 'n' },
     { "reader_count",      optional_argument, NULL, 'r' },
     { "distribution",      optional_argument, NULL, 'd' },
+    { "parameter_1",       optional_argument, NULL, 'P' },
+    { "parameter_2",       optional_argument, NULL, 'Q' },
     { NULL, 0, NULL, 0 }
 };
 
@@ -68,6 +74,8 @@ struct Config {
   IndexType index_type_ = IndexType::InterpolationIndexType;
   ReadType index_read_type_ = ReadType::IndexLookupType;
   DistributionType distribution_type_ = DistributionType::UniformType;
+  double parameter_1_ = 0;
+  double parameter_2_ = 0;
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
   uint64_t key_count_ = 1ull << 20;
@@ -80,7 +88,7 @@ void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "ht:m:n:r:i:y:d:", opts, &idx);
+    int c = getopt_long(argc, argv, "ht:m:n:r:i:y:d:P:Q:", opts, &idx);
 
     if (c == -1) break;
 
@@ -121,6 +129,14 @@ void parse_args(int argc, char* argv[], Config &config) {
         config.reader_count_ = (uint64_t)atoi(optarg);
         break;
       }
+      case 'P': {
+        config.parameter_1_ = (double)atof(optarg);
+        break;
+      }
+      case 'Q': {
+        config.parameter_2_ = (double)atof(optarg);
+        break;
+      }
       case 'h': {
         usage(stderr);
         exit(EXIT_FAILURE);
@@ -153,7 +169,21 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
-  Uint64KeyGenerator key_generator(thread_id);
+  std::unique_ptr<BaseKeyGenerator> key_generator;
+  if (config.distribution_type_ == DistributionType::UniformType) {
+
+    key_generator.reset(new Uint64UniformKeyGenerator(thread_id));
+
+  } else if (config.distribution_type_ == DistributionType::NormalType) {
+
+    key_generator.reset(new Uint64NormalKeyGenerator(thread_id, config.parameter_1_, config.parameter_2_));
+  
+  } else {
+    assert(config.distribution_type_ == DistributionType::LogNormalType);
+
+    key_generator.reset(new Uint64NormalKeyGenerator(thread_id, config.parameter_1_, config.parameter_2_));
+  
+  }
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -165,7 +195,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
         break;
       }
 
-      KeyT key = key_generator.get_read_key();
+      KeyT key = key_generator->get_read_key();
       
       std::vector<Uint64> values;
 
@@ -181,7 +211,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
         break;
       }
 
-      KeyT key = key_generator.get_read_key();
+      KeyT key = key_generator->get_read_key();
       
       std::vector<Uint64> values;
 
@@ -198,7 +228,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
         break;
       }
 
-      KeyT key = key_generator.get_read_key();
+      KeyT key = key_generator->get_read_key();
       
       std::vector<Uint64> values;
 
@@ -213,11 +243,26 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
 void run_workload(const Config &config) {
   
-  Uint64KeyGenerator key_generator(0);
+  std::unique_ptr<BaseKeyGenerator> key_generator;
+  if (config.distribution_type_ == DistributionType::UniformType) {
+
+    key_generator.reset(new Uint64UniformKeyGenerator(0));
+
+  } else if (config.distribution_type_ == DistributionType::NormalType) {
+
+    key_generator.reset(new Uint64NormalKeyGenerator(0, config.parameter_1_, config.parameter_2_));
+  
+  } else {
+    assert(config.distribution_type_ == DistributionType::LogNormalType);
+
+    key_generator.reset(new Uint64NormalKeyGenerator(0, config.parameter_1_, config.parameter_2_));
+  
+  
+  }
 
   for (size_t i = 0; i < config.key_count_; ++i) {
 
-    KeyT key = key_generator.get_insert_key();
+    KeyT key = key_generator->get_insert_key();
     ValueT value = 100;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -356,7 +401,7 @@ int main(int argc, char* argv[]) {
 
   parse_args(argc, argv, config);
 
-  Uint64KeyGenerator::set_max_key(config.unique_key_count_);
+  BaseKeyGenerator::set_max_key(config.unique_key_count_);
 
   data_table.reset(new DataTable<KeyT, ValueT>());
   

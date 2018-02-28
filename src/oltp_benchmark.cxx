@@ -13,7 +13,9 @@
 #include <getopt.h>
 
 #include "time_measurer.h"
-#include "uint64_key_generator.h"
+
+#include "uint64_uniform_key_generator.h"
+#include "uint64_normal_key_generator.h"
 
 #include "data_table.h"
 
@@ -49,8 +51,8 @@ struct Config {
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
   // if unique_key_count_ is set to 0, then generate insert key sequentially.
-  uint64_t unique_key_count_ = 0;
   uint64_t init_key_count_ = 1ull<<20;
+  uint64_t unique_key_count_ = 0;
   uint64_t reader_count_ = 1;
   uint64_t inserter_count_ = 0;
   uint64_t thread_count_ = 1;
@@ -131,7 +133,7 @@ void run_inserter_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
-  Uint64KeyGenerator batch_keys(thread_id);
+  std::unique_ptr<BaseKeyGenerator> key_generator(new Uint64UniformKeyGenerator(thread_id));
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -141,7 +143,7 @@ void run_inserter_thread(const uint64_t &thread_id, const Config &config) {
     }
 
     // insert
-    KeyT key = batch_keys.get_insert_key();
+    KeyT key = key_generator->get_insert_key();
     ValueT value = 100;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -156,7 +158,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
-  Uint64KeyGenerator batch_keys(thread_id);
+  std::unique_ptr<BaseKeyGenerator> key_generator(new Uint64UniformKeyGenerator(thread_id));
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -165,7 +167,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
       break;
     }
 
-    KeyT key = batch_keys.get_read_key();
+    KeyT key = key_generator->get_read_key();
     
     std::vector<Uint64> values;
 
@@ -178,10 +180,11 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
 void run_workload(const Config &config) {
   
-  Uint64KeyGenerator batch_keys(0);
+  std::unique_ptr<BaseKeyGenerator> key_generator(new Uint64UniformKeyGenerator(0));
+
   for (size_t i = 0; i < config.init_key_count_; ++i) {
 
-    KeyT key = batch_keys.get_insert_key();
+    KeyT key = key_generator->get_insert_key();
     ValueT value = 100;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -331,7 +334,7 @@ int main(int argc, char* argv[]) {
 
   parse_args(argc, argv, config);
 
-  Uint64KeyGenerator::set_max_key(config.unique_key_count_);
+  BaseKeyGenerator::set_max_key(config.unique_key_count_);
 
   data_table.reset(new DataTable<KeyT, ValueT>());
   

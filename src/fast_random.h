@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 // Fast random number generator
 class FastRandom {
  public:
