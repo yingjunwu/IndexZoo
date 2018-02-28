@@ -2,32 +2,25 @@
 
 #include "base_key_generator.h"
 
+// generate data following the uniform distribution
 class Uint64UniformKeyGenerator : public BaseKeyGenerator {
 public:
 
-  Uint64UniformKeyGenerator(const uint64_t thread_id) : BaseKeyGenerator(thread_id) {}
+  Uint64UniformKeyGenerator(const uint64_t thread_id, const double upper_bound) : 
+    BaseKeyGenerator(thread_id), 
+    upper_bound_(upper_bound) {}
 
   virtual ~Uint64UniformKeyGenerator() {}
   
   virtual uint64_t get_insert_key() final {
-    // generate sequence data
-    if (global_max_key_ == 0) {
-
-      if (local_curr_key_ == local_max_key_){
-        uint64_t key = global_curr_key_.fetch_add(batch_key_count_, std::memory_order_relaxed);
-        local_curr_key_ = key;
-        local_max_key_ = key + batch_key_count_;
-      }
-
-      uint64_t ret_key = local_curr_key_;
-      ++local_curr_key_;
-      return ret_key;
-
-    } 
-    // generate data following the normal distribution
-    else {
-      return rand_gen_.next() % global_max_key_;
-    }
+    return rand_gen_.next() % upper_bound_;
   }
-  
+
+  virtual uint64_t get_read_key() final {
+    return rand_gen_.next() % upper_bound_;
+  }
+
+private:
+  uint64_t upper_bound_;
+
 };

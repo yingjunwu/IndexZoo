@@ -14,13 +14,11 @@
 
 #include "time_measurer.h"
 
-#include "uint64_uniform_key_generator.h"
-#include "uint64_normal_key_generator.h"
-#include "uint64_lognormal_key_generator.h"
-
 #include "data_table.h"
 
 #include "index_all.h"
+
+#include "key_generator_all.h"
 
 void usage(FILE *out) {
   fprintf(out,
@@ -35,12 +33,12 @@ void usage(FILE *out) {
           "                              -- (2) index reverse scan \n"
           "   -t --time_duration     :  time duration (default: 10) \n"
           "   -m --key_count         :  key count (default: 1ull<<20) \n"
-          "   -n --unique_key_count  :  unique key count (default: 0) \n"
           "   -r --reader_count      :  reader count (default: 1) \n"
           "   -d --distribution      :  data distribution: \n"
           "                              -- (0) uniform distribution (default) \n"
           "                              -- (1) normal distribution \n"
           "                              -- (2) log-normal distribution \n"
+          "   -u --key_upper_bound   :  key upper bound \n"
           "   -P --parameter_1       :  1st distribution parameter \n"
           "   -Q --parameter_2       :  2nd distribution parameter \n"
   );
@@ -51,9 +49,9 @@ static struct option opts[] = {
     { "read_type",         optional_argument, NULL, 'y' },
     { "time_duration",     optional_argument, NULL, 't' },
     { "key_count",         optional_argument, NULL, 'm' },
-    { "unique_key_count",  optional_argument, NULL, 'n' },
     { "reader_count",      optional_argument, NULL, 'r' },
     { "distribution",      optional_argument, NULL, 'd' },
+    { "key_upper_bound",   optional_argument, NULL, 'u' },
     { "parameter_1",       optional_argument, NULL, 'P' },
     { "parameter_2",       optional_argument, NULL, 'Q' },
     { NULL, 0, NULL, 0 }
@@ -65,31 +63,29 @@ enum class ReadType {
   IndexScanReverseType,
 };
 
-enum class DistributionType {
-  UniformType = 0,
-  NormalType,
-  LogNormalType,
-};
+static const double INVALID_DIST_PARAM = std::numeric_limits<double>::max();
+static const uint64_t INVALID_KEY_BOUND = std::numeric_limits<uint64_t>::max();
 
 struct Config {
   IndexType index_type_ = IndexType::InterpolationIndexType;
   ReadType index_read_type_ = ReadType::IndexLookupType;
   DistributionType distribution_type_ = DistributionType::UniformType;
-  double parameter_1_ = 0;
-  double parameter_2_ = 0;
+  uint64_t key_upper_bound_ = INVALID_KEY_BOUND;
+  double parameter_1_ = INVALID_DIST_PARAM;
+  double parameter_2_ = INVALID_DIST_PARAM;
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
   uint64_t key_count_ = 1ull << 20;
-  // if unique_key_count_ is set to 0, then generate insert key sequentially.
-  uint64_t unique_key_count_ = 0;
   uint64_t reader_count_ = 1;
 };
+
+void validate_key_generator_params(const Config &config);
 
 void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "ht:m:n:r:i:y:d:P:Q:", opts, &idx);
+    int c = getopt_long(argc, argv, "ht:m:r:i:y:d:u:P:Q:", opts, &idx);
 
     if (c == -1) break;
 
@@ -122,12 +118,12 @@ void parse_args(int argc, char* argv[], Config &config) {
         config.key_count_ = (uint64_t)atoi(optarg);
         break;
       }
-      case 'n': {
-        config.unique_key_count_ = (uint64_t)atoi(optarg);
-        break;
-      }
       case 'r': {
         config.reader_count_ = (uint64_t)atoi(optarg);
+        break;
+      }
+      case 'u': {
+        config.key_upper_bound_ = (uint64_t)atoi(optarg);
         break;
       }
       case 'P': {
@@ -152,15 +148,111 @@ void parse_args(int argc, char* argv[], Config &config) {
     }
   }
 
+  validate_key_generator_params(config);
+
 }
 
-typedef Uint64 KeyT;
-typedef Uint64 ValueT;
 
+void validate_key_generator_params(const Config &config) {
+
+  // validate distribution parameters.
+  if (config.distribution_type_ == DistributionType::SequenceType) {
+
+    std::cout << "key generator type: sequence" << std::endl;
+
+  } else if (config.distribution_type_ == DistributionType::UniformType) {
+    
+    if (config.key_upper_bound_ == INVALID_KEY_BOUND) {
+      std::cerr << "expected key generator type: uniform" << std::endl;
+      std::cerr << "error: upper bound unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    std::cout << "key generator type: uniform" << std::endl;
+    std::cout << "upper bound: " << config.key_upper_bound_ << std::endl;
+
+  } else if (config.distribution_type_ == DistributionType::NormalType) {
+
+    if (config.key_upper_bound_ == INVALID_KEY_BOUND) {
+      std::cerr << "expected key generator type: normal" << std::endl;
+      std::cerr << "error: upper bound unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    if (config.parameter_1_ == INVALID_DIST_PARAM) {
+      std::cerr << "expected key generator type: normal" << std::endl;
+      std::cerr << "error: parameter_1 unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    std::cout << "key generator type: normal" << std::endl;
+    std::cout << "upper bound: " << config.key_upper_bound_ << std::endl;
+    std::cout << "parameter_1: " << config.parameter_1_ << std::endl;
+
+  } else if (config.distribution_type_ == DistributionType::LognormalType) {
+
+
+    if (config.key_upper_bound_ == INVALID_KEY_BOUND) {
+      std::cerr << "expected key generator type: lognormal" << std::endl;
+      std::cerr << "error: upper bound unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    if (config.parameter_1_ == INVALID_DIST_PARAM) {
+      std::cerr << "expected key generator type: lognormal" << std::endl;
+      std::cerr << "error: parameter_1 unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    if (config.parameter_2_ == INVALID_DIST_PARAM) {
+      std::cerr << "expected key generator type: lognormal" << std::endl;
+      std::cerr << "error: parameter_2 unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    std::cout << "key generator type: lognormal" << std::endl;
+    std::cout << "upper bound: " << config.key_upper_bound_ << std::endl;
+    std::cout << "parameter_1: " << config.parameter_1_ << std::endl;
+    std::cout << "parameter_2: " << config.parameter_2_ << std::endl;
+
+  }
+
+
+}
+
+
+BaseKeyGenerator* construct_key_generator(const uint64_t thread_id, const Config &config) {
+  if (config.distribution_type_ == DistributionType::SequenceType) {
+
+    return new Uint64SequenceKeyGenerator(thread_id);
+
+  } else if (config.distribution_type_ == DistributionType::UniformType) {
+
+    return new Uint64UniformKeyGenerator(thread_id, config.key_upper_bound_);
+
+  } else if (config.distribution_type_ == DistributionType::NormalType) {
+
+    return new Uint64NormalKeyGenerator(thread_id, config.key_upper_bound_, config.parameter_1_);
+  
+  } else {
+    assert(config.distribution_type_ == DistributionType::LognormalType);
+
+    return new Uint64LognormalKeyGenerator(thread_id, config.key_upper_bound_, config.parameter_1_, config.parameter_2_);
+  
+  }
+}
 
 bool is_running = false;
 uint64_t *operation_counts = nullptr;
 
+typedef Uint64 KeyT;
+typedef Uint64 ValueT;
 
 // table and index
 std::unique_ptr<DataTable<KeyT, ValueT>> data_table(nullptr);
@@ -170,21 +262,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
-  std::unique_ptr<BaseKeyGenerator> key_generator;
-  if (config.distribution_type_ == DistributionType::UniformType) {
-
-    key_generator.reset(new Uint64UniformKeyGenerator(thread_id));
-
-  } else if (config.distribution_type_ == DistributionType::NormalType) {
-
-    key_generator.reset(new Uint64NormalKeyGenerator(thread_id, config.parameter_1_, config.parameter_2_));
-  
-  } else {
-    assert(config.distribution_type_ == DistributionType::LogNormalType);
-
-    key_generator.reset(new Uint64LognormalKeyGenerator(thread_id, config.parameter_1_, config.parameter_2_));
-  
-  }
+  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(thread_id, config));
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -243,23 +321,8 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
 
 void run_workload(const Config &config) {
-  
-  std::unique_ptr<BaseKeyGenerator> key_generator;
-  if (config.distribution_type_ == DistributionType::UniformType) {
 
-    key_generator.reset(new Uint64UniformKeyGenerator(0));
-
-  } else if (config.distribution_type_ == DistributionType::NormalType) {
-
-    key_generator.reset(new Uint64NormalKeyGenerator(0, config.parameter_1_, config.parameter_2_));
-  
-  } else {
-    assert(config.distribution_type_ == DistributionType::LogNormalType);
-
-    key_generator.reset(new Uint64LognormalKeyGenerator(0, config.parameter_1_, config.parameter_2_));
-  
-  
-  }
+  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(0, config));
 
   for (size_t i = 0; i < config.key_count_; ++i) {
 
@@ -401,8 +464,6 @@ int main(int argc, char* argv[]) {
   Config config;
 
   parse_args(argc, argv, config);
-
-  BaseKeyGenerator::set_max_key(config.unique_key_count_);
 
   data_table.reset(new DataTable<KeyT, ValueT>());
   

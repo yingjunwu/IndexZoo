@@ -14,12 +14,12 @@
 
 #include "time_measurer.h"
 
-#include "uint64_uniform_key_generator.h"
-#include "uint64_normal_key_generator.h"
-
 #include "data_table.h"
 
 #include "index_all.h"
+
+#include "key_generator_all.h"
+
 
 void usage(FILE *out) {
   fprintf(out,
@@ -30,9 +30,9 @@ void usage(FILE *out) {
           "                              -- stx_btree \n"
           "   -t --time_duration     :  time duration (default: 10) \n"
           "   -m --init_key_count    :  init key count (default: 1<<20) \n"
-          "   -n --unique_key_count  :  unique key count (default: 0) \n"
           "   -r --reader_count      :  reader count (default: 0) \n"
           "   -s --inserter_count    :  inserter count (default: 1) \n"
+          "   -u --key_upper_bound   :  key upper bound \n"
   );
 }
 
@@ -40,29 +40,30 @@ static struct option opts[] = {
     { "index",             optional_argument, NULL, 'i' },
     { "time_duration",     optional_argument, NULL, 't' },
     { "init_key_count",    optional_argument, NULL, 'm' },
-    { "unique_key_count",  optional_argument, NULL, 'n' },
     { "reader_count",      optional_argument, NULL, 'r' },
     { "inserter_count",    optional_argument, NULL, 's' },
+    { "key_upper_bound",   optional_argument, NULL, 'u' },
     { NULL, 0, NULL, 0 }
 };
+
+static const uint64_t INVALID_KEY_BOUND = std::numeric_limits<uint64_t>::max();
 
 struct Config {
   IndexType index_type_ = IndexType::InterpolationIndexType;
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
-  // if unique_key_count_ is set to 0, then generate insert key sequentially.
   uint64_t init_key_count_ = 1ull<<20;
-  uint64_t unique_key_count_ = 0;
   uint64_t reader_count_ = 1;
   uint64_t inserter_count_ = 0;
   uint64_t thread_count_ = 1;
+  uint64_t key_upper_bound_ = INVALID_KEY_BOUND;
 };
 
 void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "ht:m:n:r:s:i:", opts, &idx);
+    int c = getopt_long(argc, argv, "ht:m:r:s:i:u:", opts, &idx);
 
     if (c == -1) break;
 
@@ -87,16 +88,16 @@ void parse_args(int argc, char* argv[], Config &config) {
         config.init_key_count_ = (uint64_t)atoi(optarg);
         break;
       }
-      case 'n': {
-        config.unique_key_count_ = (uint64_t)atoi(optarg);
-        break;
-      }
       case 'r': {
         config.reader_count_ = (uint64_t)atoi(optarg);
         break;
       }
       case 's': {
         config.inserter_count_ = (uint64_t)atoi(optarg);
+        break;
+      }
+      case 'u': {
+        config.key_upper_bound_ = (uint64_t)atoi(optarg);
         break;
       }
       case 'h': {
@@ -114,6 +115,9 @@ void parse_args(int argc, char* argv[], Config &config) {
   }
 
   config.thread_count_ = config.inserter_count_ + config.reader_count_;
+
+  // we temporarily do not support other key generators.
+  assert(config.key_upper_bound_ == INVALID_KEY_BOUND);
 
 }
 
@@ -133,7 +137,7 @@ void run_inserter_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
-  std::unique_ptr<BaseKeyGenerator> key_generator(new Uint64UniformKeyGenerator(thread_id));
+  std::unique_ptr<BaseKeyGenerator> key_generator(new Uint64SequenceKeyGenerator(thread_id));
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -158,7 +162,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
-  std::unique_ptr<BaseKeyGenerator> key_generator(new Uint64UniformKeyGenerator(thread_id));
+  std::unique_ptr<BaseKeyGenerator> key_generator(new Uint64SequenceKeyGenerator(thread_id));
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -180,7 +184,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
 void run_workload(const Config &config) {
   
-  std::unique_ptr<BaseKeyGenerator> key_generator(new Uint64UniformKeyGenerator(0));
+  std::unique_ptr<BaseKeyGenerator> key_generator(new Uint64SequenceKeyGenerator(0));
 
   for (size_t i = 0; i < config.init_key_count_; ++i) {
 
@@ -333,8 +337,6 @@ int main(int argc, char* argv[]) {
   Config config;
 
   parse_args(argc, argv, config);
-
-  BaseKeyGenerator::set_max_key(config.unique_key_count_);
 
   data_table.reset(new DataTable<KeyT, ValueT>());
   

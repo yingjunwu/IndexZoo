@@ -1,43 +1,32 @@
 #pragma once
 
-#include <random>
+#include <cmath>
 
 #include "base_key_generator.h"
 
+// generate data following the normal distribution
 class Uint64NormalKeyGenerator : public BaseKeyGenerator {
 public:
 
-  Uint64NormalKeyGenerator(const uint64_t thread_id, const double p1, const double p2) :
+  Uint64NormalKeyGenerator(const uint64_t thread_id, const double upper_bound, const double stddev) :
     BaseKeyGenerator(thread_id),
+    upper_bound_(upper_bound),
     dist_gen_(thread_id),
-    dist_(p1, p2) {}
+    dist_(upper_bound / 2, stddev) {}
   
   virtual ~Uint64NormalKeyGenerator() {}
 
   virtual uint64_t get_insert_key() final {
-    // generate sequence data
-    if (global_max_key_ == 0) {
+    return uint64_t(std::round(dist_(dist_gen_)));
+  }
 
-      if (local_curr_key_ == local_max_key_){
-        uint64_t key = global_curr_key_.fetch_add(batch_key_count_, std::memory_order_relaxed);
-        local_curr_key_ = key;
-        local_max_key_ = key + batch_key_count_;
-      }
-
-      uint64_t ret_key = local_curr_key_;
-      ++local_curr_key_;
-      return ret_key;
-
-    } 
-    // generate data following the normal distribution
-    else {
-      return uint64_t(dist_(dist_gen_)) % global_max_key_;
-    }
+  virtual uint64_t get_read_key() final {
+    return rand_gen_.next() % upper_bound_;
   }
   
 private:
+  uint64_t upper_bound_;
+
   std::default_random_engine dist_gen_;
-
   std::normal_distribution<double> dist_;
-
 };
