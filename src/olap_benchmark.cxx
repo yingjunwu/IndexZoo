@@ -16,6 +16,7 @@
 
 #include "uint64_uniform_key_generator.h"
 #include "uint64_normal_key_generator.h"
+#include "uint64_lognormal_key_generator.h"
 
 #include "data_table.h"
 
@@ -181,7 +182,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
   } else {
     assert(config.distribution_type_ == DistributionType::LogNormalType);
 
-    key_generator.reset(new Uint64NormalKeyGenerator(thread_id, config.parameter_1_, config.parameter_2_));
+    key_generator.reset(new Uint64LognormalKeyGenerator(thread_id, config.parameter_1_, config.parameter_2_));
   
   }
 
@@ -255,7 +256,7 @@ void run_workload(const Config &config) {
   } else {
     assert(config.distribution_type_ == DistributionType::LogNormalType);
 
-    key_generator.reset(new Uint64NormalKeyGenerator(0, config.parameter_1_, config.parameter_2_));
+    key_generator.reset(new Uint64LognormalKeyGenerator(0, config.parameter_1_, config.parameter_2_));
   
   
   }
