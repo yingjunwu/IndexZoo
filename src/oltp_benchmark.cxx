@@ -26,8 +26,8 @@ void usage(FILE *out) {
           "Command line options : oltp_benchmark <options> \n"
           "   -h --help              :  print help message \n"
           "   -i --index             :  index type: \n"
-          "                              -- interpolation_index (default) \n"
-          "                              -- stx_btree \n"
+          "                              -- (0) interpolation index (default) \n"
+          "                              -- (1) stx btree \n"
           "   -t --time_duration     :  time duration (default: 10) \n"
           "   -m --init_key_count    :  init key count (default: 1<<20) \n"
           "   -r --reader_count      :  reader count (default: 0) \n"
@@ -69,15 +69,7 @@ void parse_args(int argc, char* argv[], Config &config) {
 
     switch (c) {
       case 'i': {
-        char *index = optarg;
-        if (strcmp(index, "stx_btree") == 0) {
-          config.index_type_ = IndexType::StxBtreeIndexType;
-        } else if (strcmp(index, "interpolation_index") == 0) {
-          config.index_type_ = IndexType::InterpolationIndexType;
-        } else {
-          fprintf(stderr, "Unknown index: %s\n", index);
-          exit(EXIT_FAILURE);
-        }
+        config.index_type_ = (IndexType)atoi(optarg);
         break;
       }
       case 't': {

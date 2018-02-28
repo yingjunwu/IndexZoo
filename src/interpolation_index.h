@@ -20,7 +20,6 @@ class InterpolationIndex : public BaseIndex<KeyT> {
   }
 
 public:
-  InterpolationIndex(const size_t size_hint) {}
   InterpolationIndex() {}
   virtual ~InterpolationIndex() {}
 

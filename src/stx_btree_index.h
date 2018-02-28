@@ -8,7 +8,6 @@ template<typename KeyT>
 class StxBtreeIndex : public BaseIndex<KeyT> {
 
 public:
-  StxBtreeIndex(const size_t size_hint) {}
   StxBtreeIndex() {}
   virtual ~StxBtreeIndex() {}
 

@@ -25,8 +25,9 @@ void usage(FILE *out) {
           "Command line options : olap_benchmark <options> \n"
           "   -h --help              :  print help message \n"
           "   -i --index             :  index type: \n"
-          "                              -- interpolation_index (default) \n"
-          "                              -- stx_btree \n"
+          "                              -- (0) interpolation index (default) \n"
+          "                              -- (1) stx btree \n"
+          "                              -- (2) interpolation index v1 \n"
           "   -y --read_type         :  read type: \n"
           "                              -- (0) index lookup (default) \n"
           "                              -- (1) index scan \n"
@@ -35,9 +36,10 @@ void usage(FILE *out) {
           "   -m --key_count         :  key count (default: 1ull<<20) \n"
           "   -r --reader_count      :  reader count (default: 1) \n"
           "   -d --distribution      :  data distribution: \n"
-          "                              -- (0) uniform distribution (default) \n"
-          "                              -- (1) normal distribution \n"
-          "                              -- (2) log-normal distribution \n"
+          "                              -- (0) sequence (default) \n"
+          "                              -- (1) uniform distribution \n"
+          "                              -- (2) normal distribution \n"
+          "                              -- (3) log-normal distribution \n"
           "   -u --key_upper_bound   :  key upper bound \n"
           "   -P --parameter_1       :  1st distribution parameter \n"
           "   -Q --parameter_2       :  2nd distribution parameter \n"
@@ -69,7 +71,7 @@ static const uint64_t INVALID_KEY_BOUND = std::numeric_limits<uint64_t>::max();
 struct Config {
   IndexType index_type_ = IndexType::InterpolationIndexType;
   ReadType index_read_type_ = ReadType::IndexLookupType;
-  DistributionType distribution_type_ = DistributionType::UniformType;
+  DistributionType distribution_type_ = DistributionType::SequenceType;
   uint64_t key_upper_bound_ = INVALID_KEY_BOUND;
   double parameter_1_ = INVALID_DIST_PARAM;
   double parameter_2_ = INVALID_DIST_PARAM;
@@ -91,15 +93,7 @@ void parse_args(int argc, char* argv[], Config &config) {
 
     switch (c) {
       case 'i': {
-        char *index = optarg;
-        if (strcmp(index, "stx_btree") == 0) {
-          config.index_type_ = IndexType::StxBtreeIndexType;
-        } else if (strcmp(index, "interpolation_index") == 0) {
-          config.index_type_ = IndexType::InterpolationIndexType;
-        } else {
-          fprintf(stderr, "Unknown index: %s\n", index);
-          exit(EXIT_FAILURE);
-        }
+        config.index_type_ = (IndexType)atoi(optarg);
         break;
       }
       case 'y': {
@@ -349,8 +343,8 @@ void run_workload(const Config &config) {
 
   std::vector<uint64_t> read_counts; // number of read operations performed.
 
-  double init_mem_size = get_memory_gb();
-  std::cout << "init memory size = " << init_mem_size << " GB" << std::endl;
+  double init_mem_size = get_memory_mb();
+  std::cout << "init memory size = " << init_mem_size << " MB" << std::endl;
   
   // launch a group of threads
   is_running = true;
@@ -369,7 +363,7 @@ void run_workload(const Config &config) {
     
     memcpy(operation_counts_profiles[round_id], operation_counts, sizeof(uint64_t) * config.reader_count_);
 
-    act_size_profiles.push_back(get_memory_gb());
+    act_size_profiles.push_back(get_memory_mb());
     approx_size_profiles.push_back(data_table->size_approx());
     if (round_id == 0) {
       // first round
@@ -413,13 +407,13 @@ void run_workload(const Config &config) {
       std::cout << std::setw(5)
               << read_counts.at(round_id) * 1.0 / 1000 / 1000 
               << " M  |  "; 
-    }  
+    } 
     std::cout << std::setw(5)
               << act_size_profiles.at(round_id) 
-              << " GB  |  "
+              << " MB  |  "
               << std::setw(5)
-              << approx_size_profiles.at(round_id) * (sizeof(KeyT) + sizeof(ValueT)) * 1.0 / 1024 / 1024 / 1024
-              << " GB"
+              << approx_size_profiles.at(round_id) * (sizeof(KeyT) + sizeof(ValueT)) * 1.0 / 1024 / 1024
+              << " MB"
               << std::endl;
   }
   
@@ -446,6 +440,8 @@ void run_workload(const Config &config) {
             << "read = " << config.reader_count_ << ", "
             << "throughput = " << total_count * 1.0 / config.time_duration_ / 1000 / 1000 << " M ops" 
             << std::endl;
+
+  data_index->print_stats();
 
   for (uint64_t round_id = 0; round_id < profile_round; ++round_id) {
     delete[] operation_counts_profiles[round_id];
@@ -476,7 +472,8 @@ int main(int argc, char* argv[]) {
     data_index.reset(new InterpolationIndex<KeyT>());
   
   } else {
-    assert(false);
+
+    data_index.reset(new InterpolationIndexV1<KeyT>());
   }
 
   run_workload(config);

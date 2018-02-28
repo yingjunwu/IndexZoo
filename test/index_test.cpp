@@ -20,8 +20,8 @@ TEST_F(IndexTest, UniqueKeyTest) {
 
   std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
     new DataTable<uint64_t, uint64_t>());
-  std::unique_ptr<InterpolationIndex<uint64_t>> data_index(
-    new InterpolationIndex<uint64_t>());
+  std::unique_ptr<BaseIndex<uint64_t>> data_index(
+    new InterpolationIndexV1<uint64_t>());
 
   std::unordered_map<uint64_t, std::pair<Uint64, uint64_t>> validation_set;
   

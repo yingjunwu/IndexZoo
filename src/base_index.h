@@ -11,7 +11,6 @@ template<typename KeyT>
 class BaseIndex {
 
 public:
-  BaseIndex(const size_t size_hint) {}
   BaseIndex() {}
   virtual ~BaseIndex() {}
 
@@ -32,4 +31,6 @@ public:
   virtual void reorganize() {}
 
   virtual void print() const {}
+
+  virtual void print_stats() const {}
 };
