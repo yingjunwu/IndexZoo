@@ -7,7 +7,7 @@
 
 
 template<typename KeyT>
-class InterpolationIndexV1 : public BaseIndex<KeyT> {
+class InterpolationIndexV2 : public BaseIndex<KeyT> {
 
   struct Stats {
 
@@ -52,13 +52,25 @@ class InterpolationIndexV1 : public BaseIndex<KeyT> {
   }
 
 public:
-  InterpolationIndexV1(const size_t size_hint = 1000) : size_(0), capacity_(size_hint) {
+  InterpolationIndexV2(const size_t num_segments = 1, const size_t size_hint = 1000) {
+
+    assert(num_segments >= 1);
+
+    size_ = 0;
+    capacity_ = size_hint;
     container_ = new KeyValuePair[capacity_];
+
+    num_segments_ = num_segments;
+    segment_boundaries_ = new KeyT[num_segments_ + 1];
+    segment_sizes_ = new size_t[num_segments_];
   }
 
-  virtual ~InterpolationIndexV1() {
+  virtual ~InterpolationIndexV2() {
     delete[] container_;
     container_ = nullptr;
+
+    delete[] segment_boundaries_;
+    segment_boundaries_ = nullptr;
   }
 
   virtual void insert(const KeyT &key, const Uint64 &value) final {
@@ -83,12 +95,13 @@ public:
       return;
     }
 
-    if (key > max_ || key < min_) {
+    if (key > segment_boundaries_[num_segments_] || key < segment_boundaries_[0]) {
       return;
     }
 
-    if (max_ == min_) {
-      if (max_ == key) {
+    // all keys are equal
+    if (segment_boundaries_[0] == segment_boundaries_[num_segments_]) {
+      if (segment_boundaries_[0] == key) {
         for (size_t i = 0; i < size_; ++i) {
           values.push_back(container_[i].value_);
         }
@@ -96,8 +109,32 @@ public:
       return;
     }
 
+    // find suitable segment
+    size_t segment_id = 0;
+    for (; segment_id < num_segments_ - 1; ++segment_id) {
+      if (key < segment_boundaries_[segment_id + 1]) {
+        break;
+      }
+    }
+
+    // the key should fall into: 
+    //  [ segment_boundaries_[i], segment_boundaries_[i + 1] ) -- if 0 <= i < num_segments_ - 1
+    //  [ segment_boundaries_[i], segment_boundaries_[i + 1] ] -- if i == num_segments_ - 1
+    if (segment_id < num_segments_ - 1) {
+
+      assert(segment_boundaries_[segment_id] <= key && key < segment_boundaries_[segment_id + 1]);
+
+    } else {
+
+      assert(segment_id == num_segments_ - 1);
+
+      assert(segment_boundaries_[segment_id] <= key && key <= segment_boundaries_[segment_id + 1]);
+    }
+
+    int segment_key_range = segment_boundaries_[segment_id + 1] - segment_boundaries_[segment_id];
+    
     // guess where the data lives
-    int guess = int((key - min_) * 1.0 / (max_ - min_) * (size_ - 1));
+    int guess = int((key - segment_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1));
 
     int origin_guess = guess;
     
@@ -168,7 +205,7 @@ public:
           continue;
         }
         else {
-
+          
           stats_.measure_find_op_guess_distance(origin_guess, guess);
 
           values.push_back(container_[guess].value_);
@@ -187,12 +224,13 @@ public:
       return;
     }
 
-    if (lhs_key > max_ || rhs_key < min_) {
+    if (lhs_key > segment_boundaries_[num_segments_] || rhs_key < segment_boundaries_[0]) {
       return;
     }
 
-    if (max_ == min_) {
-      if (max_ >= lhs_key && max_ <= rhs_key) {
+    // all keys are equal
+    if (segment_boundaries_[0] == segment_boundaries_[num_segments_]) {
+      if (segment_boundaries_[0] >= lhs_key && segment_boundaries_[0] <= rhs_key) {
         for (size_t i = 0; i < size_; ++i) {
           values.push_back(container_[i].value_);
         }
@@ -200,9 +238,32 @@ public:
       return;
     }
 
+
+    // find suitable segment
+    size_t segment_id = 0;
+    for (; segment_id < num_segments_; ++segment_id) {
+      if (lhs_key < segment_boundaries_[segment_id + 1]) {
+        break;
+      }
+    }
+    // the lhs_key should fall into: 
+    //  [ segment_boundaries_[i], segment_boundaries_[i + 1] ) -- if 0 <= i < num_segments_ - 1
+    //  [ segment_boundaries_[i], segment_boundaries_[i + 1] ] -- if i == num_segments_ - 1
+    if (segment_id < num_segments_ - 1) {
+
+      assert(segment_boundaries_[segment_id] <= lhs_key && lhs_key < segment_boundaries_[segment_id + 1]);
+
+    } else {
+      assert(segment_id == num_segments_ - 1);
+
+      assert(segment_boundaries_[segment_id] <= lhs_key && lhs_key <= segment_boundaries_[segment_id + 1]);
+    }
+
+    int segment_key_range = segment_boundaries_[segment_id + 1] - segment_boundaries_[segment_id];
+
     // guess where the data lives
-    int guess = int((lhs_key - min_) * 1.0 / (max_ - min_) * (size_ - 1));
-    
+    int guess = int((lhs_key - segment_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1));
+
     // if the guess is larger than or equal to lhs_key
     if (container_[guess].key_ >= lhs_key) {
       values.push_back(container_[guess].value_);
@@ -276,8 +337,14 @@ public:
 
   virtual void reorganize() final {
     std::sort(container_, container_ + size_, compare_func);
-    min_ = container_[0].key_;
-    max_ = container_[size_ - 1].key_;
+    segment_boundaries_[0] = container_[0].key_; // min value
+    segment_boundaries_[num_segments_] = container_[size_ - 1].key_; // max value
+    if (num_segments_ == 1) {
+      segment_sizes_[0] = size_;
+    } else {
+      assert(false);
+    }
+
   }
 
   virtual void print() const final {
@@ -287,6 +354,10 @@ public:
   }
 
   virtual void print_stats() const final {
+    std::cout << "aggregated guess distance = " << stats_.find_op_guess_distance_ << std::endl;
+
+    std::cout << "number of profiled find operations = " << stats_.find_op_profile_count_ << std::endl;
+
     std::cout << "average guess distance = " << stats_.find_op_guess_distance_ * 1.0 / stats_.find_op_profile_count_ << std::endl;
   }
 
@@ -295,8 +366,9 @@ private:
   size_t size_;
   size_t capacity_;
 
-  KeyT min_;
-  KeyT max_;
+  KeyT *segment_boundaries_; // there are num_segments_ + 1 boundaries in total
+  size_t *segment_sizes_;
+  size_t num_segments_;
 
   Stats stats_;
 };

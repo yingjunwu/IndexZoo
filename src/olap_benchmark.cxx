@@ -26,8 +26,9 @@ void usage(FILE *out) {
           "   -h --help              :  print help message \n"
           "   -i --index             :  index type: \n"
           "                              -- (0) interpolation index (default) \n"
-          "                              -- (1) stx btree \n"
-          "                              -- (2) interpolation index v1 \n"
+          "                              -- (1) interpolation index v1 \n"
+          "                              -- (2) interpolation index v2 \n"
+          "                              -- (3) stx btree \n"
           "   -y --read_type         :  read type: \n"
           "                              -- (0) index lookup (default) \n"
           "                              -- (1) index scan \n"
@@ -429,6 +430,10 @@ void run_workload(const Config &config) {
     index_name = "stx_btree";
   } else if (config.index_type_ == IndexType::InterpolationIndexType) {
     index_name = "interpolation_index";
+  } else if (config.index_type_ == IndexType::InterpolationIndexTypeV1) {
+    index_name = "interpolation_index_v1";
+  } else if (config.index_type_ == IndexType::InterpolationIndexTypeV2) {
+    index_name = "interpolation_index_v2";
   }
   
   uint64_t total_count = 0;
@@ -471,9 +476,16 @@ int main(int argc, char* argv[]) {
 
     data_index.reset(new InterpolationIndex<KeyT>());
   
-  } else {
+  } else if (config.index_type_ == IndexType::InterpolationIndexTypeV1) {
 
     data_index.reset(new InterpolationIndexV1<KeyT>());
+
+  } else if (config.index_type_ == IndexType::InterpolationIndexTypeV2) {
+
+    data_index.reset(new InterpolationIndexV2<KeyT>());
+
+  } else {
+    assert(false);
   }
 
   run_workload(config);
