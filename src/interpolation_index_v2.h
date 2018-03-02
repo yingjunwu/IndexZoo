@@ -128,8 +128,6 @@ public:
       }
     }
 
-    // std::cout << "key = " << key << " segment id = " << segment_id << std::endl;
-
     // the key should fall into: 
     //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ) -- if 0 <= i < num_segments_ - 1
     //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ] -- if i == num_segments_ - 1
@@ -148,6 +146,11 @@ public:
     
     // guess where the data lives
     int guess = int((key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1) + segment_offset_boundaries_[segment_id]);
+
+    // TODO: workaround!!
+    if (guess >= size_) {
+      guess = size_ - 1;
+    }
 
     int origin_guess = guess;
     
@@ -384,8 +387,6 @@ public:
     //   std::cout << segment_key_boundaries_[i] << " ";
     // }
     // std::cout << std::endl;
-
-    // exit(EXIT_FAILURE);
   }
 
   virtual void print() const final {
