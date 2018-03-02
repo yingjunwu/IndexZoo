@@ -29,6 +29,7 @@ void usage(FILE *out) {
           "                              -- (1) interpolation index v1 \n"
           "                              -- (2) interpolation index v2 \n"
           "                              -- (3) stx btree \n"
+          "   -s --segment_count     :  segment count (for interpolation index v2) \n"
           "   -y --read_type         :  read type: \n"
           "                              -- (0) index lookup (default) \n"
           "                              -- (1) index scan \n"
@@ -50,6 +51,7 @@ void usage(FILE *out) {
 static struct option opts[] = {
     { "index",             optional_argument, NULL, 'i' },
     { "read_type",         optional_argument, NULL, 'y' },
+    { "segment_count",     optional_argument, NULL, 's' },
     { "time_duration",     optional_argument, NULL, 't' },
     { "key_count",         optional_argument, NULL, 'm' },
     { "reader_count",      optional_argument, NULL, 'r' },
@@ -73,6 +75,7 @@ struct Config {
   IndexType index_type_ = IndexType::InterpolationIndexType;
   ReadType index_read_type_ = ReadType::IndexLookupType;
   DistributionType distribution_type_ = DistributionType::SequenceType;
+  size_t segment_count_ = 1;
   uint64_t key_upper_bound_ = INVALID_KEY_BOUND;
   double parameter_1_ = INVALID_DIST_PARAM;
   double parameter_2_ = INVALID_DIST_PARAM;
@@ -88,13 +91,17 @@ void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "ht:m:r:i:y:d:u:P:Q:", opts, &idx);
+    int c = getopt_long(argc, argv, "ht:m:r:i:s:y:d:u:P:Q:", opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
       case 'i': {
         config.index_type_ = (IndexType)atoi(optarg);
+        break;
+      }
+      case 's': {
+        config.segment_count_ = atoi(optarg);
         break;
       }
       case 'y': {
@@ -482,7 +489,7 @@ int main(int argc, char* argv[]) {
 
   } else if (config.index_type_ == IndexType::InterpolationIndexTypeV2) {
 
-    data_index.reset(new InterpolationIndexV2<KeyT>());
+    data_index.reset(new InterpolationIndexV2<KeyT>(config.segment_count_));
 
   } else {
     assert(false);

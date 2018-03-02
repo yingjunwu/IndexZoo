@@ -61,16 +61,27 @@ public:
     container_ = new KeyValuePair[capacity_];
 
     num_segments_ = num_segments;
-    segment_boundaries_ = new KeyT[num_segments_ + 1];
+    segment_key_boundaries_ = new KeyT[num_segments_ + 1];
+
+    segment_offset_boundaries_ = new size_t[num_segments_];
+
     segment_sizes_ = new size_t[num_segments_];
+
   }
 
   virtual ~InterpolationIndexV2() {
     delete[] container_;
     container_ = nullptr;
 
-    delete[] segment_boundaries_;
-    segment_boundaries_ = nullptr;
+    delete[] segment_key_boundaries_;
+    segment_key_boundaries_ = nullptr;
+
+    delete[] segment_offset_boundaries_;
+    segment_offset_boundaries_ = nullptr;
+
+    delete[] segment_sizes_;
+    segment_sizes_ = nullptr;
+
   }
 
   virtual void insert(const KeyT &key, const Uint64 &value) final {
@@ -95,13 +106,13 @@ public:
       return;
     }
 
-    if (key > segment_boundaries_[num_segments_] || key < segment_boundaries_[0]) {
+    if (key > segment_key_boundaries_[num_segments_] || key < segment_key_boundaries_[0]) {
       return;
     }
 
     // all keys are equal
-    if (segment_boundaries_[0] == segment_boundaries_[num_segments_]) {
-      if (segment_boundaries_[0] == key) {
+    if (segment_key_boundaries_[0] == segment_key_boundaries_[num_segments_]) {
+      if (segment_key_boundaries_[0] == key) {
         for (size_t i = 0; i < size_; ++i) {
           values.push_back(container_[i].value_);
         }
@@ -112,29 +123,31 @@ public:
     // find suitable segment
     size_t segment_id = 0;
     for (; segment_id < num_segments_ - 1; ++segment_id) {
-      if (key < segment_boundaries_[segment_id + 1]) {
+      if (key < segment_key_boundaries_[segment_id + 1]) {
         break;
       }
     }
 
+    // std::cout << "key = " << key << " segment id = " << segment_id << std::endl;
+
     // the key should fall into: 
-    //  [ segment_boundaries_[i], segment_boundaries_[i + 1] ) -- if 0 <= i < num_segments_ - 1
-    //  [ segment_boundaries_[i], segment_boundaries_[i + 1] ] -- if i == num_segments_ - 1
+    //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ) -- if 0 <= i < num_segments_ - 1
+    //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ] -- if i == num_segments_ - 1
     if (segment_id < num_segments_ - 1) {
 
-      assert(segment_boundaries_[segment_id] <= key && key < segment_boundaries_[segment_id + 1]);
+      assert(segment_key_boundaries_[segment_id] <= key && key < segment_key_boundaries_[segment_id + 1]);
 
     } else {
 
       assert(segment_id == num_segments_ - 1);
 
-      assert(segment_boundaries_[segment_id] <= key && key <= segment_boundaries_[segment_id + 1]);
+      assert(segment_key_boundaries_[segment_id] <= key && key <= segment_key_boundaries_[segment_id + 1]);
     }
 
-    int segment_key_range = segment_boundaries_[segment_id + 1] - segment_boundaries_[segment_id];
+    int segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];
     
     // guess where the data lives
-    int guess = int((key - segment_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1));
+    int guess = int((key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1) + segment_offset_boundaries_[segment_id]);
 
     int origin_guess = guess;
     
@@ -224,13 +237,13 @@ public:
       return;
     }
 
-    if (lhs_key > segment_boundaries_[num_segments_] || rhs_key < segment_boundaries_[0]) {
+    if (lhs_key > segment_key_boundaries_[num_segments_] || rhs_key < segment_key_boundaries_[0]) {
       return;
     }
 
     // all keys are equal
-    if (segment_boundaries_[0] == segment_boundaries_[num_segments_]) {
-      if (segment_boundaries_[0] >= lhs_key && segment_boundaries_[0] <= rhs_key) {
+    if (segment_key_boundaries_[0] == segment_key_boundaries_[num_segments_]) {
+      if (segment_key_boundaries_[0] >= lhs_key && segment_key_boundaries_[0] <= rhs_key) {
         for (size_t i = 0; i < size_; ++i) {
           values.push_back(container_[i].value_);
         }
@@ -242,27 +255,27 @@ public:
     // find suitable segment
     size_t segment_id = 0;
     for (; segment_id < num_segments_; ++segment_id) {
-      if (lhs_key < segment_boundaries_[segment_id + 1]) {
+      if (lhs_key < segment_key_boundaries_[segment_id + 1]) {
         break;
       }
     }
     // the lhs_key should fall into: 
-    //  [ segment_boundaries_[i], segment_boundaries_[i + 1] ) -- if 0 <= i < num_segments_ - 1
-    //  [ segment_boundaries_[i], segment_boundaries_[i + 1] ] -- if i == num_segments_ - 1
+    //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ) -- if 0 <= i < num_segments_ - 1
+    //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ] -- if i == num_segments_ - 1
     if (segment_id < num_segments_ - 1) {
 
-      assert(segment_boundaries_[segment_id] <= lhs_key && lhs_key < segment_boundaries_[segment_id + 1]);
+      assert(segment_key_boundaries_[segment_id] <= lhs_key && lhs_key < segment_key_boundaries_[segment_id + 1]);
 
     } else {
       assert(segment_id == num_segments_ - 1);
 
-      assert(segment_boundaries_[segment_id] <= lhs_key && lhs_key <= segment_boundaries_[segment_id + 1]);
+      assert(segment_key_boundaries_[segment_id] <= lhs_key && lhs_key <= segment_key_boundaries_[segment_id + 1]);
     }
 
-    int segment_key_range = segment_boundaries_[segment_id + 1] - segment_boundaries_[segment_id];
+    int segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];
 
     // guess where the data lives
-    int guess = int((lhs_key - segment_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1));
+    int guess = int((lhs_key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1));
 
     // if the guess is larger than or equal to lhs_key
     if (container_[guess].key_ >= lhs_key) {
@@ -337,14 +350,42 @@ public:
 
   virtual void reorganize() final {
     std::sort(container_, container_ + size_, compare_func);
-    segment_boundaries_[0] = container_[0].key_; // min value
-    segment_boundaries_[num_segments_] = container_[size_ - 1].key_; // max value
-    if (num_segments_ == 1) {
-      segment_sizes_[0] = size_;
-    } else {
-      assert(false);
+    segment_key_boundaries_[0] = container_[0].key_; // min value
+    segment_key_boundaries_[num_segments_] = container_[size_ - 1].key_; // max value
+
+    int key_range = container_[size_ - 1].key_ - container_[0].key_;
+    int segment_key_range = key_range / num_segments_;
+
+    for (size_t i = 1; i < num_segments_; ++i) {
+      segment_key_boundaries_[i] = container_[0].key_ + segment_key_range * i;
     }
 
+    size_t current_offset = 0;
+
+    segment_offset_boundaries_[0] = current_offset;
+
+    for (size_t i = 0; i < num_segments_ - 1; ++i) {
+      while (container_[current_offset].key_ < segment_key_boundaries_[i + 1]) {
+        ++segment_sizes_[i];
+        ++current_offset;
+      }
+      segment_offset_boundaries_[i + 1] = current_offset;
+    }
+
+    segment_sizes_[num_segments_ - 1] = size_ - current_offset;
+
+    // for (size_t i = 0; i < num_segments_; ++i) {
+    //   std::cout << segment_sizes_[i] << " ";
+    // }
+    // std::cout << std::endl;
+
+
+    // for (size_t i = 0; i <= num_segments_; ++i) {
+    //   std::cout << segment_key_boundaries_[i] << " ";
+    // }
+    // std::cout << std::endl;
+
+    // exit(EXIT_FAILURE);
   }
 
   virtual void print() const final {
@@ -366,7 +407,12 @@ private:
   size_t size_;
   size_t capacity_;
 
-  KeyT *segment_boundaries_; // there are num_segments_ + 1 boundaries in total
+  // there are num_segments_ + 1 key boundaries in total
+  KeyT *segment_key_boundaries_; 
+
+  // there are num_segments_ offset boundaries in total
+  size_t *segment_offset_boundaries_;
+
   size_t *segment_sizes_;
   size_t num_segments_;
 
