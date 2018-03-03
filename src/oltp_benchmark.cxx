@@ -26,8 +26,10 @@ void usage(FILE *out) {
           "Command line options : oltp_benchmark <options> \n"
           "   -h --help              :  print help message \n"
           "   -i --index             :  index type: \n"
-          "                              -- (0) interpolation index (default) \n"
-          "                              -- (1) stx btree \n"
+          "                              -- (0) interpolation index \n"
+          "                              -- (1) interpolation index v1 \n"
+          "                              -- (2) interpolation index v2 \n"
+          "                              -- (3) stx btree (default) \n"
           "   -t --time_duration     :  time duration (default: 10) \n"
           "   -m --init_key_count    :  init key count (default: 1<<20) \n"
           "   -r --reader_count      :  reader count (default: 0) \n"
@@ -46,10 +48,8 @@ static struct option opts[] = {
     { NULL, 0, NULL, 0 }
 };
 
-static const uint64_t INVALID_KEY_BOUND = std::numeric_limits<uint64_t>::max();
-
 struct Config {
-  IndexType index_type_ = IndexType::InterpolationIndexType;
+  IndexType index_type_ = IndexType::BtreeIndexType;
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
   uint64_t init_key_count_ = 1ull<<20;
@@ -294,12 +294,7 @@ void run_workload(const Config &config) {
     worker_threads.at(i).join();
   }
 
-  std::string index_name;
-  if (config.index_type_ == IndexType::StxBtreeIndexType) {
-    index_name = "stx_btree";
-  } else if (config.index_type_ == IndexType::InterpolationIndexType) {
-    index_name = "interpolation_index";
-  }
+  std::string index_name = get_index_name(config.index_type_);
   
   uint64_t total_count = 0;
   for (uint64_t i = 0; i < config.thread_count_; ++i) {
@@ -331,19 +326,9 @@ int main(int argc, char* argv[]) {
   parse_args(argc, argv, config);
 
   data_table.reset(new DataTable<KeyT, ValueT>());
+
+  data_index.reset(create_index<KeyT>(config.index_type_));
   
-  if (config.index_type_ == IndexType::StxBtreeIndexType) {
-
-    data_index.reset(new StxBtreeIndex<KeyT>());
-
-  } else if (config.index_type_ == IndexType::InterpolationIndexType) {
-
-    data_index.reset(new InterpolationIndex<KeyT>());
-  
-  } else {
-    assert(false);
-  }
-
   run_workload(config);
   
 }

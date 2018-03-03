@@ -68,9 +68,6 @@ enum class ReadType {
   IndexScanReverseType,
 };
 
-static const double INVALID_DIST_PARAM = std::numeric_limits<double>::max();
-static const uint64_t INVALID_KEY_BOUND = std::numeric_limits<uint64_t>::max();
-
 struct Config {
   IndexType index_type_ = IndexType::InterpolationIndexType;
   ReadType index_read_type_ = ReadType::IndexLookupType;
@@ -228,28 +225,6 @@ void validate_key_generator_params(const Config &config) {
 
 }
 
-
-BaseKeyGenerator* construct_key_generator(const uint64_t thread_id, const Config &config) {
-  if (config.distribution_type_ == DistributionType::SequenceType) {
-
-    return new Uint64SequenceKeyGenerator(thread_id);
-
-  } else if (config.distribution_type_ == DistributionType::UniformType) {
-
-    return new Uint64UniformKeyGenerator(thread_id, config.key_upper_bound_);
-
-  } else if (config.distribution_type_ == DistributionType::NormalType) {
-
-    return new Uint64NormalKeyGenerator(thread_id, config.key_upper_bound_, config.parameter_1_);
-  
-  } else {
-    assert(config.distribution_type_ == DistributionType::LognormalType);
-
-    return new Uint64LognormalKeyGenerator(thread_id, config.key_upper_bound_, config.parameter_1_, config.parameter_2_);
-  
-  }
-}
-
 bool is_running = false;
 uint64_t *operation_counts = nullptr;
 
@@ -264,7 +239,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
-  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(thread_id, config));
+  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(config.distribution_type_, thread_id, config.key_upper_bound_, config.parameter_1_, config.parameter_2_));
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -324,7 +299,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
 void run_workload(const Config &config) {
 
-  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(0, config));
+  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(config.distribution_type_, 0, config.key_upper_bound_, config.parameter_1_, config.parameter_2_));
 
   for (size_t i = 0; i < config.key_count_; ++i) {
 
@@ -432,16 +407,7 @@ void run_workload(const Config &config) {
     worker_threads.at(i).join();
   }
 
-  std::string index_name;
-  if (config.index_type_ == IndexType::StxBtreeIndexType) {
-    index_name = "stx_btree";
-  } else if (config.index_type_ == IndexType::InterpolationIndexType) {
-    index_name = "interpolation_index";
-  } else if (config.index_type_ == IndexType::InterpolationIndexTypeV1) {
-    index_name = "interpolation_index_v1";
-  } else if (config.index_type_ == IndexType::InterpolationIndexTypeV2) {
-    index_name = "interpolation_index_v2";
-  }
+  std::string index_name = get_index_name(config.index_type_);
   
   uint64_t total_count = 0;
   for (uint64_t i = 0; i < config.reader_count_; ++i) {
@@ -474,27 +440,9 @@ int main(int argc, char* argv[]) {
   parse_args(argc, argv, config);
 
   data_table.reset(new DataTable<KeyT, ValueT>());
+
+  data_index.reset(create_index<KeyT>(config.index_type_, config.segment_count_));
   
-  if (config.index_type_ == IndexType::StxBtreeIndexType) {
-
-    data_index.reset(new StxBtreeIndex<KeyT>());
-
-  } else if (config.index_type_ == IndexType::InterpolationIndexType) {
-
-    data_index.reset(new InterpolationIndex<KeyT>());
-  
-  } else if (config.index_type_ == IndexType::InterpolationIndexTypeV1) {
-
-    data_index.reset(new InterpolationIndexV1<KeyT>());
-
-  } else if (config.index_type_ == IndexType::InterpolationIndexTypeV2) {
-
-    data_index.reset(new InterpolationIndexV2<KeyT>(config.segment_count_));
-
-  } else {
-    assert(false);
-  }
-
   run_workload(config);
   
 }

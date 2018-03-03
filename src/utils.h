@@ -2,6 +2,8 @@
 
 #include <jemalloc/jemalloc.h>
 #include <cstdint>
+#include <csignal>
+#include <iostream>
 
 typedef uint64_t Uint64;
 
@@ -45,3 +47,10 @@ static void pin_to_core(const size_t core) {
   }
   #endif
 }
+
+#define ASSERT(condition, string) \
+  if ((!(condition))) { \
+    std::cerr << "ASSERT @L" << __LINE__ << "/" << __FILE__ << ": " << string << std::endl; \
+    raise(SIGTRAP); \
+  }
+  
