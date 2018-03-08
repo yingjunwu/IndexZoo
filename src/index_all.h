@@ -1,11 +1,12 @@
 #pragma once
 
-#include "interpolation_index.h"
-#include "interpolation_index_v1.h"
-#include "interpolation_index_v2.h"
+#include "static_index/interpolation_index.h"
+#include "static_index/interpolation_index_v1.h"
+#include "static_index/interpolation_index_v2.h"
+#include "static_index/fast_index.h"
 
-#include "stx_btree_index.h"
-#include "btree_index.h"
+#include "dynamic_index_st/stx_btree_index.h"
+#include "dynamic_index_st/btree_index.h"
 
 enum class IndexType {
   InterpolationIndexType = 0,

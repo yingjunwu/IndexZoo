@@ -16,7 +16,8 @@ class BtreeIndex : public BaseIndex<KeyT> {
 //// BEGIN INTERNAL DATA STRUCTURES
 //////////////////////////////////////////////////////////////////////
 
-static const size_t BRANCHING_FACTOR = 3;
+// BRANCHING_FACTOR must be >= 2.
+static const size_t BRANCHING_FACTOR = 2;
 
 // INVALID_LEAF_OFFSET must be larger than BRANCHING_FACTOR.
 static const size_t INVALID_LEAF_OFFSET = BRANCHING_FACTOR + 1;
