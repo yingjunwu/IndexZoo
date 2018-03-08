@@ -4,6 +4,9 @@
 
 #include "base_index.h"
 
+
+namespace multithread_dynamic_index {
+
 template<typename KeyT>
 class LibcuckooIndex : public BaseIndex<KeyT> {
 
@@ -36,3 +39,5 @@ public:
 private:
   cuckoohash_map<KeyT, std::vector<Uint64>> container_;
 };
+
+}

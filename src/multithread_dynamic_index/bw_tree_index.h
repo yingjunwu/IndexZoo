@@ -4,6 +4,9 @@
 
 #include "base_index.h"
 
+
+namespace multithread_dynamic_index {
+
 using namespace wangziqi2013::bwtree;
 
 template<typename KeyT>
@@ -58,3 +61,5 @@ public:
   BwTree<KeyT, Uint64> *container_;
   size_t thread_count_;
 };
+
+}

@@ -4,7 +4,7 @@
 #include <atomic>
 #include <array>
 
-#include "libcuckoo/cuckoohash_map.hh"
+#include "../libcuckoo/cuckoohash_map.hh"
 
 namespace art {
 

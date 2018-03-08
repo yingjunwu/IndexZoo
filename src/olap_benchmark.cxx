@@ -69,7 +69,7 @@ enum class ReadType {
 };
 
 struct Config {
-  IndexType index_type_ = IndexType::InterpolationIndexType;
+  IndexType index_type_ = IndexType::StaticInterpolationIndexType;
   ReadType index_read_type_ = ReadType::IndexLookupType;
   DistributionType distribution_type_ = DistributionType::SequenceType;
   size_t segment_count_ = 1;
@@ -441,7 +441,9 @@ int main(int argc, char* argv[]) {
 
   data_table.reset(new DataTable<KeyT, ValueT>());
 
-  data_index.reset(create_index<KeyT>(config.index_type_, config.segment_count_));
+  data_index.reset(create_index<KeyT>(config.index_type_));
+
+  // data_index.reset(create_index<KeyT>(config.index_type_, config.segment_count_));
   
   run_workload(config);
   

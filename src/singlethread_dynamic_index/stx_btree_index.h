@@ -4,6 +4,9 @@
 
 #include "base_index.h"
 
+
+namespace singlethread_dynamic_index {
+
 template<typename KeyT>
 class StxBtreeIndex : public BaseIndex<KeyT> {
 
@@ -45,3 +48,5 @@ public:
 private:
   stx::btree_multimap<KeyT, Uint64> container_;
 };
+
+}

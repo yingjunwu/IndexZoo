@@ -4,19 +4,22 @@
 
 #include "base_index.h"
 
+
+namespace singlethread_dynamic_index {
+
 template<typename KeyT>
-class ArtTreeSTIndex : public BaseIndex<KeyT> {
+class ArtTreeIndex : public BaseIndex<KeyT> {
 
 public:
-  ArtTreeSTIndex(const size_t size_hint) {
+  ArtTreeIndex(const size_t size_hint) {
     art_tree_init(&container_);
   }
 
-  ArtTreeSTIndex() {
+  ArtTreeIndex() {
     art_tree_init(&container_);
   }
   
-  virtual ~ArtTreeSTIndex() {
+  virtual ~ArtTreeIndex() {
     art_tree_destroy(&container_);
   }
 
@@ -45,3 +48,5 @@ public:
 private:
   art_tree container_;
 };
+
+}

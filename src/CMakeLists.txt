@@ -1,6 +1,6 @@
 PROJECT (LearnedIndex)
 
-FILE (GLOB_RECURSE SRC_LIST "*.cpp")
+FILE (GLOB_RECURSE SRC_LIST "*.cpp" "*.cc" "*.c")
 
 ADD_LIBRARY (learnedindex SHARED ${SRC_LIST})
 ADD_EXECUTABLE (oltp_benchmark oltp_benchmark.cxx)

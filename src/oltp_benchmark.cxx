@@ -49,12 +49,12 @@ static struct option opts[] = {
 };
 
 struct Config {
-  IndexType index_type_ = IndexType::BtreeIndexType;
+  IndexType index_type_ = IndexType::SinglethreadDynamicBtreeIndexType;
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
   uint64_t init_key_count_ = 1ull<<20;
-  uint64_t reader_count_ = 1;
-  uint64_t inserter_count_ = 0;
+  uint64_t reader_count_ = 0;
+  uint64_t inserter_count_ = 1;
   uint64_t thread_count_ = 1;
   uint64_t key_upper_bound_ = INVALID_KEY_BOUND;
 };
@@ -108,7 +108,7 @@ void parse_args(int argc, char* argv[], Config &config) {
 
   config.thread_count_ = config.inserter_count_ + config.reader_count_;
 
-  // we temporarily do not support other key generators.
+  // we temporarily only support sequence key generator.
   assert(config.key_upper_bound_ == INVALID_KEY_BOUND);
 
 }
@@ -128,6 +128,8 @@ std::unique_ptr<BaseIndex<KeyT>> data_index(nullptr);
 void run_inserter_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
+
+  data_index->register_thread(thread_id);
 
   std::unique_ptr<BaseKeyGenerator> key_generator(new Uint64SequenceKeyGenerator(thread_id));
 
@@ -175,6 +177,9 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
 
 void run_workload(const Config &config) {
+
+  data_index->prepare_threads(config.thread_count_);
+  data_index->register_thread(0);
   
   std::unique_ptr<BaseKeyGenerator> key_generator(new Uint64SequenceKeyGenerator(0));
 
@@ -301,10 +306,10 @@ void run_workload(const Config &config) {
     total_count += operation_counts[i];
   }
 
-  std::cout << "index = " << index_name.c_str() << ", "
-            << "insert = " << config.inserter_count_ << ", "
-            << "read = " << config. reader_count_ << ", "
-            << "throughput = " << total_count * 1.0 / config.time_duration_ / 1000 / 1000 << " M ops" 
+  std::cout << "index :: " << index_name.c_str() << ", "
+            << "insert :: " << config.inserter_count_ << ", "
+            << "read :: " << config. reader_count_ << ", "
+            << "throughput ::: " << total_count * 1.0 / config.time_duration_ / 1000 / 1000 << " M ops" 
             << std::endl;
 
   for (uint64_t round_id = 0; round_id < profile_round; ++round_id) {
@@ -327,7 +332,7 @@ int main(int argc, char* argv[]) {
 
   data_table.reset(new DataTable<KeyT, ValueT>());
 
-  data_index.reset(create_index<KeyT>(config.index_type_));
+  data_index.reset(create_index<KeyT>(config.index_type_, data_table.get()));
   
   run_workload(config);
   

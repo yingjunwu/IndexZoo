@@ -27,6 +27,10 @@ public:
   virtual void erase(const KeyT &key) = 0;
 
   virtual size_t size() const = 0;
+  
+  virtual void prepare_threads(const size_t thread_count) {}
+
+  virtual void register_thread(const size_t thread_id) {}
 
   virtual void reorganize() {}
 
