@@ -92,6 +92,7 @@ static BaseIndex<KeyT>* create_dynamic_index(const DynamicIndexType index_type, 
   if (index_type == DynamicIndexType::SinglethreadBtreeIndexType) {
 
     // return new dynamic_index::singlethread::LibcuckooIndex<KeyT>();
+    return nullptr;
 
   } else if (index_type == DynamicIndexType::SinglethreadStxBtreeIndexType) {
 
