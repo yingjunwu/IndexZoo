@@ -190,14 +190,23 @@ public:
     table_ptr_(table_ptr), curr_block_id_(0), curr_rel_offset_(0) {
     
     assert(table_ptr_->data_blocks_.size() != 0);
+    assert(!(table_ptr_->data_blocks_.size() == 1 && table_ptr_->data_blocks_.at(0)->size() == 0));
+
+    max_rel_offset_ = table_ptr_->max_block_capacity_ - 1; 
 
     last_block_id_ = table_ptr_->data_blocks_.size() - 1;
-    last_rel_offset_ = table_ptr_->data_blocks_.at(last_block_id_)->size() - 1;
-    max_rel_offset_ = table_ptr_->max_block_capacity_;
+
+    size_t last_block_size = table_ptr_->data_blocks_.at(last_block_id_)->size();
+    if (last_block_size == 0) {
+      last_rel_offset_ = max_rel_offset_;
+      last_block_id_ = last_block_id_ - 1;
+    } else {
+      last_rel_offset_ = last_block_size - 1;
+    }
   }
 
   bool has_next() const {
-    if (curr_block_id_ == last_block_id_ && curr_rel_offset_ > last_rel_offset_) {
+    if (curr_block_id_ > last_block_id_ || (curr_block_id_ == last_block_id_ && curr_rel_offset_ > last_rel_offset_)) {
       return false;
     } else {
       return true;
@@ -208,13 +217,12 @@ public:
     BlockIDT ret_block_id = curr_block_id_;
     RelOffsetT ret_rel_offset = curr_rel_offset_;
 
-    if (curr_rel_offset_ != max_rel_offset_ - 1) {
+    if (curr_rel_offset_ != max_rel_offset_) {
       curr_rel_offset_++;
     } else {
       curr_block_id_++;
       curr_rel_offset_ = 0;
     }
-
     return IteratorEntry(ret_block_id, ret_rel_offset, table_ptr_->get_tuple_key(ret_block_id, ret_rel_offset));
   }
 

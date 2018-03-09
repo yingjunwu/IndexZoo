@@ -7,7 +7,7 @@
 
 namespace static_index {
 
-template<typename KeyT>
+template<typename KeyT, typename ValueT>
 class InterpolationIndex : public BaseIndex<KeyT> {
 
   struct Stats {
@@ -53,13 +53,9 @@ class InterpolationIndex : public BaseIndex<KeyT> {
   }
 
 public:
-  InterpolationIndex(const size_t num_segments = 1, const size_t size_hint = 1000) {
+  InterpolationIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_segments = 1) : table_ptr_(table_ptr), container_(nullptr), size_(0), capacity_(0) {
 
     assert(num_segments >= 1);
-
-    size_ = 0;
-    capacity_ = size_hint;
-    container_ = new KeyValuePair[capacity_];
 
     num_segments_ = num_segments;
     segment_key_boundaries_ = new KeyT[num_segments_ + 1];
@@ -83,20 +79,6 @@ public:
     delete[] segment_sizes_;
     segment_sizes_ = nullptr;
 
-  }
-
-  virtual void insert(const KeyT &key, const Uint64 &value) final {
-    if (size_ >= capacity_) {
-      KeyValuePair *old_container = container_;
-      container_ = new KeyValuePair[capacity_ * 2];
-      memcpy(container_, old_container, sizeof(KeyValuePair) * capacity_);
-      capacity_ *= 2;
-      delete[] old_container;
-      old_container = nullptr;
-    } 
-    container_[size_].key_ = key;
-    container_[size_].value_ = value;
-    ++size_;
   }
 
   virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
@@ -344,8 +326,14 @@ public:
     }
   }
 
+  // we do not support single entry insertion in static index.
+  virtual void insert(const KeyT &key, const Uint64 &value) final {
+    assert(false);
+  }
+
+  // we do not support single entry deletion in static index.
   virtual void erase(const KeyT &key) final {
-    // container_.erase(key);
+    assert(false);
   }
 
   virtual size_t size() const final {
@@ -353,6 +341,22 @@ public:
   }
 
   virtual void reorganize() final {
+
+    assert(container_ == nullptr && size_ == 0 && capacity_ == 0);
+
+    capacity_ = table_ptr_->size();
+    container_ = new KeyValuePair[capacity_];
+
+    DataTableIterator<KeyT, ValueT> iterator(table_ptr_);
+    while (iterator.has_next()) {
+      auto entry = iterator.next();
+      container_[size_].key_ = *(entry.key_);
+      container_[size_].value_ = entry.offset_;
+      ++size_;
+      // test_vector.emplace_back(std::pair<Uint64, uint64_t>(entry.offset_, *(entry.key_)));
+    }
+
+
     std::sort(container_, container_ + size_, compare_func);
     segment_key_boundaries_[0] = container_[0].key_; // min value
     segment_key_boundaries_[num_segments_] = container_[size_ - 1].key_; // max value
@@ -395,6 +399,9 @@ public:
   }
 
 private:
+
+  DataTable<KeyT, ValueT> *table_ptr_;
+
   KeyValuePair *container_;
   size_t size_;
   size_t capacity_;

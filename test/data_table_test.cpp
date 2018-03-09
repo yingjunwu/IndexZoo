@@ -12,7 +12,8 @@ class DataTableTest : public LearnedIndexTest {};
 
 TEST_F(DataTableTest, IteratorTest) {
 
-  size_t n = 54321;
+  // size_t n = 54321;
+  size_t n = 1000;
 
   std::vector<std::pair<Uint64, uint64_t>> validation_vector;
   std::vector<std::pair<Uint64, uint64_t>> test_vector;

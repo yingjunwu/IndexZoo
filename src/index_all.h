@@ -74,11 +74,15 @@ static BaseIndex<KeyT>* create_static_index(const StaticIndexType index_type, Da
 
     assert(segment_count != 0);
 
-    return new static_index::InterpolationIndex<KeyT>(segment_count);
+    return new static_index::InterpolationIndex<KeyT, Uint64>(table_ptr, segment_count);
   
   } else if (index_type == StaticIndexType::InterpolationIndexV1Type) {
 
     return new static_index::InterpolationIndexV1<KeyT>();
+
+  } else if (index_type == StaticIndexType::KAryIndexType) {
+
+    return nullptr;
 
   } else {
     assert(false);
