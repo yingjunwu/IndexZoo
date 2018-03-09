@@ -8,6 +8,8 @@
 
 #include "base_index.h"
 
+namespace dynamic_index {
+namespace singlethread {
 
 template<typename KeyT>
 class BtreeIndex : public BaseIndex<KeyT> {
@@ -577,4 +579,5 @@ private:
 };
 
 
-
+}
+}

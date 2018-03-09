@@ -5,7 +5,8 @@
 #include "base_index.h"
 
 
-namespace multithread_dynamic_index {
+namespace dynamic_index {
+namespace multithread {
 
 using namespace wangziqi2013::bwtree;
 
@@ -62,4 +63,5 @@ public:
   size_t thread_count_;
 };
 
+}
 }

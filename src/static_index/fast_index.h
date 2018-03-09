@@ -13,6 +13,10 @@
   -the parameter K results in a tree size of (2^(16+K*4))
  */
 
+/*
+  modified by Yingjun Wu, IBM Almaden Research Center, 2018.
+*/
+
 #include <sys/mman.h>
 #include <stdlib.h>
 #include <sys/time.h>

@@ -26,10 +26,8 @@ void usage(FILE *out) {
           "Command line options : oltp_benchmark <options> \n"
           "   -h --help              :  print help message \n"
           "   -i --index             :  index type: \n"
-          "                              -- (0) interpolation index \n"
-          "                              -- (1) interpolation index v1 \n"
-          "                              -- (2) interpolation index v2 \n"
-          "                              -- (3) stx btree (default) \n"
+          "                              -- (0) btree \n"
+          "                              -- (1) stx btree (default) \n"
           "   -t --time_duration     :  time duration (default: 10) \n"
           "   -m --init_key_count    :  init key count (default: 1<<20) \n"
           "   -r --reader_count      :  reader count (default: 0) \n"
@@ -49,7 +47,7 @@ static struct option opts[] = {
 };
 
 struct Config {
-  IndexType index_type_ = IndexType::SinglethreadDynamicBtreeIndexType;
+  DynamicIndexType index_type_ = DynamicIndexType::SinglethreadBtreeIndexType;
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
   uint64_t init_key_count_ = 1ull<<20;
@@ -69,7 +67,7 @@ void parse_args(int argc, char* argv[], Config &config) {
 
     switch (c) {
       case 'i': {
-        config.index_type_ = (IndexType)atoi(optarg);
+        config.index_type_ = (DynamicIndexType)atoi(optarg);
         break;
       }
       case 't': {
@@ -299,7 +297,7 @@ void run_workload(const Config &config) {
     worker_threads.at(i).join();
   }
 
-  std::string index_name = get_index_name(config.index_type_);
+  std::string index_name = get_dynamic_index_name(config.index_type_);
   
   uint64_t total_count = 0;
   for (uint64_t i = 0; i < config.thread_count_; ++i) {
@@ -332,7 +330,7 @@ int main(int argc, char* argv[]) {
 
   data_table.reset(new DataTable<KeyT, ValueT>());
 
-  data_index.reset(create_index<KeyT>(config.index_type_, data_table.get()));
+  data_index.reset(create_dynamic_index<KeyT>(config.index_type_, data_table.get()));
   
   run_workload(config);
   

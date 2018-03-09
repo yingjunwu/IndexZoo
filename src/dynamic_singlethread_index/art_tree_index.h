@@ -4,8 +4,8 @@
 
 #include "base_index.h"
 
-
-namespace singlethread_dynamic_index {
+namespace dynamic_index {
+namespace singlethread {
 
 template<typename KeyT>
 class ArtTreeIndex : public BaseIndex<KeyT> {
@@ -49,4 +49,5 @@ private:
   art_tree container_;
 };
 
+}
 }

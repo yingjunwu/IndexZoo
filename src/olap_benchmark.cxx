@@ -27,8 +27,6 @@ void usage(FILE *out) {
           "   -i --index             :  index type: \n"
           "                              -- (0) interpolation index (default) \n"
           "                              -- (1) interpolation index v1 \n"
-          "                              -- (2) interpolation index v2 \n"
-          "                              -- (3) stx btree \n"
           "   -s --segment_count     :  segment count (for interpolation index v2) \n"
           "   -y --read_type         :  read type: \n"
           "                              -- (0) index lookup (default) \n"
@@ -69,7 +67,7 @@ enum class ReadType {
 };
 
 struct Config {
-  IndexType index_type_ = IndexType::StaticInterpolationIndexType;
+  StaticIndexType index_type_ = StaticIndexType::InterpolationIndexType;
   ReadType index_read_type_ = ReadType::IndexLookupType;
   DistributionType distribution_type_ = DistributionType::SequenceType;
   size_t segment_count_ = 1;
@@ -94,7 +92,7 @@ void parse_args(int argc, char* argv[], Config &config) {
 
     switch (c) {
       case 'i': {
-        config.index_type_ = (IndexType)atoi(optarg);
+        config.index_type_ = (StaticIndexType)atoi(optarg);
         break;
       }
       case 's': {
@@ -407,7 +405,7 @@ void run_workload(const Config &config) {
     worker_threads.at(i).join();
   }
 
-  std::string index_name = get_index_name(config.index_type_);
+  std::string index_name = get_static_index_name(config.index_type_);
   
   uint64_t total_count = 0;
   for (uint64_t i = 0; i < config.reader_count_; ++i) {
@@ -441,10 +439,8 @@ int main(int argc, char* argv[]) {
 
   data_table.reset(new DataTable<KeyT, ValueT>());
 
-  data_index.reset(create_index<KeyT>(config.index_type_));
+  data_index.reset(create_static_index<KeyT>(config.index_type_, data_table.get(), config.segment_count_));
 
-  // data_index.reset(create_index<KeyT>(config.index_type_, config.segment_count_));
-  
   run_workload(config);
   
 }

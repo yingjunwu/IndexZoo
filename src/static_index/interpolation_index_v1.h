@@ -5,6 +5,7 @@
 
 #include "base_index.h"
 
+namespace static_index {
 
 template<typename KeyT>
 class InterpolationIndexV1 : public BaseIndex<KeyT> {
@@ -300,3 +301,5 @@ private:
 
   Stats stats_;
 };
+
+}

@@ -6,7 +6,8 @@
 #include "data_table.h"
 
 
-namespace multithread_dynamic_index {
+namespace dynamic_index {
+namespace multithread {
 
 template<typename KeyT, typename ValueT>
 class ArtTreeIndex : public BaseIndex<KeyT> {
@@ -78,4 +79,5 @@ private:
   art::ThreadInfo ti_;
 };
 
+}
 }

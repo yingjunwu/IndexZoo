@@ -1,98 +1,117 @@
 #pragma once
 
+#include <cassert>
+
 #include "static_index/interpolation_index.h"
 #include "static_index/interpolation_index_v1.h"
-#include "static_index/interpolation_index_v2.h"
-#include "static_index/fast_index.h"
+// #include "static_index/fast_index.h"
 
-#include "singlethread_dynamic_index/btree_index.h"
-#include "singlethread_dynamic_index/stx_btree_index.h"
-#include "singlethread_dynamic_index/art_tree_index.h"
+#include "dynamic_singlethread_index/btree_index.h"
+#include "dynamic_singlethread_index/stx_btree_index.h"
+#include "dynamic_singlethread_index/art_tree_index.h"
 
-#include "multithread_dynamic_index/libcuckoo_index.h"
-#include "multithread_dynamic_index/art_tree_index.h"
-#include "multithread_dynamic_index/bw_tree_index.h"
+#include "dynamic_multithread_index/libcuckoo_index.h"
+#include "dynamic_multithread_index/art_tree_index.h"
+#include "dynamic_multithread_index/bw_tree_index.h"
 
-enum class IndexType {
-  // static indexes
-  StaticInterpolationIndexType = 0,
-  StaticInterpolationIndexTypeV1,
-  StaticInterpolationIndexTypeV2,
-  
-  // singlethread dynamic indexes
-  SinglethreadDynamicBtreeIndexType = 3,
-  SinglethreadDynamicStxBtreeIndexType,
-  SinglethreadDynamicArtTreeIndexType,
-  
-  // multithread dynamic indexes
-  MultithreadDynamicLibcuckooIndexType = 6,
-  MultithreadDynamicArtTreeIndexType,
-  MultithreadDynamicBwTreeIndexType,
+// static indexes
+enum class StaticIndexType {
+  InterpolationIndexType = 0,
+  InterpolationIndexV1Type,
+  KAryIndexType,
+  // FastIndexType,
+
 };
 
-static std::string get_index_name(const IndexType index_type) {
-  if (index_type == IndexType::StaticInterpolationIndexType) {
-    return "interpolation_index";
-  } else if (index_type == IndexType::StaticInterpolationIndexTypeV1) {
-    return "interpolation_index_v1";
-  } else if (index_type == IndexType::SinglethreadDynamicBtreeIndexType) {
-    return "singlethread dynamic - btree index";
-  } else if (index_type == IndexType::SinglethreadDynamicStxBtreeIndexType) {
-    return "singlethread dynamic - stx btree index";
-  } else if (index_type == IndexType::SinglethreadDynamicArtTreeIndexType) {
-    return "singlethread dynamic - art tree index";
-  } else if (index_type == IndexType::MultithreadDynamicLibcuckooIndexType) {
-    return "multithread dynamic - libcuckoo index";
-  } else if (index_type == IndexType::MultithreadDynamicArtTreeIndexType) {
-    return "multithread dynamic - art tree index";
-  } else if (index_type == IndexType::MultithreadDynamicBwTreeIndexType) {
-    return "multithread dynamic - bw btree index";
+// dynamic indexes
+enum class DynamicIndexType {
+  // singlethread
+  SinglethreadBtreeIndexType = 0,
+  SinglethreadStxBtreeIndexType,
+  SinglethreadArtTreeIndexType,
+  
+  // multithread
+  MultithreadLibcuckooIndexType = 3,
+  MultithreadArtTreeIndexType,
+  MultithreadBwTreeIndexType,
+};
+
+static std::string get_static_index_name(const StaticIndexType index_type) {
+  if (index_type == StaticIndexType::InterpolationIndexType) {
+    return "static - interpolation index";
+  } else if (index_type == StaticIndexType::InterpolationIndexV1Type) {
+    return "static - interpolation index (v1)";
+  } else if (index_type == StaticIndexType::KAryIndexType) {
+    return "static - k-ary index";
+  } else {
+    assert(false);
+    return "";
+  }
+}
+
+static std::string get_dynamic_index_name(const DynamicIndexType index_type) {
+  if (index_type == DynamicIndexType::SinglethreadBtreeIndexType) {
+    return "dynamic - singlethread - btree index";
+  } else if (index_type == DynamicIndexType::SinglethreadStxBtreeIndexType) {
+    return "dynamic - singlethread - stx-btree index";
+  } else if (index_type == DynamicIndexType::SinglethreadArtTreeIndexType) {
+    return "dynamic - singlethread - art-tree index";
+  } else if (index_type == DynamicIndexType::MultithreadLibcuckooIndexType) {
+    return "dynamic - multithread - libcuckoo index";
+  } else if (index_type == DynamicIndexType::MultithreadArtTreeIndexType) {
+    return "dynamic - multithread - art-tree index";
+  } else if (index_type == DynamicIndexType::MultithreadBwTreeIndexType) {
+    return "dynamic - multithread - bw-tree index";
+  } else {
+    assert(false);
+    return "";
   }
 }
 
 template<typename KeyT>
-static BaseIndex<KeyT>* create_index(const IndexType index_type, DataTable<KeyT, uint64_t> *table_ptr = nullptr, const size_t segment_count = 0) {
-  if (index_type == IndexType::SinglethreadDynamicBtreeIndexType) {
-
-    return new InterpolationIndex<KeyT>();
-  
-  } else if (index_type == IndexType::StaticInterpolationIndexType) {
-
-    return new InterpolationIndex<KeyT>();
-  
-  } else if (index_type == IndexType::StaticInterpolationIndexTypeV1) {
-
-    return new InterpolationIndexV1<KeyT>();
-
-  } else if (index_type == IndexType::StaticInterpolationIndexTypeV2) {
+static BaseIndex<KeyT>* create_static_index(const StaticIndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const size_t segment_count = 0) {
+  if (index_type == StaticIndexType::InterpolationIndexType) {
 
     assert(segment_count != 0);
-    
-    return new InterpolationIndexV2<KeyT>(segment_count);
 
-  } else if (index_type == IndexType::SinglethreadDynamicBtreeIndexType) {
+    return new static_index::InterpolationIndex<KeyT>(segment_count);
+  
+  } else if (index_type == StaticIndexType::InterpolationIndexV1Type) {
 
-    // return new singlethread_dynamic_index::LibcuckooIndex<KeyT>();
+    return new static_index::InterpolationIndexV1<KeyT>();
 
-  } else if (index_type == IndexType::SinglethreadDynamicStxBtreeIndexType) {
+  } else {
+    assert(false);
+    return nullptr;
+  }
+}
 
-    return new singlethread_dynamic_index::StxBtreeIndex<KeyT>();
 
-  } else if (index_type == IndexType::SinglethreadDynamicArtTreeIndexType) {
+template<typename KeyT>
+static BaseIndex<KeyT>* create_dynamic_index(const DynamicIndexType index_type, DataTable<KeyT, uint64_t> *table_ptr) {
+  if (index_type == DynamicIndexType::SinglethreadBtreeIndexType) {
 
-    return new singlethread_dynamic_index::ArtTreeIndex<KeyT>();
+    // return new dynamic_index::singlethread::LibcuckooIndex<KeyT>();
 
-  } else if (index_type == IndexType::MultithreadDynamicLibcuckooIndexType) {
+  } else if (index_type == DynamicIndexType::SinglethreadStxBtreeIndexType) {
 
-    return new multithread_dynamic_index::LibcuckooIndex<KeyT>();
+    return new dynamic_index::singlethread::StxBtreeIndex<KeyT>();
 
-  } else if (index_type == IndexType::MultithreadDynamicArtTreeIndexType) {
+  } else if (index_type == DynamicIndexType::SinglethreadArtTreeIndexType) {
 
-    return new multithread_dynamic_index::ArtTreeIndex<KeyT, Uint64>(table_ptr);
+    return new dynamic_index::singlethread::ArtTreeIndex<KeyT>();
 
-  } else if (index_type == IndexType::MultithreadDynamicBwTreeIndexType) {
+  } else if (index_type == DynamicIndexType::MultithreadLibcuckooIndexType) {
 
-    return new multithread_dynamic_index::BwTreeIndex<KeyT>();
+    return new dynamic_index::multithread::LibcuckooIndex<KeyT>();
+
+  } else if (index_type == DynamicIndexType::MultithreadArtTreeIndexType) {
+
+    return new dynamic_index::multithread::ArtTreeIndex<KeyT, Uint64>(table_ptr);
+
+  } else if (index_type == DynamicIndexType::MultithreadBwTreeIndexType) {
+
+    return new dynamic_index::multithread::BwTreeIndex<KeyT>();
 
   } else {
     assert(false);
