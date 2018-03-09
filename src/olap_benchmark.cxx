@@ -306,7 +306,7 @@ void run_workload(const Config &config) {
     
     OffsetT offset = data_table->insert_tuple(key, value);
 
-    data_index->insert(key, offset.raw_data());
+    // ATTENTION: WE DO NOT INSERT INTO INDEX DIRECTLY!
   }
 
   data_index->reorganize();

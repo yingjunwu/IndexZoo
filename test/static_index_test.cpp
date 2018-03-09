@@ -21,7 +21,7 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
   std::vector<StaticIndexType> index_types {
 
     StaticIndexType::InterpolationIndexType,
-    // StaticIndexType::InterpolationIndexV1Type,
+    StaticIndexType::InterpolationIndexV1Type,
     // StaticIndexType::KAryIndexType,
   };
 
@@ -48,10 +48,7 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
       std::pair<uint64_t, std::pair<Uint64, uint64_t>>(
         key, std::pair<Uint64, uint64_t>(offset.raw_data(), value)));
 
-    // data_index->insert(key, offset.raw_data());
   }
-
-  // data_index->print();
 
   // reorganize data
   data_index->reorganize();

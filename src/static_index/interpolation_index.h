@@ -353,7 +353,6 @@ public:
       container_[size_].key_ = *(entry.key_);
       container_[size_].value_ = entry.offset_;
       ++size_;
-      // test_vector.emplace_back(std::pair<Uint64, uint64_t>(entry.offset_, *(entry.key_)));
     }
 
 

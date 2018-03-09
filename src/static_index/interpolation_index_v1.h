@@ -7,7 +7,7 @@
 
 namespace static_index {
 
-template<typename KeyT>
+template<typename KeyT, typename ValueT>
 class InterpolationIndexV1 : public BaseIndex<KeyT> {
 
   struct Stats {
@@ -53,27 +53,11 @@ class InterpolationIndexV1 : public BaseIndex<KeyT> {
   }
 
 public:
-  InterpolationIndexV1(const size_t size_hint = 1000) : size_(0), capacity_(size_hint) {
-    container_ = new KeyValuePair[capacity_];
-  }
+  InterpolationIndexV1(DataTable<KeyT, ValueT> *table_ptr) : table_ptr_(table_ptr), container_(nullptr), size_(0), capacity_(0) {}
 
   virtual ~InterpolationIndexV1() {
     delete[] container_;
     container_ = nullptr;
-  }
-
-  virtual void insert(const KeyT &key, const Uint64 &value) final {
-    if (size_ >= capacity_) {
-      KeyValuePair *old_container = container_;
-      container_ = new KeyValuePair[capacity_ * 2];
-      memcpy(container_, old_container, sizeof(KeyValuePair) * capacity_);
-      capacity_ *= 2;
-      delete[] old_container;
-      old_container = nullptr;
-    } 
-    container_[size_].key_ = key;
-    container_[size_].value_ = value;
-    ++size_;
   }
 
   virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
@@ -267,8 +251,14 @@ public:
     }
   }
 
+  // we do not support single entry insertion in static index.
+  virtual void insert(const KeyT &key, const Uint64 &value) final {
+    assert(false);
+  }
+
+  // we do not support single entry deletion in static index.
   virtual void erase(const KeyT &key) final {
-    // container_.erase(key);
+    assert(false);
   }
 
   virtual size_t size() const final {
@@ -276,6 +266,21 @@ public:
   }
 
   virtual void reorganize() final {
+
+    assert(container_ == nullptr && size_ == 0 && capacity_ == 0);
+
+    capacity_ = table_ptr_->size();
+    container_ = new KeyValuePair[capacity_];
+
+    DataTableIterator<KeyT, ValueT> iterator(table_ptr_);
+    while (iterator.has_next()) {
+      auto entry = iterator.next();
+      container_[size_].key_ = *(entry.key_);
+      container_[size_].value_ = entry.offset_;
+      ++size_;
+    }
+
+
     std::sort(container_, container_ + size_, compare_func);
     min_ = container_[0].key_;
     max_ = container_[size_ - 1].key_;
@@ -292,6 +297,9 @@ public:
   }
 
 private:
+
+  DataTable<KeyT, ValueT> *table_ptr_;
+
   KeyValuePair *container_;
   size_t size_;
   size_t capacity_;

@@ -78,7 +78,7 @@ static BaseIndex<KeyT>* create_static_index(const StaticIndexType index_type, Da
   
   } else if (index_type == StaticIndexType::InterpolationIndexV1Type) {
 
-    return new static_index::InterpolationIndexV1<KeyT>();
+    return new static_index::InterpolationIndexV1<KeyT, Uint64>(table_ptr);
 
   } else if (index_type == StaticIndexType::KAryIndexType) {
 
