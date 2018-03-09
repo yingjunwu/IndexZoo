@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <limits>
 
 #include "utils.h"
 
@@ -32,6 +33,10 @@ public:
 
   Uint64 raw_data() const {
     return offset_;
+  }
+
+  static Uint64 construct_raw_data(const BlockIDT bid, const RelOffsetT rel_offset) {
+    return Uint64((bid << (64 - BLOCKID_BITS)) + rel_offset);
   }
 
   /// prints out OffsetT.

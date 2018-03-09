@@ -3,6 +3,7 @@
 #include <cassert>
 #include <vector>
 #include <atomic>
+#include <cstring>
 
 #include "offset.h"
 
@@ -73,7 +74,13 @@ class DataBlock {
 };
 
 template<typename KeyT, typename ValueT>
+class DataTableIterator;
+
+template<typename KeyT, typename ValueT>
 class DataTable {
+
+  friend DataTableIterator<KeyT, ValueT>;
+
 public:
   DataTable(const uint64_t max_block_capacity = MaxBlockCapacity) {
 
@@ -120,6 +127,18 @@ public:
     }
   }
 
+  KeyT* get_tuple_key(const BlockIDT block_id, const RelOffsetT rel_offset) {
+
+    char *data = data_blocks_.at(block_id)->get_tuple(rel_offset);
+    return (KeyT*)(data);
+  }
+
+  ValueT* get_tuple_value(const BlockIDT block_id, const RelOffsetT rel_offset) {
+
+    char *data = data_blocks_.at(block_id)->get_tuple(rel_offset);
+    return (ValueT*)(data + sizeof(KeyT));
+  }
+
   KeyT* get_tuple_key(const OffsetT offset) {
 
     char *data = data_blocks_.at(offset.block_id())->get_tuple(offset.rel_offset());
@@ -151,4 +170,62 @@ private:
   uint64_t max_block_capacity_;
   std::vector<DataBlock*> data_blocks_;
   DataBlock* active_data_block_;
+
+};
+
+template<typename KeyT, typename ValueT>
+class DataTableIterator {
+
+public:
+  struct IteratorEntry {
+    IteratorEntry(const BlockIDT block_id, const RelOffsetT rel_offset, KeyT *key) : 
+      offset_(OffsetT::construct_raw_data(block_id, rel_offset)), key_(key) {}
+
+    Uint64 offset_;
+    KeyT* key_;
+  };
+
+public:
+  DataTableIterator(DataTable<KeyT, ValueT> *table_ptr) : 
+    table_ptr_(table_ptr), curr_block_id_(0), curr_rel_offset_(0) {
+    
+    assert(table_ptr_->data_blocks_.size() != 0);
+
+    last_block_id_ = table_ptr_->data_blocks_.size() - 1;
+    last_rel_offset_ = table_ptr_->data_blocks_.at(last_block_id_)->size() - 1;
+    max_rel_offset_ = table_ptr_->max_block_capacity_;
+  }
+
+  bool has_next() const {
+    if (curr_block_id_ == last_block_id_ && curr_rel_offset_ > last_rel_offset_) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  IteratorEntry next() {
+    BlockIDT ret_block_id = curr_block_id_;
+    RelOffsetT ret_rel_offset = curr_rel_offset_;
+
+    if (curr_rel_offset_ != max_rel_offset_ - 1) {
+      curr_rel_offset_++;
+    } else {
+      curr_block_id_++;
+      curr_rel_offset_ = 0;
+    }
+
+    return IteratorEntry(ret_block_id, ret_rel_offset, table_ptr_->get_tuple_key(ret_block_id, ret_rel_offset));
+  }
+
+
+private:
+  DataTable<KeyT, ValueT> *table_ptr_;
+
+  BlockIDT curr_block_id_;
+  RelOffsetT curr_rel_offset_;
+
+  BlockIDT last_block_id_;
+  RelOffsetT last_rel_offset_;
+  RelOffsetT max_rel_offset_;
 };

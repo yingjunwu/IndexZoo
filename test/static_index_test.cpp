@@ -21,7 +21,7 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
   std::vector<StaticIndexType> index_types {
 
     // StaticIndexType::InterpolationIndexType,
-    // StaticIndexType::InterpolationIndexV1Type,
+    StaticIndexType::InterpolationIndexV1Type,
     // StaticIndexType::KAryIndexType,
   };
 

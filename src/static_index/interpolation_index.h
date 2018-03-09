@@ -377,7 +377,7 @@ public:
     }
 
     segment_sizes_[num_segments_ - 1] = size_ - current_offset;
-    
+
   }
 
   virtual void print() const final {
