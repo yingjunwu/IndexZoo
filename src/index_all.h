@@ -6,13 +6,13 @@
 #include "static_index/interpolation_index_v1.h"
 // #include "static_index/fast_index.h"
 
-#include "dynamic_singlethread_index/btree_index.h"
-#include "dynamic_singlethread_index/stx_btree_index.h"
-#include "dynamic_singlethread_index/art_tree_index.h"
+#include "dynamic_index/singlethread/btree_index.h"
+#include "dynamic_index/singlethread/stx_btree_index.h"
+#include "dynamic_index/singlethread/art_tree_index.h"
 
-#include "dynamic_multithread_index/libcuckoo_index.h"
-#include "dynamic_multithread_index/art_tree_index.h"
-#include "dynamic_multithread_index/bw_tree_index.h"
+#include "dynamic_index/multithread/libcuckoo_index.h"
+#include "dynamic_index/multithread/art_tree_index.h"
+#include "dynamic_index/multithread/bw_tree_index.h"
 
 // static indexes
 enum class StaticIndexType {
