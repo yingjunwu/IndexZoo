@@ -36,6 +36,7 @@ enum class DynamicIndexType {
   MultithreadLibcuckooIndexType = 3,
   MultithreadArtTreeIndexType,
   MultithreadBwTreeIndexType,
+  MultithreadMasstreeIndexType,
 };
 
 static std::string get_static_index_name(const StaticIndexType index_type) {
@@ -64,6 +65,8 @@ static std::string get_dynamic_index_name(const DynamicIndexType index_type) {
     return "dynamic - multithread - art-tree index";
   } else if (index_type == DynamicIndexType::MultithreadBwTreeIndexType) {
     return "dynamic - multithread - bw-tree index";
+  } else if (index_type == DynamicIndexType::MultithreadMasstreeIndexType) {
+    return "dynamic - multithread - masstree index";
   } else {
     assert(false);
     return "";
@@ -119,6 +122,10 @@ static BaseIndex<KeyT>* create_dynamic_index(const DynamicIndexType index_type, 
   } else if (index_type == DynamicIndexType::MultithreadBwTreeIndexType) {
 
     return new dynamic_index::multithread::BwTreeIndex<KeyT>();
+
+  } else if (index_type == DynamicIndexType::MultithreadMasstreeIndexType) {
+
+    return new dynamic_index::multithread::MasstreeIndex<KeyT>();
 
   } else {
     assert(false);

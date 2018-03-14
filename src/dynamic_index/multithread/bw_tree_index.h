@@ -14,10 +14,6 @@ template<typename KeyT>
 class BwTreeIndex : public BaseIndex<KeyT> {
 
 public:
-  BwTreeIndex(const size_t size_hint) {
-    container_ = new BwTree<KeyT, Uint64>{true};
-  }
-
   BwTreeIndex() {
     container_ = new BwTree<KeyT, Uint64>{true};
   }
@@ -58,7 +54,7 @@ public:
     return 0;
   }
 
-public:
+private:
   BwTree<KeyT, Uint64> *container_;
   size_t thread_count_;
 };

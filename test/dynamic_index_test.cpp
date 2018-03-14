@@ -26,6 +26,7 @@ TEST_F(DynamicIndexTest, UniqueKeyTest) {
     DynamicIndexType::MultithreadLibcuckooIndexType,
     DynamicIndexType::MultithreadArtTreeIndexType,
     DynamicIndexType::MultithreadBwTreeIndexType,
+    DynamicIndexType::MultithreadMasstreeIndexType,
   };
 
   size_t n = 10000;
