@@ -13,6 +13,8 @@
 #include "dynamic_index/multithread/libcuckoo_index.h"
 #include "dynamic_index/multithread/art_tree_index.h"
 #include "dynamic_index/multithread/bw_tree_index.h"
+#include "dynamic_index/multithread/masstree_index.h"
+
 
 // static indexes
 enum class StaticIndexType {

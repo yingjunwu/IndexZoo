@@ -15,6 +15,7 @@ class StaticIndexTest : public LearnedIndexTest {};
 
 typedef uint64_t ValueT;
 
+extern volatile mrcu_epoch_type active_epoch;
 
 TEST_F(StaticIndexTest, UniqueKeyTest) {
 
