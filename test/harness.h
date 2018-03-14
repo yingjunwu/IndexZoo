@@ -2,4 +2,4 @@
 
 #include "gtest/gtest.h"
 
-class LearnedIndexTest : public ::testing::Test { };
+class IndexZooTest : public ::testing::Test { };

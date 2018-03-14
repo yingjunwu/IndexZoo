@@ -11,7 +11,7 @@
 #include "index_all.h"
 
 
-class DynamicIndexTest : public LearnedIndexTest {};
+class DynamicIndexTest : public IndexZooTest {};
 
 typedef uint64_t ValueT;
 

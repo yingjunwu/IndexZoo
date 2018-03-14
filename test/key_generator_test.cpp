@@ -7,7 +7,7 @@
 // #include "key_generator_all.h"
 
 
-// class KeyGeneratorTest : public LearnedIndexTest {};
+// class KeyGeneratorTest : public IndexZooTest {};
 
 
 // TEST_F(KeyGeneratorTest, Uint64Test) {

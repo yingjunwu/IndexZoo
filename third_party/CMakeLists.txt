@@ -1,3 +1,3 @@
-PROJECT (LearnedIndex)
+PROJECT (IndexZoo)
 
 ADD_SUBDIRECTORY (googletest)

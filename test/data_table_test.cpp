@@ -7,7 +7,7 @@
 #include "harness.h"
 
 
-class DataTableTest : public LearnedIndexTest {};
+class DataTableTest : public IndexZooTest {};
 
 
 TEST_F(DataTableTest, IteratorTest) {
