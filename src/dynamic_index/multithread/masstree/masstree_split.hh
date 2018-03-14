@@ -59,8 +59,8 @@ int leaf<P>::split_into(leaf<P>* nr, int p, const key_type& ka,
     // If p < mid, then x goes into *this, and the first element of nr
     //   will be former item (mid - 1).
     // If p >= mid, then x goes into nr.
-    //masstree_////masstree_preconditiondition(!this->concurrent || (this->locked() && nr->locked()));
-    //masstree_////masstree_preconditiondition(this->size() >= this->width - 1);
+    // masstree_precondition(!this->concurrent || (this->locked() && nr->locked()));
+    // masstree_precondition(this->size() >= this->width - 1);
 
     int width = this->size();   // == this->width or this->width - 1
     int mid = this->width / 2 + 1;
@@ -86,7 +86,7 @@ int leaf<P>::split_into(leaf<P>* nr, int p, const key_type& ka,
             }
             --midl, ++midr;
         }
-        ////masstree_invariant(mid > 0 && mid <= width);
+        // masstree_invariant(mid > 0 && mid <= width);
     }
 
     typename permuter_type::value_type pv = perml.value_from(mid - (p < mid));
@@ -127,7 +127,7 @@ int internode<P>::split_into(internode<P> *nr, int p, ikey_type ka,
     //   nr is pre-insertion item mid.
     // If p > mid, then x goes into nr, pre-insertion item mid goes into
     //   split_ikey, and the first element of nr is post-insertion item mid+1.
-    //masstree_////masstree_preconditiondition(!this->concurrent || (this->locked() && nr->locked()));
+    // masstree_precondition(!this->concurrent || (this->locked() && nr->locked()));
 
     int mid = (split_type == 2 ? this->width : (this->width + 1) / 2);
     nr->nkeys_ = this->width + 1 - (mid + 1);
@@ -163,7 +163,7 @@ int internode<P>::split_into(internode<P> *nr, int p, ikey_type ka,
 
 
 template <typename P>
-bool tcursor<P>::make_split(threadinfo& ti)
+node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
 {
     // We reach here if we might need to split, either because the node is
     // full, or because we're trying to insert into position 0 (which holds
@@ -172,35 +172,36 @@ bool tcursor<P>::make_split(threadinfo& ti)
     if (n_->size() < n_->width) {
         permuter_type perm(n_->permutation_);
         perm.exchange(perm.size(), n_->width - 1);
-        kx_.p = perm.back();
-        if (kx_.p != 0) {
+        kp_ = perm.back();
+        if (kp_ != 0) {
             n_->permutation_ = perm.value();
             fence();
-            n_->assign(kx_.p, ka_, ti);
-            return false;
+            n_->assign(kp_, ka_, ti);
+            return insert_marker();
         }
     }
 
     node_type* n = n_;
-    node_type* child = leaf_type::make(n_->ksuf_used_capacity(), n_->phantom_epoch(), ti);
+    node_type* child = leaf_type::make(n_->ksuf_used_capacity(), n_->node_ts_, ti);
     child->assign_version(*n_);
     ikey_type xikey[2];
     int split_type = n_->split_into(static_cast<leaf_type *>(child),
-                                    kx_.i, ka_, xikey[0], ti);
+                                    ki_, ka_, xikey[0], ti);
     bool sense = false;
 
     while (1) {
-        ////masstree_invariant(!n->concurrent || (n->locked() && child->locked() && (n->isleaf() || n->splitting())));
+        // masstree_invariant(!n->concurrent || (n->locked() && child->locked() && (n->isleaf() || n->splitting())));
         internode_type *next_child = 0;
 
         internode_type *p = n->locked_parent(ti);
 
-        if (!n->parent_exists(p)) {
+        if (!node_type::parent_exists(p)) {
             internode_type *nn = internode_type::make(ti);
             nn->child_[0] = n;
             nn->assign(0, xikey[sense], child);
             nn->nkeys_ = 1;
-            nn->make_layer_root();
+            nn->parent_ = p;
+            nn->mark_root();
             fence();
             n->set_parent(nn);
         } else {
@@ -236,10 +237,10 @@ bool tcursor<P>::make_split(threadinfo& ti)
             nl->mark_split();
             nl->permutation_ = perml.value();
             if (split_type == 0) {
-                kx_.p = perml.back();
-                nl->assign(kx_.p, ka_, ti);
+                kp_ = perml.back();
+                nl->assign(kp_, ka_, ti);
             } else {
-                kx_.i = kx_.p = kx_.i - perml.size();
+                ki_ = kp_ = ki_ - perml.size();
                 n_ = nr;
             }
             // versions/sizes shouldn't change after this
@@ -266,7 +267,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
             break;
     }
 
-    return false;
+    return insert_marker();
 }
 
 } // namespace Masstree

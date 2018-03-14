@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2016 President and Fellows of Harvard College
- * Copyright (c) 2012-2016 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -19,59 +19,156 @@
 #include "compiler.hh"
 #include "circular_int.hh"
 #include "timestamp.hh"
-#include "memdebug.hh"
 #include <assert.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include <stdlib.h>
+#include <vector>
+#include <iostream>
 
 class threadinfo;
 class loginfo;
 
-typedef uint64_t mrcu_epoch_type;
-typedef int64_t mrcu_signed_epoch_type;
+extern volatile uint64_t globalepoch;    // global epoch, updated regularly
+extern volatile bool recovering;
 
-extern volatile mrcu_epoch_type globalepoch;  // global epoch, updated regularly
-extern volatile mrcu_epoch_type active_epoch;
+struct memdebug {
+#if HAVE_MEMDEBUG
+    enum {
+        magic_value = 389612313 /* = 0x17390319 */,
+        magic_free_value = 2015593488 /* = 0x78238410 */
+    };
+    int magic;
+    int freetype;
+    size_t size;
+    int after_rcu;
+    int line;
+    const char* file;
+
+    static void* make(void* p, size_t size, int freetype) {
+        if (p) {
+            memdebug *m = reinterpret_cast<memdebug *>(p);
+            m->magic = magic_value;
+            m->freetype = freetype;
+            m->size = size;
+            m->after_rcu = 0;
+            m->line = 0;
+            m->file = 0;
+            return m + 1;
+        } else
+            return p;
+    }
+    static void set_landmark(void* p, const char* file, int line) {
+        if (p) {
+            memdebug* m = reinterpret_cast<memdebug*>(p) - 1;
+            m->file = file;
+            m->line = line;
+        }
+    }
+    static void *check_free(void *p, size_t size, int freetype) {
+        memdebug *m = reinterpret_cast<memdebug *>(p) - 1;
+        free_checks(m, size, freetype, false, "deallocate");
+        m->magic = magic_free_value;
+        return m;
+    }
+    static void check_rcu(void *p, size_t size, int freetype) {
+        memdebug *m = reinterpret_cast<memdebug *>(p) - 1;
+        free_checks(m, size, freetype, false, "deallocate_rcu");
+        m->after_rcu = 1;
+    }
+    static void *check_free_after_rcu(void *p, int freetype) {
+        memdebug *m = reinterpret_cast<memdebug *>(p) - 1;
+        free_checks(m, 0, freetype, true, "free_after_rcu");
+        m->magic = magic_free_value;
+        return m;
+    }
+    static bool check_use(const void *p, int type) {
+        const memdebug *m = reinterpret_cast<const memdebug *>(p) - 1;
+        return m->magic == magic_value && (type == 0 || (m->freetype >> 8) == type);
+    }
+    static bool check_use(const void *p, int type1, int type2) {
+        const memdebug *m = reinterpret_cast<const memdebug *>(p) - 1;
+        return m->magic == magic_value
+            && ((m->freetype >> 8) == type1 || (m->freetype >> 8) == type2);
+    }
+    static void assert_use(const void *p, memtag tag) {
+        if (!check_use(p, tag))
+            hard_assert_use(p, tag, (memtag) -1);
+    }
+    static void assert_use(const void *p, memtag tag1, memtag tag2) {
+        if (!check_use(p, tag1, tag2))
+            hard_assert_use(p, tag1, tag2);
+    }
+  private:
+    static void free_checks(const memdebug *m, size_t size, int freetype,
+                            int after_rcu, const char *op) {
+        if (m->magic != magic_value
+            || m->freetype != freetype
+            || (!after_rcu && m->size != size)
+            || m->after_rcu != after_rcu)
+            hard_free_checks(m, freetype, size, after_rcu, op);
+    }
+    void landmark(char* buf, size_t size) const;
+    static void hard_free_checks(const memdebug* m, size_t size, int freetype,
+                                 int after_rcu, const char* op);
+    static void hard_assert_use(const void* ptr, memtag tag1, memtag tag2);
+#else
+    static void *make(void *p, size_t, int) {
+        return p;
+    }
+    static void set_landmark(void*, const char*, int) {
+    }
+    static void *check_free(void *p, size_t, int) {
+        return p;
+    }
+    static void check_rcu(void *, size_t, int) {
+    }
+    static void *check_free_after_rcu(void *p, int) {
+        return p;
+    }
+    static bool check_use(void *, memtag) {
+        return true;
+    }
+    static bool check_use(void *, memtag, memtag) {
+        return true;
+    }
+    static void assert_use(void *, memtag) {
+    }
+    static void assert_use(void *, memtag, memtag) {
+    }
+#endif
+};
+
+enum {
+#if HAVE_MEMDEBUG
+    memdebug_size = sizeof(memdebug)
+#else
+    memdebug_size = 0
+#endif
+};
+
+struct limbo_element {
+    void *ptr_;
+    int freetype_;
+    uint64_t epoch_;
+};
 
 struct limbo_group {
-    typedef mrcu_epoch_type epoch_type;
-    typedef mrcu_signed_epoch_type signed_epoch_type;
-
-    struct limbo_element {
-        void* ptr_;
-        union {
-            memtag tag;
-            epoch_type epoch;
-        } u_;
-    };
-
-    enum { capacity = (4076 - sizeof(epoch_type) - sizeof(limbo_group*)) / sizeof(limbo_element) };
-    unsigned head_;
-    unsigned tail_;
-    epoch_type epoch_;
-    limbo_group* next_;
+    enum { capacity = (4076 - sizeof(limbo_group *)) / sizeof(limbo_element) };
+    int head_;
+    int tail_;
     limbo_element e_[capacity];
+    limbo_group *next_;
     limbo_group()
         : head_(0), tail_(0), next_() {
     }
-    epoch_type first_epoch() const {
-        assert(head_ != tail_);
-        return e_[head_].u_.epoch;
-    }
-    void push_back(void* ptr, memtag tag, mrcu_epoch_type epoch) {
-        assert(tail_ + 2 <= capacity);
-        if (head_ == tail_ || epoch_ != epoch) {
-            e_[tail_].ptr_ = nullptr;
-            e_[tail_].u_.epoch = epoch;
-            epoch_ = epoch;
-            ++tail_;
-        }
+    void push_back(void *ptr, int freetype, uint64_t epoch) {
+        assert(tail_ < capacity);
         e_[tail_].ptr_ = ptr;
-        e_[tail_].u_.tag = tag;
+        e_[tail_].freetype_ = freetype;
+        e_[tail_].epoch_ = epoch;
         ++tail_;
     }
-    inline unsigned clean_until(threadinfo& ti, mrcu_epoch_type epoch_bound, unsigned count);
 };
 
 template <int N> struct has_threadcounter {
@@ -85,8 +182,8 @@ template <> struct has_threadcounter<0> {
     }
 };
 
-struct mrcu_callback {
-    virtual ~mrcu_callback() {
+struct rcu_callback {
+    virtual ~rcu_callback() {
     }
     virtual void operator()(threadinfo& ti) = 0;
 };
@@ -97,14 +194,20 @@ class threadinfo {
         TI_MAIN, TI_PROCESS, TI_LOG, TI_CHECKPOINT
     };
 
-    static threadinfo* allthreads;
+  //huanchen-stats
+    uint64_t pool_alloc;
+    uint64_t pool_dealloc;
+    uint64_t pool_dealloc_rcu;
+    uint64_t alloc;
+    uint64_t dealloc;
+    uint64_t dealloc_rcu;
+    uint64_t valuebag_alloc;
+    uint64_t stringbag_alloc;
+    uint64_t limbo;
 
-    threadinfo* next() const {
-        return next_;
-    }
-
-    static threadinfo* make(int purpose, int index);
+    static threadinfo *make(int purpose, int index);
     // XXX destructor
+    static pthread_key_t key;
 
     // thread information
     int purpose() const {
@@ -120,6 +223,10 @@ class threadinfo {
         assert(!logger_ && logger);
         logger_ = logger;
     }
+    static threadinfo *allthreads;
+    threadinfo* next() const {
+        return next_;
+    }
 
     // timestamps
     kvtimestamp_t operation_timestamp() const {
@@ -134,9 +241,20 @@ class threadinfo {
             ts_ = (x | 1) + 1;
         return ts_;
     }
-    template <typename N> void observe_phantoms(N* n) {
-        if (circular_int<kvtimestamp_t>::less(ts_, n->phantom_epoch_[0]))
-            ts_ = n->phantom_epoch_[0];
+    kvtimestamp_t update_timestamp(kvtimestamp_t x, kvtimestamp_t y) const {
+        if (circular_int<kvtimestamp_t>::less(x, y))
+            x = y;
+        if (circular_int<kvtimestamp_t>::less_equal(ts_, x))
+            // x might be a marker timestamp; ensure result is not
+            ts_ = (x | 1) + 1;
+        return ts_;
+    }
+    void increment_timestamp() {
+        ts_ += 2;
+    }
+    void advance_timestamp(kvtimestamp_t x) {
+        if (circular_int<kvtimestamp_t>::less(ts_, x))
+            ts_ = x;
     }
 
     // event counters
@@ -148,10 +266,6 @@ class threadinfo {
         if (has_threadcounter<int(ncounters)>::test(ci))
             counters_[ci] += delta;
     }
-    void set_counter(threadcounter ci, uint64_t value) {
-        if (has_threadcounter<int(ncounters)>::test(ci))
-            counters_[ci] = value;
-    }
     bool has_counter(threadcounter ci) const {
         return has_threadcounter<int(ncounters)>::test(ci);
     }
@@ -160,9 +274,9 @@ class threadinfo {
     }
 
     struct accounting_relax_fence_function {
-        threadinfo* ti_;
+        threadinfo *ti_;
         threadcounter ci_;
-        accounting_relax_fence_function(threadinfo* ti, threadcounter ci)
+        accounting_relax_fence_function(threadinfo *ti, threadcounter ci)
             : ti_(ti), ci_(ci) {
         }
         void operator()() {
@@ -179,8 +293,8 @@ class threadinfo {
     }
 
     struct stable_accounting_relax_fence_function {
-        threadinfo* ti_;
-        stable_accounting_relax_fence_function(threadinfo* ti)
+        threadinfo *ti_;
+        stable_accounting_relax_fence_function(threadinfo *ti)
             : ti_(ti) {
         }
         template <typename V>
@@ -203,44 +317,74 @@ class threadinfo {
 
     // memory allocation
     void* allocate(size_t sz, memtag tag) {
-        void* p = malloc(sz + memdebug_size);
-        p = memdebug::make(p, sz, tag);
+        alloc += sz;
+	//rcu_quiesce();
+        void *p = malloc(sz + memdebug_size);
+        p = memdebug::make(p, sz, tag << 8);
         if (p)
             mark(threadcounter(tc_alloc + (tag > memtag_value)), sz);
         return p;
     }
     void deallocate(void* p, size_t sz, memtag tag) {
         // in C++ allocators, 'p' must be nonnull
+        dealloc += sz;
         assert(p);
-        p = memdebug::check_free(p, sz, tag);
+        p = memdebug::check_free(p, sz, tag << 8);
         free(p);
         mark(threadcounter(tc_alloc + (tag > memtag_value)), -sz);
     }
+  /*
     void deallocate_rcu(void* p, size_t sz, memtag tag) {
+        // in C++ allocators, 'p' must be nonnull
+        dealloc_rcu += sz;
         assert(p);
-        memdebug::check_rcu(p, sz, tag);
-        record_rcu(p, tag);
+        p = memdebug::check_free(p, sz, tag << 8);
+        free(p);
         mark(threadcounter(tc_alloc + (tag > memtag_value)), -sz);
+    }
+  */
+    void deallocate_rcu(void *p, size_t sz, memtag tag) {
+        dealloc_rcu += sz;
+	//rcu_quiesce();
+        assert(p);
+        memdebug::check_rcu(p, sz, tag << 8);
+        record_rcu(p, tag << 8);
+        mark(threadcounter(tc_alloc + (tag > memtag_value)), -sz);
+	//rcu_clean();
+    }
+
+    void* reallocate(void *p, size_t old_sz, size_t sz) {
+        alloc -= old_sz;
+	alloc += sz;
+        p = realloc(p, sz);
+        //p = memdebug::make(p, sz, tag << 8);
+        //if (p)
+	//mark(threadcounter(tc_alloc + (tag > memtag_value)), sz);
+        return p;
     }
 
     void* pool_allocate(size_t sz, memtag tag) {
+        pool_alloc += sz;
+	//rcu_quiesce();
         int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
         assert(nl <= pool_max_nlines);
         if (unlikely(!pool_[nl - 1]))
             refill_pool(nl);
-        void* p = pool_[nl - 1];
+        void *p = pool_[nl - 1];
         if (p) {
             pool_[nl - 1] = *reinterpret_cast<void **>(p);
-            p = memdebug::make(p, sz, memtag(tag + nl));
+            p = memdebug::make(p, sz, (tag << 8) + nl);
             mark(threadcounter(tc_alloc + (tag > memtag_value)),
                  nl * CACHE_LINE_SIZE);
         }
+	//pool_ptrs_.push_back(p);
         return p;
     }
     void pool_deallocate(void* p, size_t sz, memtag tag) {
+        pool_dealloc += sz;
         int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
         assert(p && nl <= pool_max_nlines);
-        p = memdebug::check_free(p, sz, memtag(tag + nl));
+        p = memdebug::check_free(p, sz, (tag << 8) + nl);
         if (use_pool()) {
             *reinterpret_cast<void **>(p) = pool_[nl - 1];
             pool_[nl - 1] = p;
@@ -249,53 +393,127 @@ class threadinfo {
         mark(threadcounter(tc_alloc + (tag > memtag_value)),
              -nl * CACHE_LINE_SIZE);
     }
+  /*
     void pool_deallocate_rcu(void* p, size_t sz, memtag tag) {
+        pool_dealloc_rcu += sz;
         int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
         assert(p && nl <= pool_max_nlines);
-        memdebug::check_rcu(p, sz, memtag(tag + nl));
-        record_rcu(p, memtag(tag + nl));
+        p = memdebug::check_free(p, sz, (tag << 8) + nl);
+        if (use_pool()) {
+            *reinterpret_cast<void **>(p) = pool_[nl - 1];
+            pool_[nl - 1] = p;
+        } else
+            free(p);
         mark(threadcounter(tc_alloc + (tag > memtag_value)),
              -nl * CACHE_LINE_SIZE);
     }
+  */
+
+    void pool_deallocate_rcu(void* p, size_t sz, memtag tag) {
+        pool_dealloc_rcu += sz;
+	//rcu_quiesce();
+        int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
+        assert(p && nl <= pool_max_nlines);
+        memdebug::check_rcu(p, sz, (tag << 8) + nl);
+        record_rcu(p, (tag << 8) + nl);
+        mark(threadcounter(tc_alloc + (tag > memtag_value)),
+             -nl * CACHE_LINE_SIZE);
+	//rcu_clean();
+    }
+
+  void deallocate_ti() {
+    /*
+    std::cout << "pool_alloc = " << pool_alloc << "\n";
+    std::cout << "pool_dealloc = " << pool_dealloc << "\n";
+    std::cout << "alloc = " << alloc << "\n";
+    std::cout << "dealloc = " << dealloc << "\n";
+    */
+    if (use_pool()) {
+      //std::cout << "pool_ptrs_ size = " << pool_ptrs_.size() << "\n";
+      for (int i = 0; i < (int)pool_ptrs_.size(); i++)
+	if (pool_ptrs_[i])
+	  free(pool_ptrs_[i]);
+      pool_ptrs_.clear();
+      std::vector<void*>().swap(pool_ptrs_);
+      //for (int i = 0; i < pool_ptrs_.size(); i++)
+      //pool_ptrs_.pop_back();
+    }
+  }
+
+  void rcu_clean() {
+    limbo_group *lg = limbo_head_;
+    limbo_element *lb = &lg->e_[lg->head_];
+    limbo_element *le = &lg->e_[lg->tail_];
+    if (lb != le) {
+      while (1) {
+	free_rcu(lb->ptr_, 1 << 8);
+	++lb;
+	
+	if (lb == le && lg == limbo_tail_) {
+	  lg->head_ = lg->tail_;
+	  break;
+	}
+	else if (lb == le) {
+	  lg->head_ = lg->tail_ = 0;
+	  lg = lg->next_;
+	  lb = &lg->e_[lg->head_];
+	  le = &lg->e_[lg->tail_];
+	}
+      }
+    }
+
+    lg = limbo_head_;
+    limbo_group *lg_next = lg->next_;
+    while (lg != limbo_tail_) {
+      deallocate(lg, sizeof(limbo_group), memtag_limbo);
+      lg = lg_next;
+      lg_next = lg->next_;
+    }
+    deallocate(lg, sizeof(limbo_group), memtag_limbo);
+  }
 
     // RCU
-    enum { rcu_free_count = 128 }; // max # of entries to free per rcu_quiesce() call
     void rcu_start() {
         if (gc_epoch_ != globalepoch)
             gc_epoch_ = globalepoch;
     }
     void rcu_stop() {
-        if (perform_gc_epoch_ != active_epoch)
+        if (limbo_epoch_ && (gc_epoch_ - limbo_epoch_) > 1)
             hard_rcu_quiesce();
         gc_epoch_ = 0;
     }
     void rcu_quiesce() {
         rcu_start();
-        if (perform_gc_epoch_ != active_epoch)
+        if (limbo_epoch_ && (gc_epoch_ - limbo_epoch_) > 2)
             hard_rcu_quiesce();
     }
-    typedef ::mrcu_callback mrcu_callback;
-    void rcu_register(mrcu_callback* cb) {
-        record_rcu(cb, memtag(-1));
+    typedef ::rcu_callback rcu_callback;
+    void rcu_register(rcu_callback* cb) {
+        record_rcu(cb, -1);
     }
 
     // thread management
-    pthread_t& pthread() {
-        return pthreadid_;
+    void run();
+    int run(void* (*thread_func)(threadinfo*), void* thread_data = 0);
+    pthread_t threadid() const {
+        return threadid_;
     }
-    pthread_t pthread() const {
-        return pthreadid_;
+    void* thread_data() const {
+        return thread_data_;
     }
 
-    void report_rcu(void* ptr) const;
-    static void report_rcu_all(void* ptr);
-    static inline mrcu_epoch_type min_active_epoch();
+    static threadinfo *current() {
+        return (threadinfo *) pthread_getspecific(key);
+    }
+
+    void report_rcu(void *ptr) const;
+    static void report_rcu_all(void *ptr);
 
   private:
     union {
         struct {
-            mrcu_epoch_type gc_epoch_;
-            mrcu_epoch_type perform_gc_epoch_;
+            uint64_t gc_epoch_;
+            uint64_t limbo_epoch_;
             loginfo *logger_;
 
             threadinfo *next_;
@@ -303,76 +521,71 @@ class threadinfo {
             int index_;         // the index of a udp, logging, tcp,
                                 // checkpoint or recover thread
 
-            pthread_t pthreadid_;
+            pthread_t threadid_;
         };
         char padding1[CACHE_LINE_SIZE];
     };
 
+  private:
     enum { pool_max_nlines = 20 };
-    void* pool_[pool_max_nlines];
+    void *pool_[pool_max_nlines];
+    std::vector<void*> pool_ptrs_;
 
-    limbo_group* limbo_head_;
-    limbo_group* limbo_tail_;
+    limbo_group *limbo_head_;
+    limbo_group *limbo_tail_;
     mutable kvtimestamp_t ts_;
 
     //enum { ncounters = (int) tc_max };
     enum { ncounters = 0 };
     uint64_t counters_[ncounters];
 
+    void* (*thread_func_)(threadinfo*);
+    void* thread_data_;
+
     void refill_pool(int nl);
     void refill_rcu();
 
-    void free_rcu(void *p, memtag tag) {
-        if ((tag & memtag_pool_mask) == 0) {
-            p = memdebug::check_free_after_rcu(p, tag);
+    void free_rcu(void *p, int freetype) {
+        if ((freetype & 255) == 0) {
+            p = memdebug::check_free_after_rcu(p, freetype);
             ::free(p);
-        } else if (tag == memtag(-1))
-            (*static_cast<mrcu_callback*>(p))(*this);
+        } else if (freetype == -1)
+            (*static_cast<rcu_callback *>(p))(*this);
         else {
-            p = memdebug::check_free_after_rcu(p, tag);
-            int nl = tag & memtag_pool_mask;
-            *reinterpret_cast<void**>(p) = pool_[nl - 1];
+            p = memdebug::check_free_after_rcu(p, freetype);
+            int nl = freetype & 255;
+            *reinterpret_cast<void **>(p) = pool_[nl - 1];
             pool_[nl - 1] = p;
         }
     }
 
-    void record_rcu(void* ptr, memtag tag) {
-        if (limbo_tail_->tail_ + 2 > limbo_tail_->capacity)
+    void record_rcu(void* ptr, int freetype) {
+        if (recovering && freetype == (memtag_value << 8)) {
+            free_rcu(ptr, freetype);
+            return;
+        }
+        if (limbo_tail_->tail_ == limbo_tail_->capacity)
             refill_rcu();
         uint64_t epoch = globalepoch;
-        limbo_tail_->push_back(ptr, tag, epoch);
+        limbo_tail_->push_back(ptr, freetype, epoch);
+        if (!limbo_epoch_)
+            limbo_epoch_ = epoch;
     }
 
 #if ENABLE_ASSERTIONS
     static int no_pool_value;
-#endif
     static bool use_pool() {
-#if ENABLE_ASSERTIONS
         return !no_pool_value;
-#else
-        return true;
-#endif
     }
-
-    inline threadinfo(int purpose, int index);
-    threadinfo(const threadinfo&) = delete;
-    ~threadinfo() {}
-    threadinfo& operator=(const threadinfo&) = delete;
+#else
+    static bool use_pool() {
+        return true;
+    }
+#endif
 
     void hard_rcu_quiesce();
-
-    friend struct limbo_group;
+    static void* thread_trampoline(void*);
+    friend class loginfo;
 };
-
-inline mrcu_epoch_type threadinfo::min_active_epoch() {
-    mrcu_epoch_type ae = globalepoch;
-    for (threadinfo* ti = allthreads; ti; ti = ti->next()) {
-        prefetch((const void*) ti->next());
-        mrcu_epoch_type te = ti->gc_epoch_;
-        if (te && mrcu_signed_epoch_type(te - ae) < 0)
-            ae = te;
-    }
-    return ae;
-}
 
 #endif

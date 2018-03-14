@@ -30,7 +30,7 @@ class value_bag {
     union bagdata {
         struct {
             offset_type ncol_;
-            offset_type pos_[1];
+	    offset_type pos_[1];
         };
         char s_[0];
     };
@@ -129,18 +129,16 @@ inline void value_bag<O>::deallocate(ALLOC& ti) {
 
 template <typename O> template <typename ALLOC>
 inline void value_bag<O>::deallocate_rcu(ALLOC& ti) {
-    ti.deallocate_rcu(this, size(), memtag_value);
+  //ti.deallocate_rcu(this, size(), memtag_value);
+  ti.deallocate(this, size(), memtag_value); //h
 }
 
-// prerequisite: [first, last) is an array [column, value, column, value, ...]
-// each column is unsigned; the columns are strictly increasing;
-// each value is a string
 template <typename O> template <typename ALLOC>
 value_bag<O>* value_bag<O>::update(const Json* first, const Json* last,
                                    kvtimestamp_t ts, ALLOC& ti) const
 {
     size_t sz = size();
-    unsigned ncol = d_.ncol_;
+    int ncol = d_.ncol_;
     for (auto it = first; it != last; it += 2) {
         unsigned idx = it[0].as_u();
         sz += it[1].as_s().length();
@@ -153,6 +151,7 @@ value_bag<O>* value_bag<O>::update(const Json* first, const Json* last,
         sz += (ncol - d_.ncol_) * sizeof(offset_type);
 
     value_bag<O>* row = (value_bag<O>*) ti.allocate(sz, memtag_value);
+    ti.valuebag_alloc += sz; //huanchen-stats
     row->ts_ = ts;
 
     // Minor optimization: Replacing one small column without changing length
@@ -167,24 +166,24 @@ value_bag<O>* value_bag<O>::update(const Json* first, const Json* last,
     // Otherwise need to do more work
     row->d_.ncol_ = ncol;
     sz = sizeof(bagdata) + ncol * sizeof(offset_type);
-    unsigned col = 0;
+    int col = 0;
     while (1) {
-        unsigned this_col = (first != last ? first[0].as_u() : ncol);
+        int this_col = (first != last ? first[0].as_u() : ncol);
 
         // copy data from old row
         if (col != this_col && col < d_.ncol_) {
-            unsigned end_col = std::min(this_col, unsigned(d_.ncol_));
+            int end_col = std::min(this_col, int(d_.ncol_));
             ssize_t delta = sz - d_.pos_[col];
             if (delta == 0)
                 memcpy(row->d_.pos_ + col, d_.pos_ + col,
                        sizeof(offset_type) * (end_col - col));
             else
-                for (unsigned i = col; i < end_col; ++i)
+                for (int i = col; i < end_col; ++i)
                     row->d_.pos_[i] = d_.pos_[i] + delta;
             size_t amt = d_.pos_[end_col] - d_.pos_[col];
-            memcpy(row->d_.s_ + sz, d_.s_ + d_.pos_[col], amt);
-            sz += amt;
+            memcpy(row->d_.s_ + sz, d_.s_ + sz - delta, amt);
             col = end_col;
+            sz += amt;
         }
 
         // mark empty columns if we're extending
@@ -209,13 +208,6 @@ value_bag<O>* value_bag<O>::update(const Json* first, const Json* last,
 }
 
 template <typename O> template <typename ALLOC>
-inline value_bag<O>* value_bag<O>::update(int col, Str value, kvtimestamp_t ts,
-                                          ALLOC& ti) const {
-    Json change[2] = {Json(col), Json(value)};
-    return update(&change[0], &change[2], ts, ti);
-}
-
-template <typename O> template <typename ALLOC>
 inline value_bag<O>* value_bag<O>::create(const Json* first, const Json* last,
                                           kvtimestamp_t ts, ALLOC& ti) {
     value_bag<O> empty;
@@ -223,9 +215,17 @@ inline value_bag<O>* value_bag<O>::create(const Json* first, const Json* last,
 }
 
 template <typename O> template <typename ALLOC>
+inline value_bag<O>* value_bag<O>::update(int col, Str value, kvtimestamp_t ts,
+                                          ALLOC& ti) const {
+    Json change[2] = {Json(col), Json(value)};
+    return update(&change[0], &change[2], ts, ti);
+}
+
+template <typename O> template <typename ALLOC>
 inline value_bag<O>* value_bag<O>::create1(Str str, kvtimestamp_t ts,
                                            ALLOC& ti) {
     value_bag<O>* row = (value_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + sizeof(bagdata) + sizeof(O) + str.length(), memtag_value);
+    ti.valuebag_alloc += (sizeof(kvtimestamp_t) + sizeof(bagdata) + sizeof(O) + str.length()); //huanchen-stats
     row->ts_ = ts;
     row->d_.ncol_ = 1;
     row->d_.pos_[0] = sizeof(bagdata) + sizeof(O);
@@ -251,6 +251,7 @@ inline value_bag<O>* value_bag<O>::checkpoint_read(PARSER& par,
     Str value;
     par >> value;
     value_bag<O>* row = (value_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + value.length(), memtag_value);
+    ti.valuebag_alloc += (sizeof(kvtimestamp_t) + value.length()); //huanchen-stats
     row->ts_ = ts;
     memcpy(row->d_.s_, value.data(), value.length());
     return row;

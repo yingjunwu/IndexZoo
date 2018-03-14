@@ -88,6 +88,10 @@ class key {
     int length() const {
         return len_;
     }
+    /** @brief Return the maxkey's length, bounded above by ikey_size + 1. */
+    int ikeylen() const {
+        return std::min(length(), (int) ikey_size + 1);
+    }
     /** @brief Test whether this key has a suffix (length() > ikey_size). */
     bool has_suffix() const {
         return len_ > ikey_size;
@@ -108,13 +112,6 @@ class key {
     void shift() {
         s_ += ikey_size;
         len_ -= ikey_size;
-        ikey0_ = string_slice<ikey_type>::make_comparable_sloppy(s_, len_);
-    }
-    /** @brief Shift this key forward to model the current key's suffix.
-        @pre has_suffix() */
-    void shift_by(int delta) {
-        s_ += delta;
-        len_ -= delta;
         ikey0_ = string_slice<ikey_type>::make_comparable_sloppy(s_, len_);
     }
     /** @brief Test whether this key has been shifted by shift(). */
@@ -141,9 +138,23 @@ class key {
         }
         return cmp;
     }
-    int compare(const key<I>& x) const {
-        return compare(x.ikey(), x.length());
-    }
+
+  //huanchen-static=================================================================
+  int compare_ikey(ikey_type ikey) const {
+    int cmp = ::compare(this->ikey(), ikey);
+    return cmp;
+  }
+
+  int compare_len(int keylenx) const {
+    int cmp = 0;
+    int al = this->length();
+    if (al > ikey_size)
+      cmp = keylenx <= ikey_size;
+    else
+      cmp = al - keylenx;
+    return cmp;
+  }
+  //================================================================================
 
     int unparse(char* data, int datalen) const {
         int cplen = std::min(len_, datalen);
@@ -204,7 +215,7 @@ class key {
         len_ = len;
     }
     void unshift() {
-       //masstree_preconditionpreconditiondition(is_shifted());
+        masstree_precondition(is_shifted());
         s_ -= ikey_size;
         ikey0_ = string_slice<ikey_type>::make_comparable_sloppy(s_, ikey_size);
         len_ = ikey_size + 1;
@@ -230,6 +241,64 @@ class key {
 template <typename I> constexpr int key<I>::ikey_size;
 
 } // namespace Masstree
+
+//huanchen-static
+template <typename P>
+inline int key_compare(const Masstree::key<typename P::ikey_type>& a, Masstree::massnode<P>& b, int bp)
+{
+  int cmp = a.compare_ikey(b.ikey(bp));
+  if (cmp == 0)
+    return a.compare_len(b.get_keylenx()[bp]);
+  return cmp;
+
+  //return a.compare(b.ikey(bp), b.get_keylenx()[bp]);
+}
+//huanchen-static-multivalue
+template <typename P>
+inline int key_compare(const Masstree::key<typename P::ikey_type>& a, Masstree::massnode_multivalue<P>& b, int bp)
+{
+  int cmp = a.compare_ikey(b.ikey(bp));
+  if (cmp == 0)
+    a.compare_len(b.get_keylenx()[bp]);
+  return cmp;
+}
+//huanchen-static-dynamicvalue
+template <typename P>
+inline int key_compare(const Masstree::key<typename P::ikey_type>& a, Masstree::massnode_dynamicvalue<P>& b, int bp)
+{
+  int cmp = a.compare_ikey(b.ikey(bp));
+  if (cmp == 0)
+    a.compare_len(b.get_keylenx()[bp]);
+  return cmp;
+}
+
+template <typename P>
+inline int key_compare(typename P::ikey_type a,
+                       const Masstree::internode<P>& b, int bp)
+{
+    return compare(a, b.ikey(bp));
+}
+
+template <typename P>
+inline int key_compare(const Masstree::key<typename P::ikey_type>& a,
+                       const Masstree::internode<P>& b, int bp)
+{
+    return compare(a.ikey(), b.ikey(bp));
+}
+
+template <typename P>
+inline int key_compare(const Masstree::key<typename P::ikey_type>& a,
+                       const Masstree::leaf<P>& b, int bp)
+{
+    return a.compare(b.ikey(bp), b.keylenx_[bp]);
+}
+
+template <typename I>
+inline int key_compare(const Masstree::key<I>& a,
+                       const Masstree::key<I>& b)
+{
+    return a.compare(b.ikey(), b.length());
+}
 
 template <typename I>
 inline std::ostream& operator<<(std::ostream& stream,

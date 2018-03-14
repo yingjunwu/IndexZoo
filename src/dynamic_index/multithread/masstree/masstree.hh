@@ -34,9 +34,6 @@ template <int LW = 15, int IW = LW> struct nodeparams {
     static constexpr int debug_level = 0;
     static constexpr bool printable_keys = true;
     typedef uint64_t ikey_type;
-    typedef uint32_t nodeversion_value_type;
-    static constexpr bool need_phantom_epoch = true;
-    typedef uint64_t phantom_epoch_type;
 };
 
 template <int LW, int IW> constexpr int nodeparams<LW, IW>::leaf_width;
@@ -52,24 +49,57 @@ template <typename P> class basic_table;
 template <typename P> class unlocked_tcursor;
 template <typename P> class tcursor;
 
+//huanchen-static
+template <typename P> class massnode;
+template <typename P> class massnode_multivalue;
+template <typename P> class massnode_dynamicvalue;
+template <typename P> class stcursor;
+template <typename P> class stcursor_multivalue;
+template <typename P> class stcursor_dynamicvalue;
+template <typename P> class stcursor_scan;
+template <typename P> class stcursor_scan_multivalue;
+template <typename P> class stcursor_scan_dynamicvalue;
+template <typename P> class stcursor_merge;
+template <typename P> class stcursor_merge_multivalue;
+template <typename P> class stcursor_merge_dynamicvalue;
+template <typename P> class leafvalue_static;
+template <typename P> class leafvalue_static_multivalue;
+
 template <typename P>
 class basic_table {
   public:
-    typedef P parameters_type;
+    typedef P param_type;
     typedef node_base<P> node_type;
     typedef leaf<P> leaf_type;
+    typedef internode<P> internode_type;
     typedef typename P::value_type value_type;
     typedef typename P::threadinfo_type threadinfo;
     typedef unlocked_tcursor<P> unlocked_cursor_type;
     typedef tcursor<P> cursor_type;
 
+  //huanchen-static
+  typedef stcursor<P> static_cursor_type;
+  typedef stcursor_multivalue<P> static_multivalue_cursor_type;
+  typedef stcursor_dynamicvalue<P> static_dynamicvalue_cursor_type;
+  typedef stcursor_scan<P> static_cursor_scan_type;
+  typedef stcursor_scan_multivalue<P> static_multivalue_cursor_scan_type;
+  typedef stcursor_scan_dynamicvalue<P> static_dynamicvalue_cursor_scan_type;
+  typedef stcursor_merge<P> static_cursor_merge_type;
+  typedef stcursor_merge_multivalue<P> static_cursor_merge_multivalue_type;
+  typedef stcursor_merge_dynamicvalue<P> static_cursor_merge_dynamicvalue_type;
+
     inline basic_table();
 
     void initialize(threadinfo& ti);
     void destroy(threadinfo& ti);
+    void destroy_novalue(threadinfo& ti); //huanchen
 
     inline node_type* root() const;
     inline node_type* fix_root();
+
+  //huanchen-static
+  inline node_type* static_root() const;
+  inline void set_static_root(node_type *staticRoot);
 
     bool get(Str key, value_type& value, threadinfo& ti) const;
 
@@ -78,10 +108,16 @@ class basic_table {
     template <typename F>
     int rscan(Str firstkey, bool matchfirst, F& scanner, threadinfo& ti) const;
 
+    template <typename F>
+    inline int modify(Str key, F& f, threadinfo& ti);
+    template <typename F>
+    inline int modify_insert(Str key, F& f, threadinfo& ti);
+
     inline void print(FILE* f = 0, int indent = 0) const;
 
   private:
     node_type* root_;
+    node_type* static_root_; //huanchen-static
 
     template <typename H, typename F>
     int scan(H helper, Str firstkey, bool matchfirst,

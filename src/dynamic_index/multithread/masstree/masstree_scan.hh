@@ -44,16 +44,15 @@ class scanstackelt {
         return perm_;
     }
     int operator()(const key_type &k, const scanstackelt<P> &n, int p) {
-        return n.n_->compare_key(k, p);
+        return ::key_compare(k, *n.n_, p);
     }
 
   private:
-    node_base<P>* root_;
-    leaf<P>* n_;
+    node_base<P> *root_;
+    leaf<P> *n_;
     nodeversion_type v_;
     permuter_type perm_;
     int ki_;
-    small_vector<node_base<P>*, 2> node_stack_;
 
     enum { scan_emit, scan_find_next, scan_down, scan_up, scan_retry };
 
@@ -88,11 +87,11 @@ struct forward_scan_helper {
         return k.compare(ikey, keylenx) >= 0;
     }
     template <typename K, typename N> int lower(const K &k, const N *n) const {
-        return N::bound_type::lower_by(k, *n, *n).i;
+        return N::bound_type::lower_by(k, *n, *n);
     }
     template <typename K, typename N>
-    key_indexed_position lower_with_position(const K &k, const N *n) const {
-        return N::bound_type::lower_by(k, *n, *n);
+    int lower_with_position(const K &k, const N *n, int &kp) const {
+        return N::bound_type::lower_with_position_by(k, *n, kp, *n);
     }
     void found() const {
     }
@@ -135,14 +134,13 @@ struct reverse_scan_helper {
     template <typename K, typename N> int lower(const K &k, const N *n) const {
         if (upper_bound_)
             return n->size() - 1;
-        key_indexed_position kx = N::bound_type::lower_by(k, *n, *n);
-        return kx.i - (kx.p < 0);
+        int kp, ki = N::bound_type::lower_with_position_by(k, *n, kp, *n);
+        return ki - (kp < 0);
     }
     template <typename K, typename N>
-    key_indexed_position lower_with_position(const K &k, const N *n) const {
-        key_indexed_position kx = N::bound_type::lower_by(k, *n, *n);
-        kx.i -= kx.p < 0;
-        return kx;
+    int lower_with_position(const K &k, const N *n, int &kp) const {
+        int ki = N::bound_type::lower_with_position_by(k, *n, kp, *n);
+        return ki - (kp < 0);
     }
     int next(int ki) const {
         return ki - 1;
@@ -182,8 +180,7 @@ template <typename P> template <typename H>
 int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
                                   leafvalue_type& entry, threadinfo& ti)
 {
-    key_indexed_position kx;
-    int keylenx = 0;
+    int kp, keylenx = 0;
     char suffixbuf[MASSTREE_MAXKEYLEN];
     Str suffix;
 
@@ -196,14 +193,14 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
     n_->prefetch();
     perm_ = n_->permutation();
 
-    kx = helper.lower_with_position(ka, this);
-    if (kx.p >= 0) {
-        keylenx = n_->keylenx_[kx.p];
+    ki_ = helper.lower_with_position(ka, this, kp);
+    if (kp >= 0) {
+        keylenx = n_->keylenx_[kp];
         fence();
-        entry = n_->lv_[kx.p];
+        entry = n_->lv_[kp];
         entry.prefetch(keylenx);
         if (n_->keylenx_has_ksuf(keylenx)) {
-            suffix = n_->ksuf(kx.p);
+            suffix = n_->ksuf(kp);
             memcpy(suffixbuf, suffix.s, suffix.len);
             suffix.s = suffixbuf;
         }
@@ -214,12 +211,9 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
         goto retry_node;
     }
 
-    ki_ = kx.i;
-    if (kx.p >= 0) {
+    if (kp >= 0) {
         if (n_->keylenx_is_layer(keylenx)) {
-            node_stack_.push_back(root_);
-            node_stack_.push_back(n_);
-            root_ = entry.layer();
+            this[1].root_ = entry.layer();
             return scan_down;
         } else if (n_->keylenx_has_ksuf(keylenx)) {
             int ksuf_compare = suffix.compare(ka.suffix());
@@ -233,6 +227,7 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
         // otherwise, this entry must be skipped
         ki_ = helper.next(ki_);
     }
+
     return scan_find_next;
 }
 
@@ -281,9 +276,7 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
         ka.assign_store_ikey(ikey);
         helper.found();
         if (n_->keylenx_is_layer(keylenx)) {
-            node_stack_.push_back(root_);
-            node_stack_.push_back(n_);
-            root_ = entry.layer();
+            this[1].root_ = entry.layer();
             return scan_down;
         } else {
             ka.assign_store_length(keylen);
@@ -318,24 +311,27 @@ int basic_table<P>::scan(H helper,
         ikey_type x[(MASSTREE_MAXKEYLEN + sizeof(ikey_type) - 1)/sizeof(ikey_type)];
         char s[MASSTREE_MAXKEYLEN];
     } keybuf;
-   //masstree_preconditionpreconditiondition(firstkey.len <= (int) sizeof(keybuf));
+    // masstree_precondition(firstkey.len <= (int) sizeof(keybuf));
     memcpy(keybuf.s, firstkey.s, firstkey.len);
     key_type ka(keybuf.s, firstkey.len);
 
-    typedef scanstackelt<P> mystack_type;
-    mystack_type stack;
-    stack.root_ = root_;
+    typedef scanstackelt<param_type> mystack_type;
+    mystack_type stack[(MASSTREE_MAXKEYLEN + sizeof(ikey_type) - 1) / sizeof(ikey_type)];
+    int stackpos = 0;
+    stack[0].root_ = root_;
     leafvalue_type entry = leafvalue_type::make_empty();
 
     int scancount = 0;
     int state;
 
     while (1) {
-        state = stack.find_initial(helper, ka, emit_firstkey, entry, ti);
-        scanner.visit_leaf(stack, ka, ti);
+        state = stack[stackpos].find_initial(helper, ka, emit_firstkey,
+                                             entry, ti);
+        scanner.visit_leaf(stack[stackpos], ka, ti);
         if (state != mystack_type::scan_down)
             break;
         ka.shift();
+        ++stackpos;
     }
 
     while (1) {
@@ -344,39 +340,34 @@ int basic_table<P>::scan(H helper,
             ++scancount;
             if (!scanner.visit_value(ka, entry.value(), ti))
                 goto done;
-            stack.ki_ = helper.next(stack.ki_);
-            state = stack.find_next(helper, ka, entry);
+            stack[stackpos].ki_ = helper.next(stack[stackpos].ki_);
+            state = stack[stackpos].find_next(helper, ka, entry);
             break;
 
         case mystack_type::scan_find_next:
         find_next:
-            state = stack.find_next(helper, ka, entry);
+            state = stack[stackpos].find_next(helper, ka, entry);
             if (state != mystack_type::scan_up)
-                scanner.visit_leaf(stack, ka, ti);
+                scanner.visit_leaf(stack[stackpos], ka, ti);
             break;
 
         case mystack_type::scan_up:
             do {
-                if (stack.node_stack_.empty())
+                if (--stackpos < 0)
                     goto done;
-                stack.n_ = static_cast<leaf<P>*>(stack.node_stack_.back());
-                stack.node_stack_.pop_back();
-                stack.root_ = stack.node_stack_.back();
-                stack.node_stack_.pop_back();
                 ka.unshift();
+                stack[stackpos].ki_ = helper.next(stack[stackpos].ki_);
             } while (unlikely(ka.empty()));
-            stack.v_ = helper.stable(stack.n_, ka);
-            stack.perm_ = stack.n_->permutation();
-            stack.ki_ = helper.lower(ka, &stack);
             goto find_next;
 
         case mystack_type::scan_down:
             helper.shift_clear(ka);
+            ++stackpos;
             goto retry;
 
         case mystack_type::scan_retry:
         retry:
-            state = stack.find_retry(helper, ka, ti);
+            state = stack[stackpos].find_retry(helper, ka, ti);
             break;
         }
     }

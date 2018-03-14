@@ -89,7 +89,6 @@ class Json {
     inline Json(double x);
     inline Json(bool x);
     inline Json(const String& x);
-    inline Json(const std::string& x);
     inline Json(Str x);
     inline Json(const char* x);
     template <typename T> inline Json(const std::vector<T>& x);
@@ -105,7 +104,6 @@ class Json {
     template <typename... Args>
     static inline Json object(Args&&... rest);
     static inline Json make_string(const String& x);
-    static inline Json make_string(const std::string& x);
     static inline Json make_string(const char* s, int len);
 
     // Type information
@@ -119,8 +117,7 @@ class Json {
     inline bool is_i() const;
     inline bool is_unsigned() const;
     inline bool is_u() const;
-    inline bool is_signed() const;
-    inline bool is_nonnegint() const;
+    inline bool is_posint() const;
     inline bool is_double() const;
     inline bool is_d() const;
     inline bool is_number() const;
@@ -199,7 +196,6 @@ class Json {
 
     const Json& operator[](Str key) const;
     inline Json_object_proxy<Json> operator[](const String& key);
-    inline Json_object_str_proxy<Json> operator[](const std::string& key);
     inline Json_object_str_proxy<Json> operator[](Str key);
     inline Json_object_str_proxy<Json> operator[](const char* key);
 
@@ -501,12 +497,12 @@ inline void Json::ComplexJson::deref(json_type j) {
 }
 
 inline Json::ArrayJson* Json::ajson() const {
-    //////masstree_preconditiondition(u_.x.type == j_null || u_.x.type == j_array);
+    // precondition(u_.x.type == j_null || u_.x.type == j_array);
     return u_.a.x;
 }
 
 inline Json::ObjectJson* Json::ojson() const {
-    //////masstree_preconditiondition(u_.x.type == j_null || u_.x.type == j_object);
+    // precondition(u_.x.type == j_null || u_.x.type == j_object);
     return u_.o.x;
 }
 
@@ -612,8 +608,8 @@ inline bool operator!=(const Json::const_object_iterator& a, const Json::const_o
 class Json::const_array_iterator { public:
     typedef Json::size_type difference_type;
     typedef Json value_type;
-    typedef const Json* pointer;
-    typedef const Json& reference;
+    typedef const Json* pointer_type;
+    typedef const Json& reference_type;
     typedef std::random_access_iterator_tag iterator_category;
 
     const_array_iterator() {
@@ -641,16 +637,14 @@ class Json::const_array_iterator { public:
     void operator++(int) {
         ++i_;
     }
-    const_array_iterator& operator++() {
+    void operator++() {
         ++i_;
-        return *this;
     }
     void operator--(int) {
         --i_;
     }
-    const_array_iterator& operator--() {
+    void operator--() {
         --i_;
-        return *this;
     }
     const_array_iterator& operator+=(difference_type x) {
         i_ += x;
@@ -674,8 +668,8 @@ class Json::const_array_iterator { public:
 };
 
 class Json::array_iterator : public const_array_iterator { public:
-    typedef const Json* pointer;
-    typedef const Json& reference;
+    typedef const Json* pointer_type;
+    typedef const Json& reference_type;
 
     array_iterator() {
     }
@@ -692,14 +686,6 @@ class Json::array_iterator : public const_array_iterator { public:
     }
     Json& value() const {
         return **this;
-    }
-    array_iterator& operator++() {
-        ++i_;
-        return *this;
-    }
-    array_iterator& operator--() {
-        --i_;
-        return *this;
     }
     array_iterator& operator+=(difference_type x) {
         i_ += x;
@@ -755,14 +741,14 @@ inline Json::array_iterator operator-(Json::array_iterator a, Json::array_iterat
 }
 
 inline Json::const_array_iterator::difference_type operator-(const Json::const_array_iterator& a, const Json::const_array_iterator& b) {
-    //////masstree_preconditiondition(a.j_ == b.j_);
+    // precondition(a.j_ == b.j_);
     return a.i_ - b.i_;
 }
 
 class Json::const_iterator { public:
     typedef std::pair<const String, Json&> value_type;
-    typedef const value_type* pointer;
-    typedef const value_type& reference;
+    typedef const value_type* pointer_type;
+    typedef const value_type& reference_type;
     typedef std::forward_iterator_tag iterator_category;
 
     const_iterator()
@@ -832,8 +818,8 @@ class Json::const_iterator { public:
 };
 
 class Json::iterator : public const_iterator { public:
-    typedef value_type* pointer;
-    typedef value_type& reference;
+    typedef value_type* pointer_type;
+    typedef value_type& reference_type;
 
     iterator() {
     }
@@ -913,11 +899,8 @@ class Json_proxy_base {
     bool is_u() const {
         return cvalue().is_u();
     }
-    bool is_signed() const {
-        return cvalue().is_signed();
-    }
-    bool is_nonnegint() const {
-        return cvalue().is_nonnegint();
+    bool is_posint() const {
+        return cvalue().is_posint();
     }
     bool is_double() const {
         return cvalue().is_double();
@@ -1085,9 +1068,6 @@ class Json_proxy_base {
     }
     Json_object_proxy<P> operator[](const String& key) {
         return Json_object_proxy<P>(*static_cast<P*>(this), key);
-    }
-    Json_object_str_proxy<P> operator[](std::string key) {
-        return Json_object_str_proxy<P>(*static_cast<P*>(this), Str(key.data(), key.length()));
     }
     Json_object_str_proxy<P> operator[](Str key) {
         return Json_object_str_proxy<P>(*static_cast<P*>(this), key);
@@ -1558,11 +1538,6 @@ inline Json::Json(const String& x) {
     u_.str = x.internal_rep();
     u_.str.ref();
 }
-inline Json::Json(const std::string& x) {
-    u_.str.reset_ref();
-    String str(x);
-    str.swap(u_.str);
-}
 inline Json::Json(Str x) {
     u_.str.reset_ref();
     String str(x);
@@ -1659,11 +1634,7 @@ inline Json Json::object(Args&&... rest) {
     return j;
 }
 /** @brief Return a string-valued Json. */
-inline Json Json::make_string(const String& x) {
-    return Json(x);
-}
-/** @overload */
-inline Json Json::make_string(const std::string& x) {
+inline Json Json::make_string(const String &x) {
     return Json(x);
 }
 /** @overload */
@@ -1706,10 +1677,7 @@ inline bool Json::is_unsigned() const {
 inline bool Json::is_u() const {
     return is_unsigned();
 }
-inline bool Json::is_signed() const {
-    return u_.x.type == j_int;
-}
-inline bool Json::is_nonnegint() const {
+inline bool Json::is_posint() const {
     return u_.x.type == j_unsigned
         || (u_.x.type == j_int && u_.i.x >= 0);
 }
@@ -1763,7 +1731,7 @@ inline bool Json::empty() const {
 /** @brief Return the number of elements in this complex Json.
     @pre is_array() || is_object() || is_null() */
 inline Json::size_type Json::size() const {
-    //////masstree_preconditiondition(unsigned(u_.x.type) < unsigned(j_int));
+    // precondition(unsigned(u_.x.type) < unsigned(j_int));
     return u_.x.x ? u_.x.x->size : 0;
 }
 /** @brief Test if this complex Json is shared. */
@@ -1883,7 +1851,7 @@ inline uint64_t Json::to_u64() const {
     @pre is_number()
     @sa to_i() */
 inline int64_t Json::as_i() const {
-    //////masstree_preconditiondition(is_int() || is_double());
+    // precondition(is_int() || is_double());
     return is_int() ? u_.i.x : int64_t(u_.d.x);
 }
 
@@ -1899,7 +1867,7 @@ inline int64_t Json::as_i(int64_t default_value) const {
     @pre is_number()
     @sa to_i() */
 inline uint64_t Json::as_u() const {
-    //////masstree_preconditiondition(is_int() || is_double());
+    // precondition(is_int() || is_double());
     return is_int() ? u_.u.x : uint64_t(u_.d.x);
 }
 
@@ -1942,7 +1910,7 @@ inline bool Json::to_d(double& x) const {
     @pre is_number()
     @sa to_d() */
 inline double Json::as_d() const {
-    //////masstree_preconditiondition(is_double() || is_int());
+    // precondition(is_double() || is_int());
     if (is_double())
         return u_.d.x;
     else if (u_.x.type == j_int)
@@ -1990,7 +1958,7 @@ inline bool Json::to_b(bool& x) const {
     @pre is_bool()
     @sa to_b() */
 inline bool Json::as_b() const {
-    //////masstree_preconditiondition(is_bool());
+    // precondition(is_bool());
     return u_.i.x;
 }
 
@@ -2046,13 +2014,13 @@ inline bool Json::to_s(String& x) const {
     @pre is_string()
     @sa to_s() */
 inline const String& Json::as_s() const {
-    //////masstree_preconditiondition(u_.x.type <= 0 && u_.x.x);
+    // precondition(u_.x.type <= 0 && u_.x.x);
     return reinterpret_cast<const String&>(u_.str);
 }
 
 /** @overload */
 inline String& Json::as_s() {
-    //////masstree_preconditiondition(u_.x.type <= 0 && u_.x.x);
+    // precondition(u_.x.type <= 0 && u_.x.x);
     return reinterpret_cast<String&>(u_.str);
 }
 
@@ -2065,13 +2033,13 @@ inline const String& Json::as_s(const String& default_value) const {
 }
 
 inline void Json::force_number() {
-    //////masstree_preconditiondition((u_.x.type == j_null && !u_.x.x) || u_.x.type == j_int || u_.x.type == j_double);
+    // precondition((u_.x.type == j_null && !u_.x.x) || u_.x.type == j_int || u_.x.type == j_double);
     if (u_.x.type == j_null && !u_.x.x)
         u_.x.type = j_int;
 }
 
 inline void Json::force_double() {
-    //////masstree_preconditiondition((u_.x.type == j_null && !u_.x.x) || u_.x.type == j_int || u_.x.type == j_double);
+    // precondition((u_.x.type == j_null && !u_.x.x) || u_.x.type == j_int || u_.x.type == j_double);
     if (u_.x.type == j_null && !u_.x.x)
         u_.x.type = j_double;
     else if (u_.x.type == j_int) {
@@ -2090,7 +2058,7 @@ inline void Json::force_double() {
 
     Returns 0 if this is not an object Json. */
 inline Json::size_type Json::count(Str key) const {
-    //////masstree_preconditiondition(u_.x.type == j_null || u_.x.type == j_object);
+    // precondition(u_.x.type == j_null || u_.x.type == j_object);
     return u_.o.x ? ojson()->find(key.data(), key.length()) >= 0 : 0;
 }
 
@@ -2272,11 +2240,6 @@ inline Json_object_proxy<Json> Json::operator[](const String& key) {
 }
 
 /** @overload */
-inline Json_object_str_proxy<Json> Json::operator[](const std::string& key) {
-    return Json_object_str_proxy<Json>(*this, Str(key.data(), key.length()));
-}
-
-/** @overload */
 inline Json_object_str_proxy<Json> Json::operator[](Str key) {
     return Json_object_str_proxy<Json>(*this, key);
 }
@@ -2289,10 +2252,10 @@ inline Json_object_str_proxy<Json> Json::operator[](const char* key) {
 /** @brief Return the value at @a key in an object Json.
     @pre is_object() && count(@a key) */
 inline const Json& Json::at(Str key) const {
-    //////masstree_preconditiondition(is_object() && u_.o.x);
+    // precondition(is_object() && u_.o.x);
     ObjectJson *oj = ojson();
     int i = oj->find(key.data(), key.length());
-    //////masstree_preconditiondition(i >= 0);
+    // precondition(i >= 0);
     return oj->item(i).v_.second;
 }
 
@@ -2301,19 +2264,19 @@ inline const Json& Json::at(Str key) const {
 
     Returns a newly-inserted null Json if !count(@a key). */
 inline Json& Json::at_insert(const String &key) {
-    //////masstree_preconditiondition(is_object());
+    // precondition(is_object());
     return get_insert(key);
 }
 
 /** @overload */
 inline Json& Json::at_insert(Str key) {
-    //////masstree_preconditiondition(is_object());
+    // precondition(is_object());
     return get_insert(key);
 }
 
 /** @overload */
 inline Json& Json::at_insert(const char *key) {
-    //////masstree_preconditiondition(is_object());
+    // precondition(is_object());
     return get_insert(Str(key));
 }
 
@@ -2372,7 +2335,7 @@ inline Json& Json::set_list() {
 
     An existing element with key @a x.first is not replaced. */
 inline std::pair<Json::object_iterator, bool> Json::insert(const object_value_type& x) {
-    //////masstree_preconditiondition(is_object());
+    // precondition(is_object());
     uniqueify_object(false);
     ObjectJson *oj = ojson();
     int n = oj->n_, i = oj->find_insert(x.first, x.second);
@@ -2396,7 +2359,7 @@ inline Json::object_iterator Json::insert(object_iterator position, const object
     @pre is_object()
     @return Next iterator */
 inline Json::object_iterator Json::erase(Json::object_iterator it) {
-    //////masstree_preconditiondition(is_object() && it.live() && it.j_ == this);
+    // precondition(is_object() && it.live() && it.j_ == this);
     uniqueify_object(false);
     ojson()->erase(it.i_);
     ++it;
@@ -2407,7 +2370,7 @@ inline Json::object_iterator Json::erase(Json::object_iterator it) {
     @pre is_object()
     @return Number of items removed */
 inline Json::size_type Json::erase(Str key) {
-    //////masstree_preconditiondition(is_object());
+    // precondition(is_object());
     uniqueify_object(false);
     return ojson()->erase(key);
 }
@@ -2420,8 +2383,8 @@ inline Json::size_type Json::erase(Str key) {
     silently converted to empty objects, except that if @a x and this Json are
     both null, then this Json is left as null. */
 inline Json& Json::merge(const Json& x) {
-    //////masstree_preconditiondition(is_object() || is_null());
-    //////masstree_preconditiondition(x.is_object() || x.is_null());
+    // precondition(is_object() || is_null());
+    // precondition(x.is_object() || x.is_null());
     if (x.u_.o.x) {
         uniqueify_object(false);
         ObjectJson *oj = ojson(), *xoj = x.ojson();
@@ -2475,7 +2438,7 @@ inline Json& Json::get_insert(size_type x) {
 
     A null Json is treated like an empty array. */
 inline const Json& Json::at(size_type x) const {
-    //////masstree_preconditiondition(is_array());
+    // precondition(is_array());
     return get(x);
 }
 
@@ -2484,7 +2447,7 @@ inline const Json& Json::at(size_type x) const {
 
     The array is extended if @a x is out of range. */
 inline Json& Json::at_insert(size_type x) {
-    //////masstree_preconditiondition(is_array());
+    // precondition(is_array());
     return get_insert(x);
 }
 
@@ -2511,14 +2474,14 @@ inline Json_array_proxy<Json> Json::operator[](size_type x) {
 /** @brief Return the last array element.
     @pre is_array() && !empty() */
 inline const Json& Json::back() const {
-    //////masstree_preconditiondition(is_array() && u_.a.x && u_.a.x->size > 0);
+    // precondition(is_array() && u_.a.x && u_.a.x->size > 0);
     return u_.a.x->a[u_.a.x->size - 1];
 }
 
 /** @brief Return a reference to the last array element.
     @pre is_array() && !empty() */
 inline Json& Json::back() {
-    //////masstree_preconditiondition(is_array() && u_.a.x && u_.a.x->size > 0);
+    // precondition(is_array() && u_.a.x && u_.a.x->size > 0);
     uniqueify_array(false, 0);
     return u_.a.x->a[u_.a.x->size - 1];
 }
@@ -2542,7 +2505,7 @@ template <typename P> inline Json& Json::push_back(const Json_proxy_base<P>& x) 
 /** @brief Remove the last element from an array.
     @pre is_array() && !empty() */
 inline void Json::pop_back() {
-    //////masstree_preconditiondition(is_array() && u_.a.x && u_.a.x->size > 0);
+    // precondition(is_array() && u_.a.x && u_.a.x->size > 0);
     uniqueify_array(false, 0);
     --u_.a.x->size;
     u_.a.x->a[u_.a.x->size].~Json();
@@ -2571,7 +2534,7 @@ inline Json& Json::push_back_list(T first, Args&&... rest) {
 
     A null Json is promoted to an array. */
 inline Json::array_iterator Json::insert(array_iterator position, Json x) {
-    //////masstree_preconditiondition(position >= abegin() && position <= aend());
+    // precondition(position >= abegin() && position <= aend());
     size_type pos = position - abegin();
     new(uniqueify_array_insert(false, pos)) Json(std::move(x));
     return abegin() + pos;
@@ -2579,7 +2542,7 @@ inline Json::array_iterator Json::insert(array_iterator position, Json x) {
 
 /** @overload */
 template <typename P> inline Json::array_iterator Json::insert(array_iterator position, const Json_proxy_base<P>& x) {
-    //////masstree_preconditiondition(position >= abegin() && position <= aend());
+    // precondition(position >= abegin() && position <= aend());
     size_type pos = position - abegin();
     new(uniqueify_array_insert(false, pos)) Json(x.cvalue());
     return abegin() + pos;
@@ -2591,45 +2554,45 @@ inline Json::array_iterator Json::erase(array_iterator position) {
 
 
 inline Json* Json::array_data() {
-    //////masstree_preconditiondition(is_null() || is_array());
+    // precondition(is_null() || is_array());
     uniqueify_array(false, 0);
     return u_.a.x ? u_.a.x->a : 0;
 }
 
 inline const Json* Json::array_data() const {
-    //////masstree_preconditiondition(is_null() || is_array());
+    // precondition(is_null() || is_array());
     return u_.a.x ? u_.a.x->a : 0;
 }
 
 inline const Json* Json::array_cdata() const {
-    //////masstree_preconditiondition(is_null() || is_array());
+    // precondition(is_null() || is_array());
     return u_.a.x ? u_.a.x->a : 0;
 }
 
 inline Json* Json::end_array_data() {
-    //////masstree_preconditiondition(is_null() || is_array());
+    // precondition(is_null() || is_array());
     uniqueify_array(false, 0);
     return u_.a.x ? u_.a.x->a + u_.a.x->size : 0;
 }
 
 inline const Json* Json::end_array_data() const {
-    //////masstree_preconditiondition(is_null() || is_array());
+    // precondition(is_null() || is_array());
     return u_.a.x ? u_.a.x->a + u_.a.x->size : 0;
 }
 
 inline const Json* Json::end_array_cdata() const {
-    //////masstree_preconditiondition(is_null() || is_array());
+    // precondition(is_null() || is_array());
     return u_.a.x ? u_.a.x->a + u_.a.x->size : 0;
 }
 
 
 inline Json::const_object_iterator Json::cobegin() const {
-    //////masstree_preconditiondition(is_null() || is_object());
+    // precondition(is_null() || is_object());
     return const_object_iterator(this, 0);
 }
 
 inline Json::const_object_iterator Json::coend() const {
-    //////masstree_preconditiondition(is_null() || is_object());
+    // precondition(is_null() || is_object());
     return const_object_iterator(this, -1);
 }
 
@@ -2642,22 +2605,22 @@ inline Json::const_object_iterator Json::oend() const {
 }
 
 inline Json::object_iterator Json::obegin() {
-    //////masstree_preconditiondition(is_null() || is_object());
+    // precondition(is_null() || is_object());
     return object_iterator(this, 0);
 }
 
 inline Json::object_iterator Json::oend() {
-    //////masstree_preconditiondition(is_null() || is_object());
+    // precondition(is_null() || is_object());
     return object_iterator(this, -1);
 }
 
 inline Json::const_array_iterator Json::cabegin() const {
-    //////masstree_preconditiondition(is_null() || is_array());
+    // precondition(is_null() || is_array());
     return const_array_iterator(this, 0);
 }
 
 inline Json::const_array_iterator Json::caend() const {
-    //////masstree_preconditiondition(is_null() || is_array());
+    // precondition(is_null() || is_array());
     ArrayJson *aj = ajson();
     return const_array_iterator(this, aj ? aj->size : 0);
 }
@@ -2671,12 +2634,12 @@ inline Json::const_array_iterator Json::aend() const {
 }
 
 inline Json::array_iterator Json::abegin() {
-    //////masstree_preconditiondition(is_null() || is_array());
+    // precondition(is_null() || is_array());
     return array_iterator(this, 0);
 }
 
 inline Json::array_iterator Json::aend() {
-    //////masstree_preconditiondition(is_null() || is_array());
+    // precondition(is_null() || is_array());
     ArrayJson *aj = ajson();
     return array_iterator(this, aj ? aj->size : 0);
 }
@@ -3106,21 +3069,21 @@ inline Json& Json::operator-=(double x) {
     return subtract(x);
 }
 inline Json& Json::operator+=(const Json& x) {
-    if (x.is_unsigned())
-        add(u_.u.x);
-    else if (x.is_int())
-        add(u_.i.x);
-    else if (!x.is_null())
-        add(x.as_d());
+    if (!x.is_null()) {
+        // XXX what if both are integers
+        force_number();
+        u_.d.x = as_d() + x.as_d();
+        u_.d.type = j_double;
+    }
     return *this;
 }
 inline Json& Json::operator-=(const Json& x) {
-    if (x.is_unsigned())
-        subtract(u_.u.x);
-    else if (x.is_int())
-        subtract(u_.i.x);
-    else if (!x.is_null())
-        subtract(x.as_d());
+    if (!x.is_null()) {
+        // XXX what if both are integers
+        force_number();
+        u_.d.x = as_d() - x.as_d();
+        u_.d.type = j_double;
+    }
     return *this;
 }
 inline Json operator+(Json x) {

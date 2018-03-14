@@ -25,11 +25,21 @@ namespace Masstree {
 template <typename P>
 class query_table {
   public:
-    typedef P parameters_type;
+    typedef P param_type;
     typedef node_base<P> node_type;
     typedef typename P::threadinfo_type threadinfo;
     typedef unlocked_tcursor<P> unlocked_cursor_type;
     typedef tcursor<P> cursor_type;
+
+  //huanchen-static
+  typedef stcursor<P> static_cursor_type;
+  typedef stcursor_multivalue<P> static_multivalue_cursor_type;
+  typedef stcursor_dynamicvalue<P> static_dynamicvalue_cursor_type;
+  typedef stcursor_scan<P> static_cursor_scan_type;
+  typedef stcursor_scan_multivalue<P> static_multivalue_cursor_scan_type;
+  typedef stcursor_scan_dynamicvalue<P> static_dynamicvalue_cursor_scan_type;
+  typedef stcursor_merge<P> static_cursor_merge_type;
+  typedef stcursor_merge_dynamicvalue<P> static_cursor_merge_dynamicvalue_type;
 
     query_table() {
     }
@@ -46,6 +56,10 @@ class query_table {
     }
     void destroy(threadinfo& ti) {
         table_.destroy(ti);
+    }
+    //huanchen
+    void destroy_novalue(threadinfo& ti) {
+        table_.destroy_novalue(ti);
     }
 
     void findpivots(Str* pv, int npv) const;

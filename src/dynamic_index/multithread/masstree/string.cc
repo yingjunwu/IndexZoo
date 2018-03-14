@@ -880,9 +880,9 @@ String::mutable_c_str()
     should be considered a programming error; a future version may generate
     a warning for this case).
 
-    @note String::substr() is intended to behave like Perl's substr(). */
+    @note String::substring() is intended to behave like Perl's substr(). */
 String
-String::substr(int pos, int len) const
+String::substring(int pos, int len) const
 {
     if (pos < 0)
         pos += _r.length;
@@ -1375,12 +1375,6 @@ String String::decode_base64() const {
     StringAccum sa;
     if (!decode_base64(sa))
         return String();
-    return sa.take_string();
-}
-
-String String::encode_uri_component() const {
-    StringAccum sa;
-    encode_uri_component(sa);
     return sa.take_string();
 }
 

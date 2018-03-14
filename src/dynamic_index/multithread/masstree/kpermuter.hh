@@ -30,12 +30,6 @@ class identity_kpermuter {
     int operator[](int i) const {
         return i;
     }
-    bool operator==(const identity_kpermuter&) const {
-        return true;
-    }
-    bool operator!=(const identity_kpermuter&) const {
-        return false;
-    }
 };
 
 template <int C> struct sized_kpermuter_info {};
@@ -260,13 +254,6 @@ template <int width> class kpermuter {
 
     lcdf::String unparse() const;
 
-    bool operator==(const kpermuter<width>& x) const {
-        return x_ == x.x_;
-    }
-    bool operator!=(const kpermuter<width>& x) const {
-        return !(*this == x);
-    }
-
     static inline int size(value_type p) {
         return p & 15;
     }
@@ -311,13 +298,13 @@ template <typename T> struct has_permuter_type {
 template <typename T, bool HP = has_permuter_type<T>::value> struct key_permuter {};
 template <typename T> struct key_permuter<T, true> {
     typedef typename T::permuter_type type;
-    static type permutation(const T& n) {
+    static type permutation(const T &n) {
         return n.permutation();
     }
 };
 template <typename T> struct key_permuter<T, false> {
     typedef identity_kpermuter type;
-    static type permutation(const T& n) {
+    static type permutation(const T &n) {
         return identity_kpermuter(n.size());
     }
 };

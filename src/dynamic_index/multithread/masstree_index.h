@@ -16,57 +16,69 @@
 
 #include "base_index.h"
 
-extern volatile mrcu_epoch_type active_epoch;
+extern volatile uint64_t globalepoch;
+extern volatile bool recovering;
+extern thread_local threadinfo *ti_;
 
 namespace dynamic_index {
 namespace multithread {
 
-// thread_local threadinfo *ti_ = NULL;
-
 template<typename KeyT>
 class MasstreeIndex : public BaseIndex<KeyT> {
-  
-  struct masstree_params : public Masstree::nodeparams<> {
-    typedef uintptr_t value_type;
-    typedef Masstree::value_print<value_type> value_print_type;
-    typedef ::threadinfo threadinfo_type;
-  };
-  typedef Masstree::basic_table<masstree_params> Table;
-  typedef lcdf::Str Str;
 
 public:
   MasstreeIndex() {
-    main_ti_ = threadinfo::make(threadinfo::TI_MAIN, -1);
-    table_.initialize(*main_ti_);
+    container_ = new Masstree::default_table();
+
+    threadinfo *main_ti = threadinfo::make(threadinfo::TI_MAIN, -1);
+    container_->initialize(*main_ti);
   }
 
   virtual ~MasstreeIndex() {
+    delete container_;
+    container_ = nullptr;
   }
 
-  virtual void prepare_threads(const size_t thread_count) final {
-
-  }
+  virtual void prepare_threads(const size_t thread_count) final {}
 
   virtual void register_thread(const size_t thread_id) final {
 
-    // std::lock_guard<std::mutex> guard(mutex_);
-    // static int idx = 0;
-    // if (ti_ == NULL) {
-    //   ti_ = threadinfo::make(threadinfo::TI_PROCESS, idx++);
-    // }
+    std::lock_guard<std::mutex> guard(mutex_);
+    static int idx = 0;
+    if (ti_ == nullptr) {
+      ti_ = threadinfo::make(threadinfo::TI_PROCESS, idx++);
+    }
   }
 
   virtual void insert(const KeyT &key, const Uint64 &value) final {
     
-    // typename Table::cursor_type lp(table_, key->data(), key->len());
+    typename Masstree::default_table::cursor_type lp(container_->table(), (char*)(&key), sizeof(key));
+    bool found = lp.find_insert(*ti_);
+    if (!found) {
+      ti_->advance_timestamp(lp.node_timestamp());
+      qtimes_.ts = ti_->update_timestamp();
+      qtimes_.prev_ts = 0;
+    }
+    else {
+      qtimes_.ts = ti_->update_timestamp(lp.value()->timestamp());
+      qtimes_.prev_ts = lp.value()->timestamp();
+      lp.value()->deallocate_rcu(*ti_);
+    }
     
-    // lp.value() = (uintptr_t)key;
-    // lp.finish(1, *ti);
+    lp.value() = row_type::create1(Str((char*)(&value), sizeof(value)), qtimes_.ts, *ti_);
+    lp.finish(1, *ti_);
 
   }
 
   virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
 
+    Str value;
+    typename Masstree::default_table::unlocked_cursor_type lp(container_->table(), (char*)(&key), sizeof(key));
+    bool found = lp.find_unlocked(*ti_);
+    if (found) {
+      value = lp.value()->col(0);
+      values.push_back(*(Uint64*)(value.s));
+    }
   }
 
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
@@ -83,10 +95,9 @@ public:
   }
 
 private:
-  Masstree::basic_table<masstree_params> table_;
-  std::mutex mutex_;
-  threadinfo *main_ti_;
-
+    Masstree::default_table *container_;
+    std::mutex mutex_;
+    loginfo::query_times qtimes_;
 };
 
 }

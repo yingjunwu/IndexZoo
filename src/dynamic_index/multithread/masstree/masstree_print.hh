@@ -65,10 +65,10 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 
     static const char* modstates[] = {"", "-", "D"};
     char keybuf[MASSTREE_MAXKEYLEN];
-    fprintf(f, "%s%*sleaf %p: %d %s, version %" PRIx64 "%s, permutation %s, ",
+    fprintf(f, "%s%*sleaf %p: %d %s, version %x%s, permutation %s, ",
             prefix, indent, "", this,
             perm.size(), perm.size() == 1 ? "key" : "keys",
-            (uint64_t) v.version_value(),
+            v.version_value(),
             modstate_ <= 2 ? modstates[modstate_] : "??",
             perm.unparse().c_str());
     fprintf(f, "parent %p, prev %p, next %p ", parent_, prev_, next_.ptr);
@@ -103,9 +103,7 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
             fprintf(f, "%s%*s%.*s = []%s\n", prefix, indent + 2, "", l, keybuf, xbuf);
         else if (is_layer(p)) {
             fprintf(f, "%s%*s%.*s = SUBTREE%s\n", prefix, indent + 2, "", l, keybuf, xbuf);
-            node_base<P> *n = lv.layer();
-            while (!n->is_root())
-                n = n->maybe_parent();
+            node_base<P> *n = lv.layer()->unsplit_ancestor();
             n->print(f, prefix, indent + 4, kdepth + key_type::ikey_size);
         } else {
             typename P::value_type tvx = lv.value();
@@ -127,9 +125,9 @@ void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
         memcpy(&copy, this, sizeof(copy));
 
     char keybuf[MASSTREE_MAXKEYLEN];
-    fprintf(f, "%s%*sinternode %p%s: %d keys, version %" PRIx64 ", parent %p",
+    fprintf(f, "%s%*sinternode %p%s: %d keys, version %x, parent %p",
             prefix, indent, "", this, this->deleted() ? " [DELETED]" : "",
-            copy.size(), (uint64_t) copy.version_value(), copy.parent_);
+            copy.size(), copy.version_value(), copy.parent_);
     if (P::debug_level > 0) {
         kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
         fprintf(f, " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
