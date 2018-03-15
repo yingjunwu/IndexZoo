@@ -8,7 +8,7 @@
 namespace static_index {
 
 template<typename KeyT, typename ValueT>
-class InterpolationIndex : public BaseStaticIndex<KeyT> {
+class InterpolationIndex : public BaseStaticIndex<KeyT, ValueT> {
 
   struct Stats {
 
@@ -40,20 +40,8 @@ class InterpolationIndex : public BaseStaticIndex<KeyT> {
     uint64_t find_op_guess_distance_;
   };
 
-  struct KeyValuePair {
-    KeyValuePair() : key_(0), value_(0) {}
-    KeyValuePair(const KeyT key, const Uint64 value) : key_(key), value_(value) {}
-
-    KeyT key_;
-    Uint64 value_;
-  };
-
-  static bool compare_func(KeyValuePair &lhs, KeyValuePair &rhs) {
-    return lhs.key_ < rhs.key_;
-  }
-
 public:
-  InterpolationIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_segments = 1) : table_ptr_(table_ptr), container_(nullptr), size_(0), capacity_(0) {
+  InterpolationIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_segments = 1) : BaseStaticIndex<KeyT, ValueT>(table_ptr) {
 
     assert(num_segments >= 1);
 
@@ -67,8 +55,6 @@ public:
   }
 
   virtual ~InterpolationIndex() {
-    delete[] container_;
-    container_ = nullptr;
 
     delete[] segment_key_boundaries_;
     segment_key_boundaries_ = nullptr;
@@ -85,7 +71,7 @@ public:
 
     stats_.increment_find_op_counter();
 
-    if (size_ == 0) {
+    if (this->size_ == 0) {
       return;
     }
 
@@ -96,8 +82,8 @@ public:
     // all keys are equal
     if (segment_key_boundaries_[0] == segment_key_boundaries_[num_segments_]) {
       if (segment_key_boundaries_[0] == key) {
-        for (size_t i = 0; i < size_; ++i) {
-          values.push_back(container_[i].value_);
+        for (size_t i = 0; i < this->size_; ++i) {
+          values.push_back(this->container_[i].value_);
         }
       }
       return;
@@ -131,25 +117,25 @@ public:
     int guess = int((key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1) + segment_offset_boundaries_[segment_id]);
 
     // TODO: workaround!!
-    if (guess >= size_) {
-      guess = size_ - 1;
+    if (guess >= this->size_) {
+      guess = this->size_ - 1;
     }
 
     int origin_guess = guess;
     
     // if the guess is correct
-    if (container_[guess].key_ == key) {
+    if (this->container_[guess].key_ == key) {
 
       stats_.measure_find_op_guess_distance(origin_guess, guess);
 
-      values.push_back(container_[guess].value_);
+      values.push_back(this->container_[guess].value_);
       
       // move left
       int guess_lhs = guess - 1;
       while (guess_lhs >= 0) {
 
-        if (container_[guess_lhs].key_ == key) {
-          values.push_back(container_[guess_lhs].value_);
+        if (this->container_[guess_lhs].key_ == key) {
+          values.push_back(this->container_[guess_lhs].value_);
           guess_lhs -= 1;
         } else {
           break;
@@ -157,10 +143,10 @@ public:
       }
       // move right
       int guess_rhs = guess + 1;
-      while (guess_rhs < size_ - 1) {
+      while (guess_rhs < this->size_ - 1) {
 
-        if (container_[guess_rhs].key_ == key) {
-          values.push_back(container_[guess_rhs].value_);
+        if (this->container_[guess_rhs].key_ == key) {
+          values.push_back(this->container_[guess_rhs].value_);
           guess_rhs += 1;
         } else {
           break;
@@ -168,15 +154,15 @@ public:
       }
     }
     // if the guess is larger than the key
-    else if (container_[guess].key_ > key) {
+    else if (this->container_[guess].key_ > key) {
       // move left
       guess -= 1;
       while (guess >= 0) {
 
-        if (container_[guess].key_ < key) {
+        if (this->container_[guess].key_ < key) {
           break;
         }
-        else if (container_[guess].key_ > key) {
+        else if (this->container_[guess].key_ > key) {
           guess -= 1;
           continue;
         } 
@@ -184,7 +170,7 @@ public:
 
           stats_.measure_find_op_guess_distance(origin_guess, guess);
 
-          values.push_back(container_[guess].value_);
+          values.push_back(this->container_[guess].value_);
           guess -= 1;
           continue;
         }
@@ -194,12 +180,12 @@ public:
     else {
       // move right
       guess += 1;
-      while (guess < size_ - 1) {
+      while (guess < this->size_ - 1) {
 
-        if (container_[guess].key_ > key) {
+        if (this->container_[guess].key_ > key) {
           break;
         }
-        else if (container_[guess].key_ < key) {
+        else if (this->container_[guess].key_ < key) {
           guess += 1;
           continue;
         }
@@ -207,7 +193,7 @@ public:
           
           stats_.measure_find_op_guess_distance(origin_guess, guess);
 
-          values.push_back(container_[guess].value_);
+          values.push_back(this->container_[guess].value_);
           guess += 1;
           continue;
         }
@@ -219,7 +205,7 @@ public:
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
     assert(lhs_key < rhs_key);
 
-    if (size_ == 0) {
+    if (this->size_ == 0) {
       return;
     }
 
@@ -230,8 +216,8 @@ public:
     // all keys are equal
     if (segment_key_boundaries_[0] == segment_key_boundaries_[num_segments_]) {
       if (segment_key_boundaries_[0] >= lhs_key && segment_key_boundaries_[0] <= rhs_key) {
-        for (size_t i = 0; i < size_; ++i) {
-          values.push_back(container_[i].value_);
+        for (size_t i = 0; i < this->size_; ++i) {
+          values.push_back(this->container_[i].value_);
         }
       }
       return;
@@ -264,14 +250,14 @@ public:
     int guess = int((lhs_key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1));
 
     // if the guess is larger than or equal to lhs_key
-    if (container_[guess].key_ >= lhs_key) {
-      values.push_back(container_[guess].value_);
+    if (this->container_[guess].key_ >= lhs_key) {
+      values.push_back(this->container_[guess].value_);
       
       // move left
       int guess_lhs = guess - 1;
       while (guess_lhs >= 0) {
-        if (container_[guess_lhs].key_ >= lhs_key) {
-          values.push_back(container_[guess_lhs].value_);
+        if (this->container_[guess_lhs].key_ >= lhs_key) {
+          values.push_back(this->container_[guess_lhs].value_);
           guess_lhs -= 1;
         } else {
           break;
@@ -279,9 +265,9 @@ public:
       }
       // move right
       int guess_rhs = guess + 1;
-      while (guess_rhs < size_ - 1) {
-        if (container_[guess_rhs].key_ <= rhs_key) {
-          values.push_back(container_[guess_rhs].value_);
+      while (guess_rhs < this->size_ - 1) {
+        if (this->container_[guess_rhs].key_ <= rhs_key) {
+          values.push_back(this->container_[guess_rhs].value_);
           guess_rhs += 1;
         } else {
           break;
@@ -292,16 +278,16 @@ public:
     else {
       // move right
       guess += 1;
-      while (guess < size_ - 1) {
-        if (container_[guess].key_ < lhs_key) {
+      while (guess < this->size_ - 1) {
+        if (this->container_[guess].key_ < lhs_key) {
           guess += 1;
           continue;
         }
-        else if (container_[guess].key_ > rhs_key) {
+        else if (this->container_[guess].key_ > rhs_key) {
           break;
         }
         else {
-          values.push_back(container_[guess].value_);
+          values.push_back(this->container_[guess].value_);
           guess += 1;
           continue;
         }
@@ -311,50 +297,33 @@ public:
   }
 
   virtual void scan(const KeyT &key, std::vector<Uint64> &values) final {
-    for (size_t i = 0; i < size_; ++i) {
-      if (container_[i].key_ == key) {
-        values.push_back(container_[i].value_);
+    for (size_t i = 0; i < this->size_; ++i) {
+      if (this->container_[i].key_ == key) {
+        values.push_back(this->container_[i].value_);
       }
     }
   }
 
   virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) final {
-    for (int i = size_ - 1; i >= 0; --i) {
-      if (container_[i].key_ == key) {
-        values.push_back(container_[i].value_);
+    for (int i = this->size_ - 1; i >= 0; --i) {
+      if (this->container_[i].key_ == key) {
+        values.push_back(this->container_[i].value_);
       }
     }
   }
 
-  virtual size_t size() const final {
-    return size_;
-  }
-
   virtual void reorganize() final {
 
-    assert(container_ == nullptr && size_ == 0 && capacity_ == 0);
+    this->base_reorganize();
 
-    capacity_ = table_ptr_->size();
-    container_ = new KeyValuePair[capacity_];
+    segment_key_boundaries_[0] = this->container_[0].key_; // min value
+    segment_key_boundaries_[num_segments_] = this->container_[this->size_ - 1].key_; // max value
 
-    DataTableIterator<KeyT, ValueT> iterator(table_ptr_);
-    while (iterator.has_next()) {
-      auto entry = iterator.next();
-      container_[size_].key_ = *(entry.key_);
-      container_[size_].value_ = entry.offset_;
-      ++size_;
-    }
-
-
-    std::sort(container_, container_ + size_, compare_func);
-    segment_key_boundaries_[0] = container_[0].key_; // min value
-    segment_key_boundaries_[num_segments_] = container_[size_ - 1].key_; // max value
-
-    int key_range = container_[size_ - 1].key_ - container_[0].key_;
+    int key_range = this->container_[this->size_ - 1].key_ - this->container_[0].key_;
     int segment_key_range = key_range / num_segments_;
 
     for (size_t i = 1; i < num_segments_; ++i) {
-      segment_key_boundaries_[i] = container_[0].key_ + segment_key_range * i;
+      segment_key_boundaries_[i] = this->container_[0].key_ + segment_key_range * i;
     }
 
     size_t current_offset = 0;
@@ -362,20 +331,20 @@ public:
     segment_offset_boundaries_[0] = current_offset;
 
     for (size_t i = 0; i < num_segments_ - 1; ++i) {
-      while (container_[current_offset].key_ < segment_key_boundaries_[i + 1]) {
+      while (this->container_[current_offset].key_ < segment_key_boundaries_[i + 1]) {
         ++segment_sizes_[i];
         ++current_offset;
       }
       segment_offset_boundaries_[i + 1] = current_offset;
     }
 
-    segment_sizes_[num_segments_ - 1] = size_ - current_offset;
+    segment_sizes_[num_segments_ - 1] = this->size_ - current_offset;
 
   }
 
   virtual void print() const final {
-    for (size_t i = 0; i < size_; ++i) {
-      std::cout << container_[i].key_ << " " << container_[i].value_ << std::endl;
+    for (size_t i = 0; i < this->size_; ++i) {
+      std::cout << this->container_[i].key_ << " " << this->container_[i].value_ << std::endl;
     }
   }
 
@@ -388,12 +357,6 @@ public:
   }
 
 private:
-
-  DataTable<KeyT, ValueT> *table_ptr_;
-
-  KeyValuePair *container_;
-  size_t size_;
-  size_t capacity_;
 
   // there are num_segments_ + 1 key boundaries in total
   KeyT *segment_key_boundaries_; 

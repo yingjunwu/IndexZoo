@@ -69,8 +69,8 @@ static std::string get_dynamic_index_name(const DynamicIndexType index_type) {
   }
 }
 
-template<typename KeyT>
-static BaseStaticIndex<KeyT>* create_static_index(const StaticIndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const size_t segment_count = 1) {
+template<typename KeyT, typename ValueT>
+static BaseStaticIndex<KeyT, ValueT>* create_static_index(const StaticIndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const size_t segment_count = 1) {
   if (index_type == StaticIndexType::InterpolationIndexType) {
 
     assert(segment_count != 0);

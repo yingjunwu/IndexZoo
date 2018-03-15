@@ -230,7 +230,7 @@ typedef Uint64 ValueT;
 
 // table and index
 std::unique_ptr<DataTable<KeyT, ValueT>> data_table(nullptr);
-std::unique_ptr<BaseStaticIndex<KeyT>> data_index(nullptr);
+std::unique_ptr<BaseStaticIndex<KeyT, ValueT>> data_index(nullptr);
 
 void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
@@ -438,7 +438,7 @@ int main(int argc, char* argv[]) {
 
   data_table.reset(new DataTable<KeyT, ValueT>());
 
-  data_index.reset(create_static_index<KeyT>(config.index_type_, data_table.get(), config.segment_count_));
+  data_index.reset(create_static_index<KeyT, ValueT>(config.index_type_, data_table.get(), config.segment_count_));
 
   run_workload(config);
   

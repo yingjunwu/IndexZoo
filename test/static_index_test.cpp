@@ -29,8 +29,8 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
 
   std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
     new DataTable<uint64_t, uint64_t>());
-  std::unique_ptr<BaseStaticIndex<uint64_t>> data_index(
-    create_static_index<uint64_t>(index_type, data_table.get(), 1));
+  std::unique_ptr<BaseStaticIndex<uint64_t, uint64_t>> data_index(
+    create_static_index<uint64_t, uint64_t>(index_type, data_table.get(), 1));
 
   std::unordered_map<uint64_t, std::pair<Uint64, uint64_t>> validation_set;
   
@@ -90,8 +90,8 @@ TEST_F(StaticIndexTest, NonUniqueKeyTest) {
 
     std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
       new DataTable<uint64_t, uint64_t>());
-    std::unique_ptr<BaseStaticIndex<uint64_t>> data_index(
-      create_static_index<uint64_t>(index_type, data_table.get(), 1));
+    std::unique_ptr<BaseStaticIndex<uint64_t, uint64_t>> data_index(
+      create_static_index<uint64_t, uint64_t>(index_type, data_table.get(), 1));
 
     std::unordered_map<uint64_t, std::unordered_map<Uint64, uint64_t>> validation_set;
     
