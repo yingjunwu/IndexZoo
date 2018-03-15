@@ -65,13 +65,33 @@ void print_float(float *data, const size_t size) {
   std::cout << std::endl;
 }
 
+bool is_aligned(void **data) {
+  printf("data addr = %p, %d\n", data, int(uintptr_t(data) % 32));
+  return uintptr_t(data) % 32 == 0;
+}
+
+inline bool
+is_aligned(const void * ptr, std::uintptr_t alignment) noexcept {
+    auto iptr = reinterpret_cast<std::uintptr_t>(ptr);
+    return !(iptr % alignment);
+}
+
 int main(int argc, char* argv[]) {
   TimeMeasurer timer;
   
   size_t size = 1024 * 1024;
-  float *a = new float[size];
-  float *b = new float[size];
-  float *c = new float[size];
+  // float *a = new float[size];
+  // float *b = new float[size];
+  // float *c = new float[size];
+
+  float *a = (float*)aligned_alloc(64, size * sizeof(float));
+  float *b = (float*)aligned_alloc(64, size * sizeof(float));
+  float *c = (float*)aligned_alloc(64, size * sizeof(float));
+
+
+  printf("a addr = %p, is aligned = %d\n", &a, is_aligned((void**)&a));
+  printf("b addr = %p, is aligned = %d\n", &b, is_aligned((void**)&b));
+  printf("c addr = %p, is aligned = %d\n", &c, is_aligned((void**)&c));
 
   timer.tic();
 
