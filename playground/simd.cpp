@@ -4,7 +4,7 @@
 #include <cstring>
 
 #include <immintrin.h>
-
+#include <unistd.h>
 #include "time_measurer.h"
 
 const size_t SIMD_REGISTER_SIZE = 256;
@@ -72,6 +72,7 @@ bool is_aligned(void **data) {
 
 inline bool
 is_aligned(const void * ptr, std::uintptr_t alignment) noexcept {
+  printf("ptr = %p\n", ptr);
     auto iptr = reinterpret_cast<std::uintptr_t>(ptr);
     return !(iptr % alignment);
 }
@@ -84,26 +85,33 @@ int main(int argc, char* argv[]) {
   // float *b = new float[size];
   // float *c = new float[size];
 
-  float *a = (float*)aligned_alloc(64, size * sizeof(float));
-  float *b = (float*)aligned_alloc(64, size * sizeof(float));
-  float *c = (float*)aligned_alloc(64, size * sizeof(float));
+  long pagesize = sysconf(_SC_PAGE_SIZE);
+  std::cout << "size = " << pagesize << std::endl;
 
+  float *a, *b, *c;
+  posix_memalign((void**)&a, pagesize, 4 * pagesize);
+  posix_memalign((void**)&b, pagesize, 4 * pagesize);
+  posix_memalign((void**)&c, pagesize, 4 * pagesize);
 
-  printf("a addr = %p, is aligned = %d\n", &a, is_aligned((void**)&a));
-  printf("b addr = %p, is aligned = %d\n", &b, is_aligned((void**)&b));
-  printf("c addr = %p, is aligned = %d\n", &c, is_aligned((void**)&c));
+  // float *a = (float*)aligned_alloc(64, size * sizeof(float));
+  // float *b = (float*)aligned_alloc(64, size * sizeof(float));
+  // float *c = (float*)aligned_alloc(64, size * sizeof(float));
 
-  timer.tic();
+  printf("a addr = %p, is aligned = %d, %d\n", &a, is_aligned((void**)&a), is_aligned(&a, pagesize));
+  printf("b addr = %p, is aligned = %d, %d\n", &b, is_aligned((void**)&b), is_aligned(&b, pagesize));
+  printf("c addr = %p, is aligned = %d, %d\n", &c, is_aligned((void**)&c), is_aligned(&c, pagesize));
 
-  set_float(a, size, 0.1);
-  set_float(b, size, 0.2);
-  reset_float(c, size);
+  // timer.tic();
 
-  add_float(a, b, size, c);
-  // add_float_simd(a, b, size, c);
+  // set_float(a, size, 0.1);
+  // set_float(b, size, 0.2);
+  // reset_float(c, size);
 
-  timer.toc();
-  timer.print_us();
+  // add_float(a, b, size, c);
+  // // add_float_simd(a, b, size, c);
+
+  // timer.toc();
+  // timer.print_us();
 
   // print_float(c, size);
 
