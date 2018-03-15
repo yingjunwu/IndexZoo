@@ -2,14 +2,14 @@
 
 #include "libcuckoo/cuckoohash_map.hh"
 
-#include "base_index.h"
+#include "base_dynamic_index.h"
 
 
 namespace dynamic_index {
 namespace multithread {
 
 template<typename KeyT>
-class LibcuckooIndex : public BaseIndex<KeyT> {
+class LibcuckooIndex : public BaseDynamicIndex<KeyT> {
 
 public:
   LibcuckooIndex(const size_t size_hint) : container_(size_hint) {}

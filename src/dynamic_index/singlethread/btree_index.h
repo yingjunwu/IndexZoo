@@ -6,13 +6,13 @@
 #include <iostream>
 #include <queue>
 
-#include "base_index.h"
+#include "base_dynamic_index.h"
 
 namespace dynamic_index {
 namespace singlethread {
 
 template<typename KeyT>
-class BtreeIndex : public BaseIndex<KeyT> {
+class BtreeIndex : public BaseDynamicIndex<KeyT> {
 
 //////////////////////////////////////////////////////////////////////
 //// BEGIN INTERNAL DATA STRUCTURES

@@ -126,7 +126,7 @@ uint64_t *operation_counts = nullptr;
 
 // table and index
 std::unique_ptr<DataTable<KeyT, ValueT>> data_table(nullptr);
-std::unique_ptr<BaseIndex<KeyT>> data_index(nullptr);
+std::unique_ptr<BaseDynamicIndex<KeyT>> data_index(nullptr);
 
 void run_inserter_thread(const uint64_t &thread_id, const Config &config) {
 

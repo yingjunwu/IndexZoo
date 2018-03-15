@@ -36,7 +36,7 @@ TEST_F(DynamicIndexTest, UniqueKeyTest) {
 
     std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
       new DataTable<uint64_t, uint64_t>());
-    std::unique_ptr<BaseIndex<uint64_t>> data_index(
+    std::unique_ptr<BaseDynamicIndex<uint64_t>> data_index(
       create_dynamic_index<uint64_t>(index_type, data_table.get()));
 
     data_index->prepare_threads(1);
@@ -102,7 +102,7 @@ TEST_F(DynamicIndexTest, NonUniqueKeyTest) {
 
     std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
       new DataTable<uint64_t, uint64_t>());
-    std::unique_ptr<BaseIndex<uint64_t>> data_index(
+    std::unique_ptr<BaseDynamicIndex<uint64_t>> data_index(
       create_dynamic_index<uint64_t>(index_type, data_table.get()));
 
     data_index->prepare_threads(1);
@@ -159,7 +159,7 @@ TEST_F(DynamicIndexTest, NonUniqueKeyTest) {
 
 //     std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
 //       new DataTable<uint64_t, uint64_t>());
-//     std::unique_ptr<BaseIndex<uint64_t>> data_index(
+//     std::unique_ptr<BaseDynamicIndex<uint64_t>> data_index(
 //       create_index<uint64_t>(index_type, data_table.get()));
 
 //     data_index->prepare_threads(1);

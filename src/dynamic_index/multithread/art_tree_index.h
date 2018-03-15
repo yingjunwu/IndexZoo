@@ -2,7 +2,7 @@
 
 #include "art_tree/Tree.h"
 
-#include "base_index.h"
+#include "base_dynamic_index.h"
 #include "data_table.h"
 
 
@@ -10,7 +10,7 @@ namespace dynamic_index {
 namespace multithread {
 
 template<typename KeyT, typename ValueT>
-class ArtTreeIndex : public BaseIndex<KeyT> {
+class ArtTreeIndex : public BaseDynamicIndex<KeyT> {
 
 
 static void load_key_internal(void *ctx, TID tid, art::Key &tree_key) {

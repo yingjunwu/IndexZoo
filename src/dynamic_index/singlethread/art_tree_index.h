@@ -2,13 +2,13 @@
 
 #include "art_tree/art.h"
 
-#include "base_index.h"
+#include "base_dynamic_index.h"
 
 namespace dynamic_index {
 namespace singlethread {
 
 template<typename KeyT>
-class ArtTreeIndex : public BaseIndex<KeyT> {
+class ArtTreeIndex : public BaseDynamicIndex<KeyT> {
 
 public:
   ArtTreeIndex(const size_t size_hint) {

@@ -14,7 +14,7 @@
 #include "masstree/value_bag.hh"
 #include "masstree/kvthread.hh"
 
-#include "base_index.h"
+#include "base_dynamic_index.h"
 
 extern volatile uint64_t globalepoch;
 extern volatile bool recovering;
@@ -24,7 +24,7 @@ namespace dynamic_index {
 namespace multithread {
 
 template<typename KeyT>
-class MasstreeIndex : public BaseIndex<KeyT> {
+class MasstreeIndex : public BaseDynamicIndex<KeyT> {
 
 public:
   MasstreeIndex() {

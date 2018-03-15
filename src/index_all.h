@@ -3,7 +3,6 @@
 #include <cassert>
 
 #include "static_index/interpolation_index.h"
-#include "static_index/interpolation_index_v1.h"
 // #include "static_index/fast_index.h"
 
 #include "dynamic_index/singlethread/btree_index.h"
@@ -19,7 +18,6 @@
 // static indexes
 enum class StaticIndexType {
   InterpolationIndexType = 0,
-  InterpolationIndexV1Type,
   KAryIndexType,
   // FastIndexType,
 
@@ -42,8 +40,6 @@ enum class DynamicIndexType {
 static std::string get_static_index_name(const StaticIndexType index_type) {
   if (index_type == StaticIndexType::InterpolationIndexType) {
     return "static - interpolation index";
-  } else if (index_type == StaticIndexType::InterpolationIndexV1Type) {
-    return "static - interpolation index (v1)";
   } else if (index_type == StaticIndexType::KAryIndexType) {
     return "static - k-ary index";
   } else {
@@ -74,17 +70,13 @@ static std::string get_dynamic_index_name(const DynamicIndexType index_type) {
 }
 
 template<typename KeyT>
-static BaseIndex<KeyT>* create_static_index(const StaticIndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const size_t segment_count = 0) {
+static BaseStaticIndex<KeyT>* create_static_index(const StaticIndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const size_t segment_count = 1) {
   if (index_type == StaticIndexType::InterpolationIndexType) {
 
     assert(segment_count != 0);
 
     return new static_index::InterpolationIndex<KeyT, Uint64>(table_ptr, segment_count);
   
-  } else if (index_type == StaticIndexType::InterpolationIndexV1Type) {
-
-    return new static_index::InterpolationIndexV1<KeyT, Uint64>(table_ptr);
-
   } else if (index_type == StaticIndexType::KAryIndexType) {
 
     return nullptr;
@@ -97,7 +89,7 @@ static BaseIndex<KeyT>* create_static_index(const StaticIndexType index_type, Da
 
 
 template<typename KeyT>
-static BaseIndex<KeyT>* create_dynamic_index(const DynamicIndexType index_type, DataTable<KeyT, uint64_t> *table_ptr) {
+static BaseDynamicIndex<KeyT>* create_dynamic_index(const DynamicIndexType index_type, DataTable<KeyT, uint64_t> *table_ptr) {
   if (index_type == DynamicIndexType::SinglethreadBtreeIndexType) {
 
     // return new dynamic_index::singlethread::LibcuckooIndex<KeyT>();

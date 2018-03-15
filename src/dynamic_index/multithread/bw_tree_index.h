@@ -2,7 +2,7 @@
 
 #include "bw_tree/bwtree.h"
 
-#include "base_index.h"
+#include "base_dynamic_index.h"
 
 
 namespace dynamic_index {
@@ -11,7 +11,7 @@ namespace multithread {
 using namespace wangziqi2013::bwtree;
 
 template<typename KeyT>
-class BwTreeIndex : public BaseIndex<KeyT> {
+class BwTreeIndex : public BaseDynamicIndex<KeyT> {
 
 public:
   BwTreeIndex() {

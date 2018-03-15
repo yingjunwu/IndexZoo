@@ -26,7 +26,6 @@ void usage(FILE *out) {
           "   -h --help              :  print help message \n"
           "   -i --index             :  index type: \n"
           "                              -- (0) interpolation index (default) \n"
-          "                              -- (1) interpolation index v1 \n"
           "   -s --segment_count     :  segment count (for interpolation index v2) \n"
           "   -y --read_type         :  read type: \n"
           "                              -- (0) index lookup (default) \n"
@@ -231,7 +230,7 @@ typedef Uint64 ValueT;
 
 // table and index
 std::unique_ptr<DataTable<KeyT, ValueT>> data_table(nullptr);
-std::unique_ptr<BaseIndex<KeyT>> data_index(nullptr);
+std::unique_ptr<BaseStaticIndex<KeyT>> data_index(nullptr);
 
 void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 

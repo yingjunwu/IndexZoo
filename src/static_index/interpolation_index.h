@@ -3,12 +3,12 @@
 #include <algorithm>
 #include <cmath>
 
-#include "base_index.h"
+#include "base_static_index.h"
 
 namespace static_index {
 
 template<typename KeyT, typename ValueT>
-class InterpolationIndex : public BaseIndex<KeyT> {
+class InterpolationIndex : public BaseStaticIndex<KeyT> {
 
   struct Stats {
 
@@ -324,16 +324,6 @@ public:
         values.push_back(container_[i].value_);
       }
     }
-  }
-
-  // we do not support single entry insertion in static index.
-  virtual void insert(const KeyT &key, const Uint64 &value) final {
-    assert(false);
-  }
-
-  // we do not support single entry deletion in static index.
-  virtual void erase(const KeyT &key) final {
-    assert(false);
   }
 
   virtual size_t size() const final {

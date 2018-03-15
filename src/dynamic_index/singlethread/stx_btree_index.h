@@ -2,14 +2,14 @@
 
 #include "stx_btree/btree_multimap.h"
 
-#include "base_index.h"
+#include "base_dynamic_index.h"
 
 
 namespace dynamic_index {
 namespace singlethread {
 
 template<typename KeyT>
-class StxBtreeIndex : public BaseIndex<KeyT> {
+class StxBtreeIndex : public BaseDynamicIndex<KeyT> {
 
 public:
   StxBtreeIndex() {}
