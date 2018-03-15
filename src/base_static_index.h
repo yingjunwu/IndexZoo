@@ -37,13 +37,13 @@ public:
 
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) = 0;
 
-  virtual void scan(const KeyT &key, std::vector<Uint64> &values) {}
+  virtual void scan(const KeyT &key, std::vector<Uint64> &values) = 0;
 
-  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) {}
+  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) = 0;
 
   virtual void reorganize() = 0;
 
-  virtual void print() const {}
+  virtual void print() const = 0;
 
   virtual void print_stats() const {}
 

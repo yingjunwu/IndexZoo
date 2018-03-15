@@ -34,5 +34,4 @@ public:
 
   virtual void print() const {}
 
-  virtual void print_stats() const {}
 };
