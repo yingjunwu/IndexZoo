@@ -15,14 +15,14 @@ void multiply(const T *lhs, const T *rhs, const size_t size, T *ret) {
 }
 
 template<typename T>
-void compare_eq(const T *data, const size_t size, const T value, float *ret) {
+void compare_eq(const T *data, const size_t size, const T value, bool *ret) {
   for (size_t i = 0; i < size; i++) {
     ret[i] = (data[i] == value);
   }
 }
 
 template<typename T>
-void compare_lt(const T *data, const size_t size, const T value, float *ret) {
+void compare_lt(const T *data, const size_t size, const T value, bool *ret) {
   for (size_t i = 0; i < size; i++) {
     ret[i] = (data[i] < value);
   }

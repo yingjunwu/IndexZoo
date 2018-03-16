@@ -8,11 +8,7 @@
 #include "utils.h"
 
 #include "operations.h"
-#if defined(__AVX__)
-#include "operations_avx.h"
-#elif defined(__AVX2__)
-#include "operations_avx2.h"
-#endif
+#include "operations_simd.h"
 
 template<typename T>
 void set(T *data, const size_t size, const T value) {
@@ -85,18 +81,20 @@ void perform_compare(const size_t count) {
   
   T *a = alloc_align<T>(alignment, count);
   T *b = alloc_align<T>(alignment, count);
+  // bool *b =alloc_align<bool>(alignment, count);
 
   printf("addr = %p, %p\n", a, b);
   
   set_seq<T>(a, count);
   set_zero<T>(b, count);
+  // set_zero<bool>(b, count);
 
   TimeMeasurer timer;
   timer.tic();
 
   for (size_t i = 0; i < 10; ++i) {
-    // compare_eq_simd<T>(a, count, 5, b);
-    compare_eq<T>(a, count, 5, b);
+    compare_eq_simd<T>(a, count, 5, b);
+    // compare_eq<T>(a, count, 5, b);
   }
   
   timer.toc();
@@ -118,22 +116,9 @@ void perform_multiply(const T *a, const T *b, const size_t count, T *c) {
 
 int main(int argc, char* argv[]) {
 
-  #if defined(__AVX2__)
-  std::cout << "support avx2" << std::endl;
-  #elif defined(__AVX__)
-  std::cout << "support avx" << std::endl;
-  #endif
-  if(__builtin_cpu_supports("avx2")) {
-    std::cout << "supoprt avx2!!!" << std::endl;
-  }
-
-  if(__builtin_cpu_supports("avx")) {
-    std::cout << "supoprt avx!!!" << std::endl;
-  }
-  
-  // size_t count = 1024 * 1024 * 1024;
+  size_t count = 1024 * 1024 * 1024;
   // size_t count = 11;
   // perform_add<int32_t>(count);
   
-  // perform_compare<float>(count);
+  perform_compare<float>(count);
 }

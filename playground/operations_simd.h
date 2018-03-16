@@ -29,7 +29,7 @@ void add_simd<int32_t>(const int32_t *lhs, const int32_t *rhs, const size_t size
     __m256i lhs_vec = _mm256_load_si256((__m256i*)(lhs + offset));
     __m256i rhs_vec = _mm256_load_si256((__m256i*)(rhs + offset));
     __m256i ret_vec = _mm256_add_epi32(lhs_vec, rhs_vec);
-    // _mm256_store_si256((__m256i*)(ret + offset), ret_vec);
+    _mm256_store_si256((__m256i*)(ret + offset), ret_vec);
     offset += MAX_SIMD_INT32_COUNT;
   }
   if (size % MAX_SIMD_INT32_COUNT != 0) {
@@ -44,8 +44,8 @@ void add_simd<int64_t>(const int64_t *lhs, const int64_t *rhs, const size_t size
   for (size_t i = 0; i < size / MAX_SIMD_INT64_COUNT; i++) {
     __m256i lhs_vec = _mm256_load_si256((__m256i*)(lhs + offset));
     __m256i rhs_vec = _mm256_load_si256((__m256i*)(rhs + offset));
-    // __m256i ret_vec = _mm256_add_epi64(lhs_vec, rhs_vec);
-    // _mm256_store_si256((__m256i*)(ret + offset), ret_vec);
+    __m256i ret_vec = _mm256_add_epi64(lhs_vec, rhs_vec);
+    _mm256_store_si256((__m256i*)(ret + offset), ret_vec);
     offset += MAX_SIMD_INT64_COUNT;
   }
   if (size % MAX_SIMD_INT64_COUNT != 0) {
@@ -83,9 +83,9 @@ void compare_eq_simd<float>(const float *data, const size_t size, const float va
 
   size_t offset = 0;
   for (size_t i = 0; i < size / MAX_SIMD_FLOAT_COUNT; ++i) {
-    __m256 data_vec = _mm256_load_ps(data + offset);
-    __m256 ret_vec = _mm256_cmp_ps(data_vec, value_vec, _CMP_EQ_OS);
-    _mm256_store_ps(ret + offset, ret_vec);
+    volatile __m256 data_vec = _mm256_load_ps(data + offset);
+    // volatile __m256 ret_vec = _mm256_cmp_ps(data_vec, value_vec, _CMP_EQ_OS);
+    // _mm256_store_ps(ret + offset, ret_vec);
     offset += MAX_SIMD_FLOAT_COUNT;
   }
   // if (size % MAX_SIMD_FLOAT_COUNT != 0) {
