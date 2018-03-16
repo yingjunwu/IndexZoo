@@ -8,112 +8,250 @@
 #include "time_measurer.h"
 
 const size_t SIMD_REGISTER_SIZE = 256;
-const size_t MAX_SIMD_FLOAT_NUM = SIMD_REGISTER_SIZE / sizeof(float) / 8;
-const size_t MAX_SIMD_DOUBLE_NUM = SIMD_REGISTER_SIZE / sizeof(double) / 8;
+const size_t MAX_SIMD_FLOAT_COUNT = SIMD_REGISTER_SIZE / sizeof(float) / 8;
+const size_t MAX_SIMD_DOUBLE_COUNT = SIMD_REGISTER_SIZE / sizeof(double) / 8;
+const size_t MAX_SIMD_INT32_COUNT = SIMD_REGISTER_SIZE / sizeof(int32_t) / 8;
 
-
-void add_float(const float *lhs, const float *rhs, const size_t size, float *ret) {
+template<typename T>
+void add(const T *lhs, const T *rhs, const size_t size, T *ret) {
   for (size_t i = 0; i < size; i++) {
     ret[i] = lhs[i] + rhs[i];
   }
 }
 
-void add_float_simd(const float *lhs, const float *rhs, const size_t size, float *ret) {
+template<typename T>
+void multiply(const T *lhs, const T *rhs, const size_t size, T *ret) {
+  for (size_t i = 0; i < size; i++) {
+    ret[i] = lhs[i] * rhs[i];
+  }
+}
 
-  assert(size % MAX_SIMD_FLOAT_NUM == 0);
-  for (size_t i = 1024; i < size / MAX_SIMD_FLOAT_NUM; i++) {
-    size_t offset = i * MAX_SIMD_FLOAT_NUM;
-    __m256 lhs_vec = _mm256_loadu_ps(lhs + offset);
-    __m256 rhs_vec = _mm256_loadu_ps(rhs + offset);
+template<typename T>
+void compare_eq(const T *data, const size_t size, const T value, bool *ret) {
+  for (size_t i = 0; i < size; i++) {
+    ret[i] = (data[i] == value);
+  }
+}
+
+template<typename T>
+void compare_lt(const T *data, const size_t size, const T value, bool *ret) {
+  for (size_t i = 0; i < size; i++) {
+    ret[i] = (data[i] < value);
+  }
+}
+
+template<typename T>
+void compare_le(const T *data, const size_t size, const T value, bool *ret) {
+  for (size_t i = 0; i < size; i++) {
+    ret[i] = (data[i] <= value);
+  }
+}
+
+template<typename T>
+void compare_gt(const T *data, const size_t size, const T value, bool *ret) {
+  for (size_t i = 0; i < size; i++) {
+    ret[i] = (data[i] > value);
+  }
+}
+
+template<typename T>
+void compare_ge(const T *data, const size_t size, const T value, bool *ret) {
+  for (size_t i = 0; i < size; i++) {
+    ret[i] = (data[i] >= value);
+  }
+}
+
+template<typename T>
+void add_simd(const T *lhs, const T *rhs, const size_t size, T *ret);
+
+template<>
+void add_simd<float>(const float *lhs, const float *rhs, const size_t size, float *ret) {
+
+  assert(size % MAX_SIMD_FLOAT_COUNT == 0);
+  for (size_t i = 1024; i < size / MAX_SIMD_FLOAT_COUNT; i++) {
+    size_t offset = i * MAX_SIMD_FLOAT_COUNT;
+    __m256 lhs_vec = _mm256_load_ps(lhs + offset);
+    __m256 rhs_vec = _mm256_load_ps(rhs + offset);
     __m256 ret_vec = _mm256_add_ps(lhs_vec, rhs_vec);
-    _mm256_storeu_ps(ret + offset, ret_vec);
+    _mm256_store_ps(ret + offset, ret_vec);
   }
 }
 
-void multiply_float(const float *lhs, const float *rhs, const size_t size, float *ret) {
-  for (size_t i = 0; i < size; i++) {
-    ret[i] = lhs[i] * rhs[i];
+// template<>
+// void add_simd<int32_t>(const int32_t *lhs, const int32_t *rhs, const size_t size, int32_t *ret) {
+
+//   assert(size % MAX_SIMD_FLOAT_COUNT == 0);
+//   for (size_t i = 1024; i < size / MAX_SIMD_INT32_COUNT; i++) {
+//     size_t offset = i * MAX_SIMD_INT32_COUNT;
+//     __m256i lhs_vec = _mm256_load_si256(lhs + offset);
+//     __m256i rhs_vec = _mm256_load_si256(rhs + offset);
+//     __m256i ret_vec = _mm256_add_epi32(lhs_vec, rhs_vec);
+//     _mm256_store_si256(ret + offset, ret_vec);
+//   }
+// }
+
+template<typename T>
+void multiply_simd(const T *lhs, const T *rhs, const size_t size, T *ret);
+  
+template<>
+void multiply_simd<float>(const float *lhs, const float *rhs, const size_t size, float *ret) {
+
+  assert(size % MAX_SIMD_FLOAT_COUNT == 0);
+  for (size_t i = 1024; i < size / MAX_SIMD_FLOAT_COUNT; i++) {
+    size_t offset = i * MAX_SIMD_FLOAT_COUNT;
+    __m256 lhs_vec = _mm256_load_ps(lhs + offset);
+    __m256 rhs_vec = _mm256_load_ps(rhs + offset);
+    __m256 ret_vec = _mm256_mul_ps(lhs_vec, rhs_vec);
+    _mm256_store_ps(ret + offset, ret_vec);
   }
 }
 
-void multiply_float_simd(const float *lhs, const float *rhs, const size_t size, float *ret) {
-  for (size_t i = 0; i < size; i++) {
-    ret[i] = lhs[i] * rhs[i];
-  }
+
+
+template<typename T>
+void compare_eq(const T *data, const size_t size, const T value, bool *ret);
+
+template<>
+void compare_eq<float>(const float *data, const size_t size, const float value, bool *ret) {
+
 }
 
-void set_float(float *data, const size_t size, const float num) {
+template<typename T>
+void compare_lt(const T *data, const size_t size, const T value, bool *ret);
+
+template<>
+void compare_lt<float>(const float *data, const size_t size, const float value, bool *ret) {
+
+}
+
+template<typename T>
+void compare_le(const T *data, const size_t size, const T value, bool *ret);
+
+template<>
+void compare_le<float>(const float *data, const size_t size, const float value, bool *ret) {
+
+}
+
+template<typename T>
+void compare_gt(const T *data, const size_t size, const T value, bool *ret);
+
+template<>
+void compare_gt<float>(const float *data, const size_t size, const float value, bool *ret) {
+
+}
+
+template<typename T>
+void compare_ge(const T *data, const size_t size, const T value, bool *ret);
+
+template<>
+void compare_ge<float>(const float *data, const size_t size, const float value, bool *ret) {
+
+}
+
+
+template<typename T>
+void set(T *data, const size_t size, const T value) {
   for (size_t i = 0; i < size; ++i) {
-    data[i] = num;
+    data[i] = value;
   }
 }
 
-void reset_float(float *data, const size_t size) {
-  memset(data, 0, sizeof(float) * size);
+template<typename T>
+void set_zero(T *data, const size_t size) {
+  memset(data, 0, sizeof(T) * size);
 }
 
-void set_int(int *data, const size_t size, const int num) {
+template<typename T>
+void set_seq(T *data, const size_t size) {
   for (size_t i = 0; i < size; ++i) {
-    data[i] = num;
+    data[i] = i;
   }
 }
 
-void print_float(float *data, const size_t size) {
+template<typename T>
+void print(T *data, const size_t size) {
   for (size_t i = 0; i < size; ++i) {
     std::cout << data[i] << " ";
   }
   std::cout << std::endl;
 }
 
-bool is_aligned(void **data) {
-  printf("data addr = %p, %d\n", data, int(uintptr_t(data) % 32));
-  return uintptr_t(data) % 32 == 0;
+template<typename T>
+T* alloc_align(const size_t alignment, const size_t count) {
+  T *ret;
+  int rt = 0;
+  rt = posix_memalign((void**)&ret, alignment, count * sizeof(T));
+  assert(rt == 0);
+  return ret;
 }
 
-inline bool
-is_aligned(const void * ptr, std::uintptr_t alignment) noexcept {
-  printf("ptr = %p\n", ptr);
-    auto iptr = reinterpret_cast<std::uintptr_t>(ptr);
-    return !(iptr % alignment);
+inline bool is_aligned(const void* ptr, std::uintptr_t alignment) noexcept {
+  auto iptr = reinterpret_cast<std::uintptr_t>(ptr);
+  return !(iptr % alignment);
+}
+
+typedef float T;
+
+TimeMeasurer timer;
+
+void perform_add(const T *a, const T *b, const size_t count, T *c) {
+
+  timer.tic();
+
+  for (size_t i = 0; i < 10; ++i) {
+    add<T>(a, b, count, c);
+  }
+  
+  timer.toc();
+
+  timer.print_us();
+  timer.print_ms();
+
+}
+
+void perform_multiply(const T *a, const T *b, const size_t count, T *c) {
+  multiply<T>(a, b, count, c);
+  print<T>(c, count);
 }
 
 int main(int argc, char* argv[]) {
-  TimeMeasurer timer;
   
-  size_t size = 1024 * 1024;
-  // float *a = new float[size];
-  // float *b = new float[size];
-  // float *c = new float[size];
+  // size_t count = 1024 * 1024 * 1024;
+  size_t count = 8;
 
-  long pagesize = sysconf(_SC_PAGE_SIZE);
-  std::cout << "size = " << pagesize << std::endl;
+  long alignment = sysconf(_SC_PAGE_SIZE);
+  std::cout << "alignment = " << alignment << std::endl;
+  
+  T *a = alloc_align<T>(alignment, count);
+  T *b = alloc_align<T>(alignment, count);
+  T *c = alloc_align<T>(alignment, count);
 
-  float *a, *b, *c;
-  posix_memalign((void**)&a, pagesize, 4 * pagesize);
-  posix_memalign((void**)&b, pagesize, 4 * pagesize);
-  posix_memalign((void**)&c, pagesize, 4 * pagesize);
+  printf("a addr = %p, is aligned = %d\n", a, is_aligned(a, alignment));
+  printf("b addr = %p, is aligned = %d\n", b, is_aligned(b, alignment));
+  printf("c addr = %p, is aligned = %d\n", c, is_aligned(c, alignment));
 
-  // float *a = (float*)aligned_alloc(64, size * sizeof(float));
-  // float *b = (float*)aligned_alloc(64, size * sizeof(float));
-  // float *c = (float*)aligned_alloc(64, size * sizeof(float));
+  set<T>(a, count, 0.1);
+  set<T>(b, count, 0.2);
+  set_zero<T>(c, count);
 
-  printf("a addr = %p, is aligned = %d, %d\n", &a, is_aligned((void**)&a), is_aligned(&a, pagesize));
-  printf("b addr = %p, is aligned = %d, %d\n", &b, is_aligned((void**)&b), is_aligned(&b, pagesize));
-  printf("c addr = %p, is aligned = %d, %d\n", &c, is_aligned((void**)&c), is_aligned(&c, pagesize));
+  uint64_t *int_a = alloc_align<uint64_t>(alignment, 8);
+  uint64_t *int_b = alloc_align<uint64_t>(alignment, 8);
+  uint64_t *int_c = alloc_align<uint64_t>(alignment, 8);
+  
+  set_seq<uint64_t>(int_a, 8); 
+  set_seq<uint64_t>(int_b, 8);
+  set_zero<uint64_t>(int_c, 8);
 
-  // timer.tic();
+  __m256i lhs_vec = _mm256_load_si256((__m256i*)int_a);
+  __m256i rhs_vec = _mm256_load_si256((__m256i*)int_b);
+  __m256i ret_vec = _mm256_add_epi64(lhs_vec, rhs_vec);
+  __m256i *my_data = (__m256i*)int_c;
+  _mm256_store_si256(my_data, ret_vec);
+  // for (size_t i = 0; i < 8; ++i) {
+  //   std::cout << int_c[i] << std::endl;
+  // }
 
-  // set_float(a, size, 0.1);
-  // set_float(b, size, 0.2);
-  // reset_float(c, size);
-
-  // add_float(a, b, size, c);
-  // // add_float_simd(a, b, size, c);
-
-  // timer.toc();
-  // timer.print_us();
-
-  // print_float(c, size);
+  // perform_multiply(a, b, count, c);
 
   delete[] a;
   delete[] b;
