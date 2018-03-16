@@ -30,14 +30,14 @@ void multiply(const T *lhs, const T *rhs, const size_t size, T *ret) {
 }
 
 template<typename T>
-void compare_eq(const T *data, const size_t size, const T value, bool *ret) {
+void compare_eq(const T *data, const size_t size, const T value, float *ret) {
   for (size_t i = 0; i < size; i++) {
     ret[i] = (data[i] == value);
   }
 }
 
 template<typename T>
-void compare_lt(const T *data, const size_t size, const T value, bool *ret) {
+void compare_lt(const T *data, const size_t size, const T value, float *ret) {
   for (size_t i = 0; i < size; i++) {
     ret[i] = (data[i] < value);
   }
@@ -137,10 +137,10 @@ void multiply_simd<float>(const float *lhs, const float *rhs, const size_t size,
 }
 
 template<typename T>
-void compare_eq_simd(const T *data, const size_t size, const T value, bool *ret);
+void compare_eq_simd(const T *data, const size_t size, const T value, float *ret);
 
 template<>
-void compare_eq_simd<float>(const float *data, const size_t size, const float value, bool *ret) {
+void compare_eq_simd<float>(const float *data, const size_t size, const float value, float *ret) {
   
   __m256 value_vec = _mm256_set1_ps(value);
 
@@ -148,16 +148,12 @@ void compare_eq_simd<float>(const float *data, const size_t size, const float va
   for (size_t i = 0; i < size / MAX_SIMD_FLOAT_COUNT; ++i) {
     __m256 data_vec = _mm256_load_ps(data + offset);
     __m256 ret_vec = _mm256_cmp_ps(data_vec, value_vec, _CMP_EQ_OS);
-
-    // int ret_mask = _mm256_movemask_ps(ret_vec);
-    // *((int*)(ret + offset)) = ret_mask;
-    *((int*)(ret + offset)) = _mm256_movemask_ps(ret_vec);
-
+    _mm256_store_ps(ret + offset, ret_vec);
     offset += MAX_SIMD_FLOAT_COUNT;
   }
-  if (size % MAX_SIMD_FLOAT_COUNT != 0) {
-    compare_eq<float>(data + offset, size % MAX_SIMD_FLOAT_COUNT, value, ret + offset);
-  }
+  // if (size % MAX_SIMD_FLOAT_COUNT != 0) {
+  //   compare_eq<float>(data + offset, size % MAX_SIMD_FLOAT_COUNT, ret + offset);
+  // }
 }
 
 template<typename T>
@@ -278,21 +274,19 @@ void perform_compare(const size_t count) {
   long alignment = PAGE_SIZE;
   
   T *a = alloc_align<T>(alignment, count);
-  // T *b = alloc_align<T>(alignment, count);
-  bool *b = alloc_align<bool>(alignment, count);
+  T *b = alloc_align<T>(alignment, count);
 
   printf("addr = %p, %p\n", a, b);
   
   set_seq<T>(a, count);
-  // set_zero<T>(b, count);
-  set_zero<bool>(b, count);
+  set_zero<T>(b, count);
 
   TimeMeasurer timer;
   timer.tic();
 
   for (size_t i = 0; i < 10; ++i) {
-    compare_eq_simd<T>(a, count, 5, b);
-    // compare_eq<T>(a, count, 5, b);
+    // compare_eq_simd<T>(a, count, 5, b);
+    compare_eq<T>(a, count, 5, b);
   }
   
   timer.toc();
