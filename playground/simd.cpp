@@ -11,6 +11,7 @@ const size_t SIMD_REGISTER_SIZE = 256;
 const size_t MAX_SIMD_FLOAT_COUNT = SIMD_REGISTER_SIZE / sizeof(float) / 8;
 const size_t MAX_SIMD_DOUBLE_COUNT = SIMD_REGISTER_SIZE / sizeof(double) / 8;
 const size_t MAX_SIMD_INT32_COUNT = SIMD_REGISTER_SIZE / sizeof(int32_t) / 8;
+const size_t MAX_SIMD_INT64_COUNT = SIMD_REGISTER_SIZE / sizeof(int64_t) / 8;
 
 const long PAGE_SIZE = sysconf(_SC_PAGE_SIZE);
 
@@ -69,26 +70,49 @@ void add_simd(const T *lhs, const T *rhs, const size_t size, T *ret);
 template<>
 void add_simd<float>(const float *lhs, const float *rhs, const size_t size, float *ret) {
 
-  assert(size % MAX_SIMD_FLOAT_COUNT == 0);
-  for (size_t i = 1024; i < size / MAX_SIMD_FLOAT_COUNT; i++) {
-    size_t offset = i * MAX_SIMD_FLOAT_COUNT;
+  size_t offset = 0;
+  for (size_t i = 0; i < size / MAX_SIMD_FLOAT_COUNT; i++) {
     __m256 lhs_vec = _mm256_load_ps(lhs + offset);
     __m256 rhs_vec = _mm256_load_ps(rhs + offset);
     __m256 ret_vec = _mm256_add_ps(lhs_vec, rhs_vec);
     _mm256_store_ps(ret + offset, ret_vec);
+    offset += MAX_SIMD_FLOAT_COUNT;
   }
+  if (size % MAX_SIMD_FLOAT_COUNT != 0) {
+    add<float>(lhs + offset, rhs + offset, size % MAX_SIMD_FLOAT_COUNT, ret + offset);
+  }
+  
 }
 
 template<>
 void add_simd<int32_t>(const int32_t *lhs, const int32_t *rhs, const size_t size, int32_t *ret) {
 
-  assert(size % MAX_SIMD_INT32_COUNT == 0);
-  for (size_t i = 1024; i < size / MAX_SIMD_INT32_COUNT; i++) {
-    size_t offset = i * MAX_SIMD_INT32_COUNT;
+  size_t offset = 0;
+  for (size_t i = 0; i < size / MAX_SIMD_INT32_COUNT; i++) {
     __m256i lhs_vec = _mm256_load_si256((__m256i*)(lhs + offset));
     __m256i rhs_vec = _mm256_load_si256((__m256i*)(rhs + offset));
     __m256i ret_vec = _mm256_add_epi32(lhs_vec, rhs_vec);
     _mm256_store_si256((__m256i*)(ret + offset), ret_vec);
+    offset += MAX_SIMD_INT32_COUNT;
+  }
+  if (size % MAX_SIMD_INT32_COUNT != 0) {
+    add<int32_t>(lhs + offset, rhs + offset, size % MAX_SIMD_INT32_COUNT, ret + offset);
+  }
+}
+
+template<>
+void add_simd<int64_t>(const int64_t *lhs, const int64_t *rhs, const size_t size, int64_t *ret) {
+
+  size_t offset = 0;
+  for (size_t i = 0; i < size / MAX_SIMD_INT64_COUNT; i++) {
+    __m256i lhs_vec = _mm256_load_si256((__m256i*)(lhs + offset));
+    __m256i rhs_vec = _mm256_load_si256((__m256i*)(rhs + offset));
+    __m256i ret_vec = _mm256_add_epi64(lhs_vec, rhs_vec);
+    _mm256_store_si256((__m256i*)(ret + offset), ret_vec);
+    offset += MAX_SIMD_INT64_COUNT;
+  }
+  if (size % MAX_SIMD_INT64_COUNT != 0) {
+    add<int64_t>(lhs + offset, rhs + offset, size % MAX_SIMD_INT64_COUNT, ret + offset);
   }
 }
 
@@ -98,24 +122,42 @@ void multiply_simd(const T *lhs, const T *rhs, const size_t size, T *ret);
 template<>
 void multiply_simd<float>(const float *lhs, const float *rhs, const size_t size, float *ret) {
 
-  assert(size % MAX_SIMD_FLOAT_COUNT == 0);
-  for (size_t i = 1024; i < size / MAX_SIMD_FLOAT_COUNT; i++) {
-    size_t offset = i * MAX_SIMD_FLOAT_COUNT;
+    size_t offset = 0;
+  for (size_t i = 0; i < size / MAX_SIMD_FLOAT_COUNT; i++) {
     __m256 lhs_vec = _mm256_load_ps(lhs + offset);
     __m256 rhs_vec = _mm256_load_ps(rhs + offset);
     __m256 ret_vec = _mm256_mul_ps(lhs_vec, rhs_vec);
     _mm256_store_ps(ret + offset, ret_vec);
+    offset += MAX_SIMD_FLOAT_COUNT;
   }
+  if (size % MAX_SIMD_FLOAT_COUNT != 0) {
+    multiply<float>(lhs + offset, rhs + offset, size % MAX_SIMD_FLOAT_COUNT, ret + offset);
+  }
+  
 }
 
-
-
 template<typename T>
-void compare_eq(const T *data, const size_t size, const T value, bool *ret);
+void compare_eq_simd(const T *data, const size_t size, const T value, bool *ret);
 
 template<>
-void compare_eq<float>(const float *data, const size_t size, const float value, bool *ret) {
+void compare_eq_simd<float>(const float *data, const size_t size, const float value, bool *ret) {
+  
+  __m256 value_vec = _mm256_set1_ps(value);
 
+  size_t offset = 0;
+  for (size_t i = 0; i < size / MAX_SIMD_FLOAT_COUNT; ++i) {
+    __m256 data_vec = _mm256_load_ps(data + offset);
+    __m256 ret_vec = _mm256_cmp_ps(data_vec, value_vec, _CMP_EQ_OS);
+
+    // int ret_mask = _mm256_movemask_ps(ret_vec);
+    // *((int*)(ret + offset)) = ret_mask;
+    *((int*)(ret + offset)) = _mm256_movemask_ps(ret_vec);
+
+    offset += MAX_SIMD_FLOAT_COUNT;
+  }
+  if (size % MAX_SIMD_FLOAT_COUNT != 0) {
+    compare_eq<float>(data + offset, size % MAX_SIMD_FLOAT_COUNT, value, ret + offset);
+  }
 }
 
 template<typename T>
@@ -205,15 +247,14 @@ void perform_add(const size_t count) {
 
   printf("addr = %p, %p, %p\n", a, b, c);
   
-  set<T>(a, count, 0.1);
-  set<T>(b, count, 0.2);
+  set_seq<T>(a, count);
+  set_seq<T>(b, count);
   set_zero<T>(c, count);
 
   TimeMeasurer timer;
   timer.tic();
 
   for (size_t i = 0; i < 10; ++i) {
-    // add<T>(a, b, count, c);
     add_simd<T>(a, b, count, c);
 
   }
@@ -223,9 +264,46 @@ void perform_add(const size_t count) {
   timer.print_us();
   timer.print_ms();
 
+  print(c, count);
+
   delete[] a;
   delete[] b;
   delete[] c;
+}
+
+
+template<typename T>
+void perform_compare(const size_t count) {
+
+  long alignment = PAGE_SIZE;
+  
+  T *a = alloc_align<T>(alignment, count);
+  // T *b = alloc_align<T>(alignment, count);
+  bool *b = alloc_align<bool>(alignment, count);
+
+  printf("addr = %p, %p\n", a, b);
+  
+  set_seq<T>(a, count);
+  // set_zero<T>(b, count);
+  set_zero<bool>(b, count);
+
+  TimeMeasurer timer;
+  timer.tic();
+
+  for (size_t i = 0; i < 10; ++i) {
+    compare_eq_simd<T>(a, count, 5, b);
+    // compare_eq<T>(a, count, 5, b);
+  }
+  
+  timer.toc();
+
+  timer.print_us();
+  timer.print_ms();
+
+  // print(b, count);
+
+  delete[] a;
+  delete[] b;
 }
 
 template<typename T>
@@ -237,26 +315,8 @@ void perform_multiply(const T *a, const T *b, const size_t count, T *c) {
 int main(int argc, char* argv[]) {
   
   size_t count = 1024 * 1024 * 1024;
-  perform_add<float>(count);
-  // perform_add<double>(count);
-
-
-  // uint32_t *int_a = alloc_align<uint32_t>(alignment, 8);
-  // uint32_t *int_b = alloc_align<uint32_t>(alignment, 8);
-  // uint32_t *int_c = alloc_align<uint32_t>(alignment, 8);
+  // size_t count = 11;
+  // perform_add<float>(count);
   
-  // set_seq<uint32_t>(int_a, 8); 
-  // set_seq<uint32_t>(int_b, 8);
-  // set_zero<uint32_t>(int_c, 8);
-
-  // __m256i lhs_vec = _mm256_load_si256((__m256i*)int_a);
-  // __m256i rhs_vec = _mm256_load_si256((__m256i*)int_b);
-  // __m256i ret_vec = _mm256_add_epi8(lhs_vec, rhs_vec);
-  // __m256i *my_data = (__m256i*)int_c;
-  // _mm256_store_si256(my_data, ret_vec);
-  // for (size_t i = 0; i < 8; ++i) {
-  //   std::cout << int_c[i] << std::endl;
-  // }
-
-  // perform_multiply(a, b, count, c);
+  perform_compare<float>(count);
 }
