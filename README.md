@@ -8,3 +8,9 @@ compare with interpolation tree.
 - index type
 - hierarchical storage
 - update
+
+
+measure cache miss with papi
+profiling with intel pcm
+simd
+llvm

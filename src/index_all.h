@@ -3,7 +3,7 @@
 #include <cassert>
 
 #include "static_index/interpolation_index.h"
-// #include "static_index/fast_index.h"
+#include "static_index/binary_index.h"
 
 #include "dynamic_index/singlethread/btree_index.h"
 #include "dynamic_index/singlethread/stx_btree_index.h"
