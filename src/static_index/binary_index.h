@@ -19,6 +19,8 @@ public:
       return;
     }
     while (true) {
+      size_t offset_begin = 0;
+      size_t offset_end = 
 
     }
   }
@@ -32,14 +34,6 @@ public:
     if (lhs_key > key_max_ || rhs_key < key_min_) {
       return;
     }
-
-  }
-
-  virtual void scan(const KeyT &key, std::vector<Uint64> &values) final {
-
-  }
-
-  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) final {
 
   }
 

@@ -296,22 +296,6 @@ public:
     return;
   }
 
-  virtual void scan(const KeyT &key, std::vector<Uint64> &values) final {
-    for (size_t i = 0; i < this->size_; ++i) {
-      if (this->container_[i].key_ == key) {
-        values.push_back(this->container_[i].value_);
-      }
-    }
-  }
-
-  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) final {
-    for (int i = this->size_ - 1; i >= 0; --i) {
-      if (this->container_[i].key_ == key) {
-        values.push_back(this->container_[i].value_);
-      }
-    }
-  }
-
   virtual void reorganize() final {
 
     this->base_reorganize();
