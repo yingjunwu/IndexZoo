@@ -20,10 +20,12 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
   std::vector<StaticIndexType> index_types {
 
     StaticIndexType::InterpolationIndexType,
+    StaticIndexType::BinaryIndexType,
+    StaticIndexType::BinarySearchIndexType,
     // StaticIndexType::KAryIndexType,
   };
 
-  size_t n = 1000;
+  size_t n = 10000;
 
   for (auto index_type : index_types) {
 
@@ -78,6 +80,8 @@ TEST_F(StaticIndexTest, NonUniqueKeyTest) {
   std::vector<StaticIndexType> index_types {
 
     StaticIndexType::InterpolationIndexType,
+    // StaticIndexType::BinaryIndexType,
+    // StaticIndexType::BinarySearchIndexType,
     // StaticIndexType::KAryIndexType,
   };
 

@@ -4,6 +4,7 @@
 
 #include "static_index/interpolation_index.h"
 #include "static_index/binary_index.h"
+#include "static_index/binary_search_index.h"
 
 #include "dynamic_index/singlethread/btree_index.h"
 #include "dynamic_index/singlethread/stx_btree_index.h"
@@ -18,9 +19,10 @@
 // static indexes
 enum class StaticIndexType {
   InterpolationIndexType = 0,
-  KAryIndexType,
+  BinaryIndexType, 
+  BinarySearchIndexType, 
+  KAryIndexType, 
   // FastIndexType,
-
 };
 
 // dynamic indexes
@@ -40,6 +42,10 @@ enum class DynamicIndexType {
 static std::string get_static_index_name(const StaticIndexType index_type) {
   if (index_type == StaticIndexType::InterpolationIndexType) {
     return "static - interpolation index";
+  } else if (index_type == StaticIndexType::BinaryIndexType) {
+    return "static - binary index";
+  } else if (index_type == StaticIndexType::BinarySearchIndexType) {
+    return "static - binary search index";
   } else if (index_type == StaticIndexType::KAryIndexType) {
     return "static - k-ary index";
   } else {
@@ -77,12 +83,21 @@ static BaseStaticIndex<KeyT, ValueT>* create_static_index(const StaticIndexType 
 
     return new static_index::InterpolationIndex<KeyT, Uint64>(table_ptr, segment_count);
   
+  } else if (index_type == StaticIndexType::BinaryIndexType) {
+
+    return new static_index::BinaryIndex<KeyT, Uint64>(table_ptr);
+
+  } else if (index_type == StaticIndexType::BinarySearchIndexType) {
+
+    return new static_index::BinarySearchIndex<KeyT, Uint64>(table_ptr);
+
   } else if (index_type == StaticIndexType::KAryIndexType) {
 
     return nullptr;
 
   } else {
-    assert(false);
+
+    ASSERT(false, "invalid static index type");
     return nullptr;
   }
 }
@@ -120,7 +135,8 @@ static BaseDynamicIndex<KeyT>* create_dynamic_index(const DynamicIndexType index
     return new dynamic_index::multithread::MasstreeIndex<KeyT>();
 
   } else {
-    assert(false);
+
+    ASSERT(false, "invalid dynamic index type");
     return nullptr;
   }
 }

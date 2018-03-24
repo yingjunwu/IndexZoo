@@ -38,7 +38,7 @@ public:
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) = 0;
 
 
-  void scan(const KeyT &key, std::vector<Uint64> &values) final {
+  void scan(const KeyT &key, std::vector<Uint64> &values) {
     for (size_t i = 0; i < this->size_; ++i) {
       if (this->container_[i].key_ == key) {
         values.push_back(this->container_[i].value_);
@@ -46,7 +46,7 @@ public:
     }
   }
 
-  void scan_reverse(const KeyT &key, std::vector<Uint64> &values) final {
+  void scan_reverse(const KeyT &key, std::vector<Uint64> &values) {
     for (int i = this->size_ - 1; i >= 0; --i) {
       if (this->container_[i].key_ == key) {
         values.push_back(this->container_[i].value_);
