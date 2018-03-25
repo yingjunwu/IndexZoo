@@ -65,7 +65,7 @@ public:
 protected:
   void base_reorganize() {
 
-    assert(container_ == nullptr && size_ == 0);
+    ASSERT(container_ == nullptr && size_ == 0, "invalid container");
 
     size_t capacity = 0;
     capacity = table_ptr_->size();

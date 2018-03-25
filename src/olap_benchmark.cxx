@@ -28,7 +28,8 @@ void usage(FILE *out) {
           "                              -- (0) interpolation index (default) \n"
           "                              -- (1) binary index \n"
           "                              -- (2) binary search index \n"
-          "   -S --index_parameter   :  index parameter \n"
+          "   -S --index_param_1     :  1st index parameter \n"
+          "   -T --index_param_2.    :  2nd index parameter \n"
           "   -y --read_type         :  read type: \n"
           "                              -- (0) index lookup (default) \n"
           "                              -- (1) index scan \n"
@@ -42,22 +43,23 @@ void usage(FILE *out) {
           "                              -- (2) normal distribution \n"
           "                              -- (3) log-normal distribution \n"
           "   -u --key_upper_bound   :  key upper bound \n"
-          "   -P --parameter_1       :  1st distribution parameter \n"
-          "   -Q --parameter_2       :  2nd distribution parameter \n"
+          "   -P --dist_param_1      :  1st distribution parameter \n"
+          "   -Q --dist_param_2      :  2nd distribution parameter \n"
   );
 }
 
 static struct option opts[] = {
     { "index",             optional_argument, NULL, 'i' },
     { "read_type",         optional_argument, NULL, 'y' },
-    { "index_parameter",   optional_argument, NULL, 'S' },
+    { "index_param_1",     optional_argument, NULL, 'S' },
+    { "index_param_2",     optional_argument, NULL, 'T' },
     { "time_duration",     optional_argument, NULL, 't' },
     { "key_count",         optional_argument, NULL, 'm' },
     { "reader_count",      optional_argument, NULL, 'r' },
     { "distribution",      optional_argument, NULL, 'd' },
     { "key_upper_bound",   optional_argument, NULL, 'u' },
-    { "parameter_1",       optional_argument, NULL, 'P' },
-    { "parameter_2",       optional_argument, NULL, 'Q' },
+    { "dist_param_1",      optional_argument, NULL, 'P' },
+    { "dist_param_2",      optional_argument, NULL, 'Q' },
     { NULL, 0, NULL, 0 }
 };
 
@@ -71,10 +73,11 @@ struct Config {
   StaticIndexType index_type_ = StaticIndexType::InterpolationIndexType;
   ReadType index_read_type_ = ReadType::IndexLookupType;
   DistributionType distribution_type_ = DistributionType::SequenceType;
-  size_t index_parameter_ = 1;
+  size_t index_param_1_ = 1;
+  size_t index_param_2_ = 2;
   uint64_t key_upper_bound_ = INVALID_KEY_BOUND;
-  double parameter_1_ = INVALID_DIST_PARAM;
-  double parameter_2_ = INVALID_DIST_PARAM;
+  double dist_param_1_ = INVALID_DIST_PARAM;
+  double dist_param_2_ = INVALID_DIST_PARAM;
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
   uint64_t key_count_ = 1ull << 20;
@@ -87,7 +90,7 @@ void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "ht:m:r:i:S:y:d:u:P:Q:", opts, &idx);
+    int c = getopt_long(argc, argv, "ht:m:r:i:S:T:y:d:u:P:Q:", opts, &idx);
 
     if (c == -1) break;
 
@@ -97,7 +100,11 @@ void parse_args(int argc, char* argv[], Config &config) {
         break;
       }
       case 'S': {
-        config.index_parameter_ = atoi(optarg);
+        config.index_param_1_ = atoi(optarg);
+        break;
+      }
+      case 'T': {
+        config.index_param_2_ = atoi(optarg);
         break;
       }
       case 'y': {
@@ -125,11 +132,11 @@ void parse_args(int argc, char* argv[], Config &config) {
         break;
       }
       case 'P': {
-        config.parameter_1_ = (double)atof(optarg);
+        config.dist_param_1_ = (double)atof(optarg);
         break;
       }
       case 'Q': {
-        config.parameter_2_ = (double)atof(optarg);
+        config.dist_param_2_ = (double)atof(optarg);
         break;
       }
       case 'h': {
@@ -179,16 +186,16 @@ void validate_key_generator_params(const Config &config) {
       return;
     }
 
-    if (config.parameter_1_ == INVALID_DIST_PARAM) {
+    if (config.dist_param_1_ == INVALID_DIST_PARAM) {
       std::cerr << "expected key generator type: normal" << std::endl;
-      std::cerr << "error: parameter_1 unset!" << std::endl;
+      std::cerr << "error: dist_param_1 unset!" << std::endl;
       exit(EXIT_FAILURE);
       return;
     }
 
     std::cout << "key generator type: normal" << std::endl;
     std::cout << "upper bound: " << config.key_upper_bound_ << std::endl;
-    std::cout << "parameter_1: " << config.parameter_1_ << std::endl;
+    std::cout << "dist_param_1: " << config.dist_param_1_ << std::endl;
 
   } else if (config.distribution_type_ == DistributionType::LognormalType) {
 
@@ -200,27 +207,26 @@ void validate_key_generator_params(const Config &config) {
       return;
     }
 
-    if (config.parameter_1_ == INVALID_DIST_PARAM) {
+    if (config.dist_param_1_ == INVALID_DIST_PARAM) {
       std::cerr << "expected key generator type: lognormal" << std::endl;
-      std::cerr << "error: parameter_1 unset!" << std::endl;
+      std::cerr << "error: dist_param_1 unset!" << std::endl;
       exit(EXIT_FAILURE);
       return;
     }
 
-    if (config.parameter_2_ == INVALID_DIST_PARAM) {
+    if (config.dist_param_2_ == INVALID_DIST_PARAM) {
       std::cerr << "expected key generator type: lognormal" << std::endl;
-      std::cerr << "error: parameter_2 unset!" << std::endl;
+      std::cerr << "error: dist_param_2 unset!" << std::endl;
       exit(EXIT_FAILURE);
       return;
     }
 
     std::cout << "key generator type: lognormal" << std::endl;
     std::cout << "upper bound: " << config.key_upper_bound_ << std::endl;
-    std::cout << "parameter_1: " << config.parameter_1_ << std::endl;
-    std::cout << "parameter_2: " << config.parameter_2_ << std::endl;
+    std::cout << "dist_param_1: " << config.dist_param_1_ << std::endl;
+    std::cout << "dist_param_2: " << config.dist_param_2_ << std::endl;
 
   }
-
 
 }
 
@@ -238,7 +244,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
   pin_to_core(thread_id);
 
-  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(config.distribution_type_, thread_id, config.key_upper_bound_, config.parameter_1_, config.parameter_2_));
+  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(config.distribution_type_, thread_id, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_));
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -298,7 +304,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
 void run_workload(const Config &config) {
 
-  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(config.distribution_type_, 0, config.key_upper_bound_, config.parameter_1_, config.parameter_2_));
+  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(config.distribution_type_, 0, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_));
 
   for (size_t i = 0; i < config.key_count_; ++i) {
 
@@ -440,7 +446,7 @@ int main(int argc, char* argv[]) {
 
   data_table.reset(new DataTable<KeyT, ValueT>());
 
-  data_index.reset(create_static_index<KeyT, ValueT>(config.index_type_, data_table.get(), config.index_parameter_));
+  data_index.reset(create_static_index<KeyT, ValueT>(config.index_type_, data_table.get(), config.index_param_1_, config.index_param_2_));
 
   run_workload(config);
   

@@ -5,6 +5,7 @@
 #include "static_index/interpolation_index.h"
 #include "static_index/binary_index.h"
 #include "static_index/binary_search_index.h"
+#include "static_index/kary_index.h"
 
 #include "dynamic_index/singlethread/btree_index.h"
 #include "dynamic_index/singlethread/stx_btree_index.h"
@@ -49,7 +50,7 @@ static std::string get_static_index_name(const StaticIndexType index_type) {
   } else if (index_type == StaticIndexType::KAryIndexType) {
     return "static - k-ary index";
   } else {
-    assert(false);
+    ASSERT(false, "invalid static index type");
     return "";
   }
 }
@@ -70,22 +71,22 @@ static std::string get_dynamic_index_name(const DynamicIndexType index_type) {
   } else if (index_type == DynamicIndexType::MultithreadMasstreeIndexType) {
     return "dynamic - multithread - masstree index";
   } else {
-    assert(false);
+    ASSERT(false, "invalid dynamic index type");
     return "";
   }
 }
 
 template<typename KeyT, typename ValueT>
-static BaseStaticIndex<KeyT, ValueT>* create_static_index(const StaticIndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const size_t index_param = 1) {
+static BaseStaticIndex<KeyT, ValueT>* create_static_index(const StaticIndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const size_t index_param_1, const size_t index_param_2) {
   if (index_type == StaticIndexType::InterpolationIndexType) {
 
-    ASSERT(index_param != 0, "number of segments cannot be 0");
+    ASSERT(index_param_1 != 0, "number of segments cannot be 0");
 
-    return new static_index::InterpolationIndex<KeyT, Uint64>(table_ptr, index_param);
+    return new static_index::InterpolationIndex<KeyT, Uint64>(table_ptr, index_param_1);
   
   } else if (index_type == StaticIndexType::BinaryIndexType) {
 
-    return new static_index::BinaryIndex<KeyT, Uint64>(table_ptr, index_param);
+    return new static_index::BinaryIndex<KeyT, Uint64>(table_ptr, index_param_1);
 
   } else if (index_type == StaticIndexType::BinarySearchIndexType) {
 
@@ -93,7 +94,9 @@ static BaseStaticIndex<KeyT, ValueT>* create_static_index(const StaticIndexType 
 
   } else if (index_type == StaticIndexType::KAryIndexType) {
 
-    return nullptr;
+    ASSERT(index_param_2 >= 2, "k must be larger than or equal to 2");
+
+    return new static_index::KAryIndex<KeyT, Uint64>(table_ptr, index_param_1, index_param_2);
 
   } else {
 
