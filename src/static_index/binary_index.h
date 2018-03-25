@@ -13,7 +13,12 @@ class BinaryIndex : public BaseStaticIndex<KeyT, ValueT> {
 public:
   BinaryIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_layers) : BaseStaticIndex<KeyT, ValueT>(table_ptr), num_layers_(num_layers) {}
 
-  virtual ~BinaryIndex() {}
+  virtual ~BinaryIndex() {
+    if (num_layers_ != 0) {
+      delete[] inner_nodes_;
+      inner_nodes_ = nullptr;
+    }
+  }
 
   virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
 
@@ -93,8 +98,13 @@ public:
 
     key_min_ = this->container_[0].key_;
     key_max_ = this->container_[this->size_ - 1].key_;
-    size_t inner_size = std::pow(2.0, num_layers_) - 1;
-    inner_nodes_ = new KeyT[inner_size];
+    
+    if (num_layers_ != 0) {
+      size_t inner_size = std::pow(2.0, num_layers_) - 1;
+      inner_nodes_ = new KeyT[inner_size];
+    } else {
+      inner_nodes_ = nullptr;
+    }
     construct_inner_layers();
   }
 
@@ -174,9 +184,6 @@ private:
   }
 
   std::pair<int, int> find_inner_layers_internal(const KeyT &key, const int begin_offset, const int end_offset, const size_t base_pos, const size_t dst_pos, const size_t curr_layer) {
-    // if (begin_offset >= end_offset) {
-    //   assert(false);
-    // }
 
     if (num_layers_ == curr_layer) { 
       return std::pair<int, int>(begin_offset, end_offset); }

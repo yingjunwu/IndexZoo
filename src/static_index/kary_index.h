@@ -18,14 +18,6 @@ public:
 
   }
 
-  virtual void scan(const KeyT &key, std::vector<Uint64> &values) final {
-
-  }
-
-  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) final {
-
-  }
-
   virtual void reorganize() final {
 
   }
@@ -39,7 +31,7 @@ public:
   }
 
 private:
-  
+
 
 };
 
