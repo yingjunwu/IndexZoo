@@ -28,7 +28,7 @@ void usage(FILE *out) {
           "                              -- (0) interpolation index (default) \n"
           "                              -- (1) binary index \n"
           "                              -- (2) binary search index \n"
-          "   -s --segment_count     :  segment count (for interpolation index v2) \n"
+          "   -S --index_parameter   :  index parameter \n"
           "   -y --read_type         :  read type: \n"
           "                              -- (0) index lookup (default) \n"
           "                              -- (1) index scan \n"
@@ -50,7 +50,7 @@ void usage(FILE *out) {
 static struct option opts[] = {
     { "index",             optional_argument, NULL, 'i' },
     { "read_type",         optional_argument, NULL, 'y' },
-    { "segment_count",     optional_argument, NULL, 's' },
+    { "index_parameter",   optional_argument, NULL, 'S' },
     { "time_duration",     optional_argument, NULL, 't' },
     { "key_count",         optional_argument, NULL, 'm' },
     { "reader_count",      optional_argument, NULL, 'r' },
@@ -71,7 +71,7 @@ struct Config {
   StaticIndexType index_type_ = StaticIndexType::InterpolationIndexType;
   ReadType index_read_type_ = ReadType::IndexLookupType;
   DistributionType distribution_type_ = DistributionType::SequenceType;
-  size_t segment_count_ = 1;
+  size_t index_parameter_ = 1;
   uint64_t key_upper_bound_ = INVALID_KEY_BOUND;
   double parameter_1_ = INVALID_DIST_PARAM;
   double parameter_2_ = INVALID_DIST_PARAM;
@@ -87,7 +87,7 @@ void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "ht:m:r:i:s:y:d:u:P:Q:", opts, &idx);
+    int c = getopt_long(argc, argv, "ht:m:r:i:S:y:d:u:P:Q:", opts, &idx);
 
     if (c == -1) break;
 
@@ -96,8 +96,8 @@ void parse_args(int argc, char* argv[], Config &config) {
         config.index_type_ = (StaticIndexType)atoi(optarg);
         break;
       }
-      case 's': {
-        config.segment_count_ = atoi(optarg);
+      case 'S': {
+        config.index_parameter_ = atoi(optarg);
         break;
       }
       case 'y': {
@@ -440,7 +440,7 @@ int main(int argc, char* argv[]) {
 
   data_table.reset(new DataTable<KeyT, ValueT>());
 
-  data_index.reset(create_static_index<KeyT, ValueT>(config.index_type_, data_table.get(), config.segment_count_));
+  data_index.reset(create_static_index<KeyT, ValueT>(config.index_type_, data_table.get(), config.index_parameter_));
 
   run_workload(config);
   

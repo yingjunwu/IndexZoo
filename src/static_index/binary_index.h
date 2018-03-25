@@ -11,7 +11,7 @@ template<typename KeyT, typename ValueT>
 class BinaryIndex : public BaseStaticIndex<KeyT, ValueT> {
 
 public:
-  BinaryIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_layers = 4) : BaseStaticIndex<KeyT, ValueT>(table_ptr), num_layers_(num_layers) {}
+  BinaryIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_layers) : BaseStaticIndex<KeyT, ValueT>(table_ptr), num_layers_(num_layers) {}
 
   virtual ~BinaryIndex() {}
 
@@ -33,7 +33,14 @@ public:
       return;
     }
 
-    size_t offset_find = find_internal(key, 0, this->size_);
+    size_t offset_find = this->size_;
+    std::pair<int, int> offset_range = find_inner_layers(key);
+    if (offset_range.first == offset_range.second) {
+      offset_find = offset_range.first;
+    } else {
+      offset_find = find_internal(key, offset_range.first, offset_range.second);
+    }
+    // size_t offset_find = find_internal(key, 0, this->size_);
 
     if (offset_find == this->size_) {
       // find nothing
@@ -86,7 +93,9 @@ public:
 
     key_min_ = this->container_[0].key_;
     key_max_ = this->container_[this->size_ - 1].key_;
-    inner_nodes_ = new KeyT[this->size_];
+    size_t inner_size = std::pow(2.0, num_layers_) - 1;
+    inner_nodes_ = new KeyT[inner_size];
+    construct_inner_layers();
   }
 
   virtual void print() const final {
@@ -99,11 +108,43 @@ public:
 
 private: 
 
-  size_t find_internal(const KeyT &key, const size_t offset_begin, const size_t offset_end) {
+  void construct_inner_layers() {
+    if (num_layers_ == 0) { return; }
+
+    size_t begin_offset = 0;
+    size_t end_offset = this->size_ - 1;
+    size_t mid_offset = (begin_offset + end_offset) / 2;
+    
+    inner_nodes_[0] = this->container_[mid_offset].key_;
+    if (num_layers_ == 1) { return; }
+
+    construct_inner_layers_internal(begin_offset, mid_offset - 1, 1, 0, 1);
+    construct_inner_layers_internal(mid_offset + 1, end_offset, 1, 1, 1);
+  }
+
+  void construct_inner_layers_internal(const int begin_offset, const int end_offset, const int base_pos, const int dst_pos, const int curr_layer) {
+    if (begin_offset > end_offset) { return; }
+
+    size_t mid_offset = (begin_offset + end_offset) / 2;
+    
+    inner_nodes_[base_pos + dst_pos] = this->container_[mid_offset].key_;
+
+    if (num_layers_ == curr_layer + 1) {
+      return;
+    }
+
+    int new_base_pos = (base_pos + 1) * 2 - 1;
+
+    construct_inner_layers_internal(begin_offset, mid_offset - 1, new_base_pos, dst_pos * 2, curr_layer + 1);
+    construct_inner_layers_internal(mid_offset + 1, end_offset, new_base_pos, dst_pos * 2 + 1, curr_layer + 1);
+  }
+
+
+  size_t find_internal(const KeyT &key, const int offset_begin, const int offset_end) {
     if (offset_begin > offset_end) {
       return this->size_;
     }
-    size_t offset_lookup = (offset_begin + offset_end) / 2;
+    int offset_lookup = (offset_begin + offset_end) / 2;
     KeyT key_lookup = this->container_[offset_lookup].key_;
     if (key == key_lookup) {
       return offset_lookup;
@@ -114,32 +155,43 @@ private:
       return find_internal(key, offset_begin, offset_lookup - 1);
     }
   }
-  
-  void construct_inner_layers() {
-    if (max_layer == 0) { return; }
 
-    size_t mid_offset = (begin_offset + end_offset) / 2;
-    dst_arr[0] = src_arr[mid_offset];
-    if (max_layer == 1) { return; }
+  std::pair<int, int> find_inner_layers(const KeyT &key) {
 
-    construct_inner_layers_internal(src_arr, dst_arr, begin_offset, mid_offset - 1, 1, 0, max_layer, 1);
-    construct_inner_layers_internal(src_arr, dst_arr, mid_offset + 1, end_offset, 1, 1, max_layer, 1);
+    if (num_layers_ == 0) { return std::pair<int, int>(0, this->size_); }
+
+    int begin_offset = 0;
+    int end_offset = this->size_ - 1;
+    int mid_offset = (begin_offset + end_offset) / 2;
+    if (key == inner_nodes_[0]) { return std::pair<int, int>(mid_offset, mid_offset); }
+
+    if (key < inner_nodes_[0]) {
+      return find_inner_layers_internal(key, begin_offset, mid_offset - 1, 1, 0, 1);
+    } else {
+      return find_inner_layers_internal(key, mid_offset + 1, end_offset, 1, 1, 1);
+    }
+
   }
 
-  void construct_inner_layers_internal(const int begin_offset, const int end_offset, const int base_pos, const int dst_pos, const int max_layer, const int curr_layer) {
-    if (begin_offset > end_offset) { return; }
+  std::pair<int, int> find_inner_layers_internal(const KeyT &key, const int begin_offset, const int end_offset, const size_t base_pos, const size_t dst_pos, const size_t curr_layer) {
+    // if (begin_offset >= end_offset) {
+    //   assert(false);
+    // }
 
-    size_t mid_offset = (begin_offset + end_offset) / 2;
-    dst_arr[base_pos + dst_pos] = src_arr[mid_offset];
+    if (num_layers_ == curr_layer) { 
+      return std::pair<int, int>(begin_offset, end_offset); }
+
+    int mid_offset = (begin_offset + end_offset) / 2;
+    if (key == inner_nodes_[base_pos + dst_pos]) { return std::pair<int, int>(mid_offset, mid_offset); }
 
     int new_base_pos = (base_pos + 1) * 2 - 1;
 
-    if (max_layer == curr_layer + 1) {
-      return;
+    if (key < inner_nodes_[base_pos + dst_pos]) {
+      return find_inner_layers_internal(key, begin_offset, mid_offset - 1, new_base_pos, dst_pos *2, curr_layer + 1);
+    } else {
+      return find_inner_layers_internal(key, mid_offset + 1, end_offset, new_base_pos, dst_pos * 2 + 1, curr_layer + 1);
     }
 
-    construct_inner_layers_internal(src_arr, dst_arr, begin_offset, mid_offset - 1, new_base_pos, dst_pos * 2, max_layer, curr_layer + 1);
-    construct_inner_layers_internal(src_arr, dst_arr, mid_offset + 1, end_offset, new_base_pos, dst_pos * 2 + 1, max_layer, curr_layer + 1);
   }
 
 private:
