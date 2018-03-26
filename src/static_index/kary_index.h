@@ -102,6 +102,7 @@ public:
 
     if (num_layers_ != 0) {
       size_t inner_size = std::pow(k_, num_layers_) - 1;
+      std::cout << "inner size = " << inner_size << std::endl;
       inner_nodes_ = new KeyT[inner_size];
       construct_inner_layers();
     } else {
@@ -110,12 +111,14 @@ public:
   }
 
   virtual void print() const final {
-
+    size_t inner_size = std::pow(k_, num_layers_) - 1;
+    for (size_t i = 0; i < inner_size; ++i) {
+      std::cout << inner_nodes_[i] << " ";
+    }
+    std::cout << std::endl;
   }
 
-  virtual void print_stats() const final {
-
-  }
+  virtual void print_stats() const final {}
 
 private:
 
@@ -125,43 +128,43 @@ private:
     size_t begin_offset = 0;
     size_t end_offset = this->size_ - 1;
 
-    size_t base_offset = (begin_offset + end_offset) / k_;
+    size_t step_offset = (end_offset - begin_offset) / k_;
     
     for (size_t i = 0; i < k_ - 1; ++i) {
-      inner_nodes_[i] = this->container_[base_offset * i].key_;
+      inner_nodes_[i] = this->container_[begin_offset + step_offset * (i + 1)].key_;
     }
     if (num_layers_ == 1) { return; }
 
-    size_t base_pos = 1;
+    size_t base_pos = k_ - 1;
     size_t next_layer = 1;
-    construct_inner_layers_internal(begin_offset, base_offset - 1, base_pos, 0, next_layer);
+    construct_inner_layers_internal(begin_offset, begin_offset + step_offset - 1, base_pos, 0, next_layer);
     for (size_t i = 1; i < k_ - 1; ++i) {
-      construct_inner_layers_internal(base_offset * i + 1, base_offset * (i + 1) - 1, base_pos, i, next_layer);
+      construct_inner_layers_internal(begin_offset + step_offset * i + 1, begin_offset + step_offset * (i + 1) - 1, base_pos, i * (k_ - 1), next_layer);
     }
-    construct_inner_layers_internal(base_offset * (k_ - 1) + 1, end_offset, base_pos, k_ - 1, next_layer);
+    construct_inner_layers_internal(begin_offset + step_offset * (k_ - 1) + 1, end_offset, base_pos, (k_ - 1) * (k_ - 1), next_layer);
   }
 
   void construct_inner_layers_internal(const int begin_offset, const int end_offset, const size_t base_pos, const size_t dst_pos, const size_t curr_layer) {
     if (begin_offset > end_offset) { return; }
 
-    size_t base_offset = (begin_offset + end_offset) / k_;
-
+    size_t step_offset = (end_offset - begin_offset) / k_;
+    
     for (size_t i = 0; i < k_ - 1; ++i) {
-      inner_nodes_[i] = this->container_[base_offset * i].key_;
+      inner_nodes_[base_pos + dst_pos + i] = this->container_[begin_offset + step_offset * (i + 1)].key_;
     }
-
     if (num_layers_ == curr_layer + 1) { return; }
 
     size_t new_base_pos = (base_pos + 1) * k_ - 1;
     size_t new_dst_pos = dst_pos * k_;
     size_t next_layer = curr_layer + 1;
-    construct_inner_layers_internal(begin_offset, base_offset - 1, new_base_pos, new_dst_pos, next_layer);
-    for (size_t i = 0; i < k_ - 1; ++i) {
-      construct_inner_layers_internal(base_offset * i + 1, base_offset * (i + 1) - 1, new_base_pos, new_dst_pos + i, next_layer);
+    construct_inner_layers_internal(begin_offset, begin_offset + step_offset - 1, new_base_pos, new_dst_pos, next_layer);
+    for (size_t i = 1; i < k_ - 1; ++i) {
+      construct_inner_layers_internal(begin_offset + step_offset * i + 1, begin_offset + step_offset * (i + 1) - 1, new_base_pos, new_dst_pos + i * (k_ - 1), next_layer);
     }
-    construct_inner_layers_internal(base_offset * (k_ - 1) + 1, end_offset, new_base_pos, new_dst_pos + k_ - 1, next_layer);
+    construct_inner_layers_internal(begin_offset + step_offset * (k_ - 1) + 1, end_offset, new_base_pos, new_dst_pos + (k_ - 1) * (k_ - 1), next_layer);
   }
 
+  // binary search
   size_t find_internal(const KeyT &key, const int offset_begin, const int offset_end) {
     if (offset_begin > offset_end) {
       return this->size_;
@@ -185,52 +188,53 @@ private:
     int begin_offset = 0;
     int end_offset = this->size_ - 1;
 
-    size_t base_offset = (begin_offset + end_offset) / k_;
+    size_t step_offset = (end_offset - begin_offset) / k_;
 
     for (size_t i = 0; i < k_ - 1; ++i) {
-      if (key == inner_nodes_[i]) { return std::pair<int, int>(base_offset * (i + 1), base_offset * (i + 1)); }
+      if (key == inner_nodes_[i]) { return std::pair<int, int>(begin_offset + step_offset * (i + 1), begin_offset + step_offset * (i + 1)); }
     }
 
-    size_t base_pos = 1;
+    size_t base_pos = k_ - 1;
     size_t next_layer = 1;
 
     if (key < inner_nodes_[0]) {
-      return find_inner_layers_internal(key, begin_offset, base_offset - 1, base_pos, 0, next_layer);
+      return find_inner_layers_internal(key, begin_offset, begin_offset + step_offset - 1, base_pos, 0, next_layer);
     }
 
     for (size_t i = 1; i < k_ - 1; ++i) {
       if (key < inner_nodes_[i]) {
-        return find_inner_layers_internal(key, base_offset * i + 1, base_offset * (i + 1) - 1, base_pos, i, next_layer);
+        return find_inner_layers_internal(key, begin_offset + step_offset * i + 1, begin_offset + step_offset * (i + 1) - 1, base_pos, i * (k_ - 1), next_layer);
       }
     }
 
-    return find_inner_layers_internal(key, base_offset * (k_ - 1), end_offset, base_pos, k_ - 1, next_layer);
+    return find_inner_layers_internal(key, begin_offset + step_offset * (k_ - 1) + 1, end_offset, base_pos, (k_ - 1) * (k_ - 1), next_layer);
   }
 
   std::pair<int, int> find_inner_layers_internal(const KeyT &key, const int begin_offset, const int end_offset, const size_t base_pos, const size_t dst_pos, const size_t curr_layer) {
 
     if (num_layers_ == curr_layer) { return std::pair<int, int>(begin_offset, end_offset); }
 
-    size_t base_offset = (begin_offset + end_offset) / k_;
+    size_t step_offset = (end_offset - begin_offset) / k_;
 
     for (size_t i = 0; i < k_ - 1; ++i) {
-      if (key == inner_nodes_[base_pos + dst_pos + i]) { return std::pair<int, int>(base_offset * (i + 1), base_offset * (i + 1)); }
+      if (key == inner_nodes_[base_pos + dst_pos + i]) { return std::pair<int, int>(begin_offset + step_offset * (i + 1), begin_offset + step_offset * (i + 1)); }
     }
 
-    size_t new_base_pos = (base_pos + 1) * 2 - 1;
+    size_t new_base_pos = (base_pos + 1) * k_ - 1;
+    size_t new_dst_pos = dst_pos * k_;
     size_t next_layer = curr_layer + 1;
 
     if (key < inner_nodes_[base_pos + dst_pos]) {
-      return find_inner_layers_internal(key, begin_offset, base_offset - 1, new_base_pos, dst_pos * k_, next_layer);
+      return find_inner_layers_internal(key, begin_offset, begin_offset + step_offset - 1, new_base_pos, new_dst_pos, next_layer);
     }
 
     for (size_t i = 1; i < k_ - 1; ++i) {
-      if (key < inner_nodes_[i]) {
-        return find_inner_layers_internal(key, base_offset * i + 1, base_offset * (i + 1) - 1, new_base_pos, dst_pos * k_ + i, next_layer);
+      if (key < inner_nodes_[base_pos + dst_pos + i]) {
+        return find_inner_layers_internal(key, begin_offset + step_offset * i + 1, begin_offset + step_offset * (i + 1) - 1, new_base_pos, new_dst_pos + i * (k_ - 1), next_layer);
       }
     }
 
-    return find_inner_layers_internal(key, base_offset * (k_ - 1), end_offset, new_base_pos, dst_pos * k_ + k_ - 1, next_layer);
+    return find_inner_layers_internal(key, begin_offset + step_offset * (k_ - 1) + 1, end_offset, new_base_pos, new_dst_pos + (k_ - 1) * (k_ - 1), next_layer);
   }
 
 

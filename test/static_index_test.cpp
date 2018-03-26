@@ -21,8 +21,7 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
 
     StaticIndexType::InterpolationIndexType,
     StaticIndexType::BinaryIndexType,
-    StaticIndexType::BinarySearchIndexType,
-    // StaticIndexType::KAryIndexType,
+    StaticIndexType::KAryIndexType,
   };
 
   size_t n = 10000;
@@ -32,7 +31,7 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
     std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
       new DataTable<uint64_t, uint64_t>());
     std::unique_ptr<BaseStaticIndex<uint64_t, uint64_t>> data_index(
-      create_static_index<uint64_t, uint64_t>(index_type, data_table.get(), 1, 2));
+      create_static_index<uint64_t, uint64_t>(index_type, data_table.get(), 5, 5));
 
     std::unordered_map<uint64_t, std::pair<Uint64, uint64_t>> validation_set;
     
@@ -53,6 +52,7 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
 
     // reorganize data
     data_index->reorganize();
+    // data_index->print();
 
     // find
     for (size_t i = 0; i < n; ++i) {
