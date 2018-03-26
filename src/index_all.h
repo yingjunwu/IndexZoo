@@ -5,6 +5,7 @@
 #include "static_index/interpolation_index.h"
 #include "static_index/binary_index.h"
 #include "static_index/kary_index.h"
+#include "static_index/fast_index.h"
 
 #include "dynamic_index/singlethread/btree_index.h"
 #include "dynamic_index/singlethread/stx_btree_index.h"
@@ -21,7 +22,7 @@ enum class StaticIndexType {
   InterpolationIndexType = 0,
   BinaryIndexType, 
   KAryIndexType, 
-  // FastIndexType,
+  FastIndexType,
 };
 
 // dynamic indexes
@@ -45,6 +46,8 @@ static std::string get_static_index_name(const StaticIndexType index_type) {
     return "static - binary index";
   } else if (index_type == StaticIndexType::KAryIndexType) {
     return "static - k-ary index";
+  } else if (index_type == StaticIndexType::FastIndexType) {
+    return "static - fast index";
   } else {
     ASSERT(false, "invalid static index type");
     return "";
@@ -89,6 +92,10 @@ static BaseStaticIndex<KeyT, ValueT>* create_static_index(const StaticIndexType 
     ASSERT(index_param_2 >= 2, "k must be larger than or equal to 2");
 
     return new static_index::KAryIndex<KeyT, Uint64>(table_ptr, index_param_1, index_param_2);
+
+  } else if (index_type == StaticIndexType::FastIndexType) {
+
+    return new static_index::FastIndex<KeyT, Uint64>(table_ptr);
 
   } else {
 

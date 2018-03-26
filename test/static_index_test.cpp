@@ -22,6 +22,7 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
     StaticIndexType::InterpolationIndexType,
     StaticIndexType::BinaryIndexType,
     StaticIndexType::KAryIndexType,
+    StaticIndexType::FastIndexType,
   };
 
   size_t n = 10000;
