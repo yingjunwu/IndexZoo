@@ -13,7 +13,7 @@ A general platform for evaluating the performance of index structures in modern 
 
 ### Multi-thread Dynamic Index Structures (for OLTP workloads)
 
-| Index Structure | Design | Original Implementation | Note  |
+| Index Structure | Design | Implementation | Note  |
 |:---------------:|:------:|:-----------------------:|:-----:|
 | Masstree Index  | [J. Rao, et al.](https://dl.acm.org/citation.cfm?id=2168855) | [kohler](https://github.com/kohler/masstree-beta)                   | |
 | ArtTree Index   | [V. Leis, et al.](https://dl.acm.org/citation.cfm?id=2933349.2933352) | [flode](https://github.com/flode/ARTSynchronized) | |
@@ -22,19 +22,19 @@ A general platform for evaluating the performance of index structures in modern 
 
 ### Single-thread Dynamic Index Structures (for OLTP workloads)
 
-| Index Structure | Design | Original Implementation | Note  |
+| Index Structure | Design | Implementation | Note  |
 |:---------------:|:------:|:-----------------------:|:-----:|
-| Stx-Btree Index |  | [bingmann](https://github.com/bingmann/stx-btree) | Standard B+-Tree Index |
+| Stx-Btree Index |  | [bingmann](https://github.com/bingmann/stx-btree) | Standard B+-tree index |
 | ArtTree Index   | [V. Leis, et al.](https://db.in.tum.de/~leis/papers/ART.pdf) | [armon](https://github.com/armon/libart)                   | |
 
 ### Static Index Structures (for OLAP workloads)
 
-| Index Structure     | Design | Original Implementation | Note  |
+| Index Structure     | Design | Implementation | Note  |
 |:-------------------:|:------:|:-----------------------:|:-----:|
-| Binary Index        |  |                   | |
-| KAry Index          | [B. Schlegel, et al.](https://dl.acm.org/citation.cfm?id=1565705) |                   | |
-| Interpolation Index |             |                    | |
-| FAST Index          | [C. Kim, et al.](https://dl.acm.org/citation.cfm?id=1807206) |                    | |
+| Binary Index        | | [yingjunwu]() | Optimized binary search tree |
+| KAry Index          | [B. Schlegel, et al.](https://dl.acm.org/citation.cfm?id=1565705) | [yingjunwu]() | |
+| Interpolation Index | | [yingjunwu]() | |
+| FAST Index          | [C. Kim, et al.](https://dl.acm.org/citation.cfm?id=1807206) | [yingjunwu]() | |
 
 ## Benchmarks
 
