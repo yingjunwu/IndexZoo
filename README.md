@@ -1,6 +1,6 @@
 # IndexZoo
 
-A general platform for evaluating the performance of index structures in modern database systems.
+The IndexZoo project aims at building a general platform for performance evaluation of index structures in modern database systems.
 
 ## Motivation
 
