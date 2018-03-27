@@ -13,12 +13,11 @@
 #include <getopt.h>
 
 #include "time_measurer.h"
-
 #include "data_table.h"
-
 #include "index_all.h"
-
 #include "key_generator_all.h"
+// #include "papi_profiler.h"
+
 
 void usage(FILE *out) {
   fprintf(out,
@@ -28,6 +27,7 @@ void usage(FILE *out) {
           "                              -- (0) interpolation index (default) \n"
           "                              -- (1) binary index \n"
           "                              -- (2) kary index \n"
+          "                              -- (3) fast index \n"
           "   -S --index_param_1     :  1st index parameter \n"
           "   -T --index_param_2     :  2nd index parameter \n"
           "   -y --read_type         :  read type: \n"
@@ -153,80 +153,11 @@ void parse_args(int argc, char* argv[], Config &config) {
     }
   }
 
-  validate_key_generator_params(config);
+  validate_static_index_params(config.index_type_, config.index_param_1_, config.index_param_2_);
 
-}
+  validate_key_generator_params(config.distribution_type_, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_);
 
-
-void validate_key_generator_params(const Config &config) {
-
-  // validate distribution parameters.
-  if (config.distribution_type_ == DistributionType::SequenceType) {
-
-    std::cout << "key generator type: sequence" << std::endl;
-
-  } else if (config.distribution_type_ == DistributionType::UniformType) {
-    
-    if (config.key_upper_bound_ == INVALID_KEY_BOUND) {
-      std::cerr << "expected key generator type: uniform" << std::endl;
-      std::cerr << "error: upper bound unset!" << std::endl;
-      exit(EXIT_FAILURE);
-      return;
-    }
-
-    std::cout << "key generator type: uniform" << std::endl;
-    std::cout << "upper bound: " << config.key_upper_bound_ << std::endl;
-
-  } else if (config.distribution_type_ == DistributionType::NormalType) {
-
-    if (config.key_upper_bound_ == INVALID_KEY_BOUND) {
-      std::cerr << "expected key generator type: normal" << std::endl;
-      std::cerr << "error: upper bound unset!" << std::endl;
-      exit(EXIT_FAILURE);
-      return;
-    }
-
-    if (config.dist_param_1_ == INVALID_DIST_PARAM) {
-      std::cerr << "expected key generator type: normal" << std::endl;
-      std::cerr << "error: dist_param_1 unset!" << std::endl;
-      exit(EXIT_FAILURE);
-      return;
-    }
-
-    std::cout << "key generator type: normal" << std::endl;
-    std::cout << "upper bound: " << config.key_upper_bound_ << std::endl;
-    std::cout << "dist_param_1: " << config.dist_param_1_ << std::endl;
-
-  } else if (config.distribution_type_ == DistributionType::LognormalType) {
-
-
-    if (config.key_upper_bound_ == INVALID_KEY_BOUND) {
-      std::cerr << "expected key generator type: lognormal" << std::endl;
-      std::cerr << "error: upper bound unset!" << std::endl;
-      exit(EXIT_FAILURE);
-      return;
-    }
-
-    if (config.dist_param_1_ == INVALID_DIST_PARAM) {
-      std::cerr << "expected key generator type: lognormal" << std::endl;
-      std::cerr << "error: dist_param_1 unset!" << std::endl;
-      exit(EXIT_FAILURE);
-      return;
-    }
-
-    if (config.dist_param_2_ == INVALID_DIST_PARAM) {
-      std::cerr << "expected key generator type: lognormal" << std::endl;
-      std::cerr << "error: dist_param_2 unset!" << std::endl;
-      exit(EXIT_FAILURE);
-      return;
-    }
-
-    std::cout << "key generator type: lognormal" << std::endl;
-    std::cout << "upper bound: " << config.key_upper_bound_ << std::endl;
-    std::cout << "dist_param_1: " << config.dist_param_1_ << std::endl;
-    std::cout << "dist_param_2: " << config.dist_param_2_ << std::endl;
-
-  }
+  std::cout << ">>>>>>>>>>>>>>>" << std::endl;
 
 }
 
@@ -332,13 +263,17 @@ void run_workload(const Config &config) {
   std::vector<uint64_t> read_counts; // number of read operations performed.
 
   double init_mem_size = get_memory_mb();
-  std::cout << "init memory size = " << init_mem_size << " MB" << std::endl;
+  std::cout << "init memory size: " << init_mem_size << " MB" << std::endl;
   
   // launch a group of threads
   is_running = true;
   std::vector<std::thread> worker_threads;
   uint64_t thread_count = 0;
+  
 
+  // PAPIProfiler::init_papi();
+  // PAPIProfiler::start_measure_cache_miss_rate();
+  
   // reader threads
   for (; thread_count < config.reader_count_; ++thread_count) {
     worker_threads.push_back(std::move(std::thread(run_reader_thread, thread_count, config)));
@@ -412,16 +347,14 @@ void run_workload(const Config &config) {
     worker_threads.at(i).join();
   }
 
-  std::string index_name = get_static_index_name(config.index_type_);
+  // PAPIProfiler::stop_measure_cache_miss_rate();
   
   uint64_t total_count = 0;
   for (uint64_t i = 0; i < config.reader_count_; ++i) {
     total_count += operation_counts[i];
   }
 
-  std::cout << "index = " << index_name.c_str() << ", "
-            << "read = " << config.reader_count_ << ", "
-            << "throughput = " << total_count * 1.0 / config.time_duration_ / 1000 / 1000 << " M ops" 
+  std::cout << "average throughput: " << total_count * 1.0 / config.time_duration_ / 1000 / 1000 << " M ops" 
             << std::endl;
 
   data_index->print_stats();

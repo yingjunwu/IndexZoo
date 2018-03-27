@@ -16,7 +16,7 @@ enum class DistributionType {
 static const double INVALID_DIST_PARAM = std::numeric_limits<double>::max();
 static const uint64_t INVALID_KEY_BOUND = std::numeric_limits<uint64_t>::max();
 
-static BaseKeyGenerator* construct_key_generator(const DistributionType distribution_type, const uint64_t thread_id, const uint64_t key_bound = INVALID_DIST_PARAM, const double p1 = INVALID_KEY_BOUND, const double p2 = INVALID_KEY_BOUND) {
+static BaseKeyGenerator* construct_key_generator(const DistributionType distribution_type, const uint64_t thread_id, const uint64_t key_bound, const double dist_param_1, const double dist_param_2) {
 
   if (distribution_type == DistributionType::SequenceType) {
 
@@ -28,12 +28,84 @@ static BaseKeyGenerator* construct_key_generator(const DistributionType distribu
 
   } else if (distribution_type == DistributionType::NormalType) {
 
-    return new Uint64NormalKeyGenerator(thread_id, key_bound, p1);
+    return new Uint64NormalKeyGenerator(thread_id, key_bound, dist_param_1);
   
   } else {
     assert(distribution_type == DistributionType::LognormalType);
 
-    return new Uint64LognormalKeyGenerator(thread_id, key_bound, p1, p2);
+    return new Uint64LognormalKeyGenerator(thread_id, key_bound, dist_param_1, dist_param_2);
   
   }
+}
+
+static void validate_key_generator_params(const DistributionType distribution_type, const uint64_t key_bound, const double dist_param_1, const double dist_param_2) {
+
+  // validate distribution parameters.
+  if (distribution_type == DistributionType::SequenceType) {
+
+    std::cout << "key generator type: sequence" << std::endl;
+
+  } else if (distribution_type == DistributionType::UniformType) {
+    
+    if (key_bound == INVALID_KEY_BOUND) {
+      std::cerr << "expected key generator type: uniform" << std::endl;
+      std::cerr << "error: upper bound unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    std::cout << "key generator type: uniform" << std::endl;
+    std::cout << "upper bound: " << key_bound << std::endl;
+
+  } else if (distribution_type == DistributionType::NormalType) {
+
+    if (key_bound == INVALID_KEY_BOUND) {
+      std::cerr << "expected key generator type: normal" << std::endl;
+      std::cerr << "error: upper bound unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    if (dist_param_1 == INVALID_DIST_PARAM) {
+      std::cerr << "expected key generator type: normal" << std::endl;
+      std::cerr << "error: dist_param_1 unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    std::cout << "key generator type: normal" << std::endl;
+    std::cout << "upper bound: " << key_bound << std::endl;
+    std::cout << "dist_param_1: " << dist_param_1 << std::endl;
+
+  } else if (distribution_type == DistributionType::LognormalType) {
+
+
+    if (key_bound == INVALID_KEY_BOUND) {
+      std::cerr << "expected key generator type: lognormal" << std::endl;
+      std::cerr << "error: upper bound unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    if (dist_param_1 == INVALID_DIST_PARAM) {
+      std::cerr << "expected key generator type: lognormal" << std::endl;
+      std::cerr << "error: dist_param_1 unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    if (dist_param_2 == INVALID_DIST_PARAM) {
+      std::cerr << "expected key generator type: lognormal" << std::endl;
+      std::cerr << "error: dist_param_2 unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    std::cout << "key generator type: lognormal" << std::endl;
+    std::cout << "upper bound: " << key_bound << std::endl;
+    std::cout << "dist_param_1: " << dist_param_1 << std::endl;
+    std::cout << "dist_param_2: " << dist_param_2 << std::endl;
+
+  }
+
 }

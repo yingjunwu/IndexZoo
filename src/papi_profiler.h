@@ -2,6 +2,8 @@
 
 class PAPIProfiler {
 
+public:
+
   static void init_papi() {
     int retval;
 
@@ -26,69 +28,31 @@ class PAPIProfiler {
     return;
   }
 
-  static void start_inst_monitor() {
-    int events[PAPI_INST_EVENT_COUNT] = \
-      /*{PAPI_LD_INS, PAPI_SR_INS, */{PAPI_BR_INS, PAPI_TOT_CYC, PAPI_TOT_INS, PAPI_BR_MSP};
-    long long counters[PAPI_INST_EVENT_COUNT];
+  static void start_measure_cache_miss_rate() {
+    const size_t num_counters = 3;
+    int events[num_counters] = {PAPI_L1_TCM, PAPI_LD_INS, PAPI_SR_INS};
+    long long counters[num_counters];
     int retval;
 
-    if ((retval = PAPI_start_counters(events, PAPI_INST_EVENT_COUNT)) != PAPI_OK) {
+    if ((retval = PAPI_start_counters(events, num_counters)) != PAPI_OK) {
       fprintf(stderr, "PAPI failed to start counters: %s\n", PAPI_strerror(retval));
-      exit(1);
+      exit(EXIT_FAILURE);
     }
-
     return;
   }
 
-  static void end_inst_monitor() {
-    long long counters[PAPI_INST_EVENT_COUNT];
+  static void stop_measure_cache_miss_rate() {
+    const size_t num_counters = 3;
+    long long counters[num_counters];
     int retval;
 
-    if ((retval = PAPI_stop_counters(counters, PAPI_INST_EVENT_COUNT)) != PAPI_OK) {
+    if ((retval = PAPI_stop_counters(counters, num_counters)) != PAPI_OK) {
       fprintf(stderr, "PAPI failed to stop counters: %s\n", PAPI_strerror(retval));
-      exit(1);
+      exit(EXIT_FAILURE);
     }
 
-    //std::cout << "Total load = " << counters[0] << "\n";
-    //std::cout << "Total store = " << counters[1] << "\n";
-    std::cout << "Total branch = " << counters[0] << "\n";
-    std::cout << "Total cycle = " << counters[1] << "\n";
-    std::cout << "Total instruction = " << counters[2] << "\n";
-    std::cout << "Total branch misprediction = " << counters[3] << "\n";
-    
-    return;
-  }
-
-  // Uses PAPI Library to start monitoring L1, L2, L3 cache misses
-  static void start_cache_monitor() {
-    int events[PAPI_CACHE_EVENT_COUNT] = \
-      {PAPI_L1_TCM, PAPI_L2_TCM, PAPI_L3_TCM};//, PAPI_LD_INS, PAPI_SR_INS};
-    long long counters[PAPI_CACHE_EVENT_COUNT];
-    int retval;
-
-    if ((retval = PAPI_start_counters(events, PAPI_CACHE_EVENT_COUNT)) != PAPI_OK) {
-      fprintf(stderr, "PAPI failed to start counters: %s\n", PAPI_strerror(retval));
-      exit(1);
-    }
-
-    return;
-  }
-
-  // print PAPI result on cache misses 
-  static void end_cache_monitor() {
-    // We use this array to receive counter values
-    long long counters[PAPI_CACHE_EVENT_COUNT];
-    int retval;
-
-    if ((retval = PAPI_stop_counters(counters, PAPI_CACHE_EVENT_COUNT)) != PAPI_OK) {
-      fprintf(stderr, "PAPI failed to stop counters: %s\n", PAPI_strerror(retval));
-      exit(1);
-    }
-
-    std::cout << "L1 miss = " << counters[0] << "\n";
-    std::cout << "L2 miss = " << counters[1] << "\n";
-    std::cout << "L3 miss = " << counters[2] << "\n";
-
+    std::cout << "counters: " << counters[0] << " " << counters[1] << " " << counters[2] << std::endl;
+    std::cout << "cache miss rate = " << counters[0] * 1.0 / (counters[1] + counters[2]) << std::endl;
     return;
   }
 

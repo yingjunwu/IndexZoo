@@ -7,9 +7,9 @@
 #include "static_index/kary_index.h"
 #include "static_index/fast_index.h"
 
-#include "dynamic_index/singlethread/btree_index.h"
 #include "dynamic_index/singlethread/stx_btree_index.h"
 #include "dynamic_index/singlethread/art_tree_index.h"
+#include "dynamic_index/singlethread/btree_index.h"
 
 #include "dynamic_index/multithread/libcuckoo_index.h"
 #include "dynamic_index/multithread/art_tree_index.h"
@@ -28,9 +28,9 @@ enum class StaticIndexType {
 // dynamic indexes
 enum class DynamicIndexType {
   // singlethread
-  SinglethreadBtreeIndexType = 0,
-  SinglethreadStxBtreeIndexType,
+  SinglethreadStxBtreeIndexType = 0,
   SinglethreadArtTreeIndexType,
+  SinglethreadBtreeIndexType,
   
   // multithread
   MultithreadLibcuckooIndexType = 3,
@@ -55,12 +55,12 @@ static std::string get_static_index_name(const StaticIndexType index_type) {
 }
 
 static std::string get_dynamic_index_name(const DynamicIndexType index_type) {
-  if (index_type == DynamicIndexType::SinglethreadBtreeIndexType) {
-    return "dynamic - singlethread - btree index";
-  } else if (index_type == DynamicIndexType::SinglethreadStxBtreeIndexType) {
+  if (index_type == DynamicIndexType::SinglethreadStxBtreeIndexType) {
     return "dynamic - singlethread - stx-btree index";
   } else if (index_type == DynamicIndexType::SinglethreadArtTreeIndexType) {
     return "dynamic - singlethread - art-tree index";
+  } else if (index_type == DynamicIndexType::SinglethreadBtreeIndexType) {
+    return "";
   } else if (index_type == DynamicIndexType::MultithreadLibcuckooIndexType) {
     return "dynamic - multithread - libcuckoo index";
   } else if (index_type == DynamicIndexType::MultithreadArtTreeIndexType) {
@@ -72,6 +72,49 @@ static std::string get_dynamic_index_name(const DynamicIndexType index_type) {
   } else {
     ASSERT(false, "invalid dynamic index type");
     return "";
+  }
+}
+
+static void validate_static_index_params(const StaticIndexType index_type, const size_t index_param_1, const size_t index_param_2) {  
+  if (index_type == StaticIndexType::InterpolationIndexType) {
+
+    if (index_param_1 == 0) {
+      std::cerr << "expected index type: static - interpolation index" << std::endl;
+      std::cerr << "error: number of segments cannot be 0!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    std::cout << "index type: static - interpolation index" << std::endl;
+    std::cout << "number of segments: " << index_param_1 << std::endl;
+
+  } else if (index_type == StaticIndexType::BinaryIndexType) {
+    
+    std::cout << "index type: static - binary index" << std::endl;
+    std::cout << "number of layers: " << index_param_1 << std::endl;
+
+  } else if (index_type == StaticIndexType::KAryIndexType) {
+    
+    if (index_param_2 < 2) {
+      std::cerr << "expected index type: static - k-ary index" << std::endl;
+      std::cerr << "error: k must be larger than or equal to 2!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
+    std::cout << "index type: static - k-ary index" << std::endl;
+    std::cout << "number of layers: " << index_param_1 << std::endl;
+    std::cout << "number of arys: " << index_param_2 << std::endl;
+
+  } else if (index_type == StaticIndexType::FastIndexType) {
+    
+    std::cout << "index type: static - fast index" << std::endl;
+
+  } else {
+    
+    std::cerr << "invalid static index type" << std::endl;
+    exit(EXIT_FAILURE);
+    return;
   }
 }
 
@@ -107,18 +150,18 @@ static BaseStaticIndex<KeyT, ValueT>* create_static_index(const StaticIndexType 
 
 template<typename KeyT>
 static BaseDynamicIndex<KeyT>* create_dynamic_index(const DynamicIndexType index_type, DataTable<KeyT, uint64_t> *table_ptr) {
-  if (index_type == DynamicIndexType::SinglethreadBtreeIndexType) {
-
-    // return new dynamic_index::singlethread::LibcuckooIndex<KeyT>();
-    return nullptr;
-
-  } else if (index_type == DynamicIndexType::SinglethreadStxBtreeIndexType) {
+  if (index_type == DynamicIndexType::SinglethreadStxBtreeIndexType) {
 
     return new dynamic_index::singlethread::StxBtreeIndex<KeyT>();
 
   } else if (index_type == DynamicIndexType::SinglethreadArtTreeIndexType) {
 
     return new dynamic_index::singlethread::ArtTreeIndex<KeyT>();
+
+  } if (index_type == DynamicIndexType::SinglethreadBtreeIndexType) {
+
+    ASSERT(false, "unsupported index type");
+    return nullptr;
 
   } else if (index_type == DynamicIndexType::MultithreadLibcuckooIndexType) {
 

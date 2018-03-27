@@ -102,7 +102,6 @@ public:
 
     if (num_layers_ != 0) {
       size_t inner_size = std::pow(k_, num_layers_) - 1;
-      std::cout << "inner size = " << inner_size << std::endl;
       inner_nodes_ = new KeyT[inner_size];
       construct_inner_layers();
     } else {

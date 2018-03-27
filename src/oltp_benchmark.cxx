@@ -26,13 +26,12 @@ void usage(FILE *out) {
           "Command line options : oltp_benchmark <options> \n"
           "   -h --help              :  print help message \n"
           "   -i --index             :  index type: \n"
-          "                              -- (0) btree \n"
-          "                              -- (1) stx-btree (default) \n"
-          "                              -- (2) art-btree :: ST \n"
-          "                              -- (3) libcuckoo btree \n"
-          "                              -- (4) art-btree :: MT \n"
-          "                              -- (5) bw-tree \n"
-          "                              -- (6) masstree \n"
+          "                              -- (0) singlethread - stx-btree index (default) \n"
+          "                              -- (1) singlethread - art-tree index \n"
+          "                              -- (3) multithread - libcuckoo index \n"
+          "                              -- (4) multithread - art-tree index \n"
+          "                              -- (5) multithread - bw-tree index \n"
+          "                              -- (6) multithread - masstree index \n"
           "   -t --time_duration     :  time duration (default: 10) \n"
           "   -m --init_key_count    :  init key count (default: 1<<20) \n"
           "   -r --reader_count      :  reader count (default: 0) \n"
@@ -52,7 +51,7 @@ static struct option opts[] = {
 };
 
 struct Config {
-  DynamicIndexType index_type_ = DynamicIndexType::SinglethreadBtreeIndexType;
+  DynamicIndexType index_type_ = DynamicIndexType::SinglethreadStxBtreeIndexType;
   uint64_t time_duration_ = 10;
   double profile_duration_ = 0.5;
   uint64_t init_key_count_ = 1ull<<20;
@@ -113,6 +112,11 @@ void parse_args(int argc, char* argv[], Config &config) {
 
   // we temporarily only support sequence key generator.
   assert(config.key_upper_bound_ == INVALID_KEY_BOUND);
+
+  std::string index_name = get_dynamic_index_name(config.index_type_);
+  std::cout << "index type: " << index_name.c_str() << std::endl;
+  std::cout << "number of inserter threads: " << config.inserter_count_ << std::endl;
+  std::cout << "number of reader threads: " << config.reader_count_ << std::endl;
 
 }
 
@@ -235,7 +239,7 @@ void run_workload(const Config &config) {
     
     memcpy(operation_counts_profiles[round_id], operation_counts, sizeof(uint64_t) * config.thread_count_);
 
-    act_size_profiles.push_back(get_memory_gb());
+    act_size_profiles.push_back(get_memory_mb());
     approx_size_profiles.push_back(data_table->size_approx());
     if (round_id == 0) {
       // first round
@@ -288,10 +292,10 @@ void run_workload(const Config &config) {
               << " M  |  " 
               << std::setw(5)
               << act_size_profiles.at(round_id) 
-              << " GB  |  "
+              << " MB  |  "
               << std::setw(5)
-              << approx_size_profiles.at(round_id) * (sizeof(KeyT) + sizeof(ValueT)) * 1.0 / 1024 / 1024 / 1024
-              << " GB"
+              << approx_size_profiles.at(round_id) * (sizeof(KeyT) + sizeof(ValueT)) * 1.0 / 1024 / 1024
+              << " MB"
               << std::endl;
   }
   
@@ -302,17 +306,13 @@ void run_workload(const Config &config) {
     worker_threads.at(i).join();
   }
 
-  std::string index_name = get_dynamic_index_name(config.index_type_);
   
   uint64_t total_count = 0;
   for (uint64_t i = 0; i < config.thread_count_; ++i) {
     total_count += operation_counts[i];
   }
 
-  std::cout << "index :: " << index_name.c_str() << ", "
-            << "insert :: " << config.inserter_count_ << ", "
-            << "read :: " << config. reader_count_ << ", "
-            << "throughput ::: " << total_count * 1.0 / config.time_duration_ / 1000 / 1000 << " M ops" 
+  std::cout << "average throughput: " << total_count * 1.0 / config.time_duration_ / 1000 / 1000 << " M ops" 
             << std::endl;
 
   for (uint64_t round_id = 0; round_id < profile_round; ++round_id) {
