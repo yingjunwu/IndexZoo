@@ -11,8 +11,8 @@
 namespace dynamic_index {
 namespace singlethread {
 
-template<typename KeyT>
-class BtreeIndex : public BaseDynamicIndex<KeyT> {
+template<typename KeyT, typename ValueT>
+class BtreeIndex : public BaseDynamicIndex<KeyT, ValueT> {
 
 //////////////////////////////////////////////////////////////////////
 //// BEGIN INTERNAL DATA STRUCTURES
@@ -198,7 +198,7 @@ static const size_t INVALID_LEAF_OFFSET = BRANCHING_FACTOR + 1;
 //////////////////////////////////////////////////////////////////////
 
 public:
-  BtreeIndex() : root_(nullptr), tree_depth_(0), inc_node_id_(0) {}
+  BtreeIndex(DataTable<KeyT, ValueT> *table_ptr) : BaseDynamicIndex<KeyT, ValueT>(table_ptr), root_(nullptr), tree_depth_(0), inc_node_id_(0) {}
 
   virtual ~BtreeIndex() {}
 

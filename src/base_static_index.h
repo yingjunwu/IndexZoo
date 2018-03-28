@@ -1,15 +1,9 @@
 #pragma once
 
-#include <iostream>
-#include <cassert>
-#include <cstdint>
-#include <vector>
-
-#include "offset.h"
-#include "data_table.h"
+#include "base_index.h"
 
 template<typename KeyT, typename ValueT>
-class BaseStaticIndex {
+class BaseStaticIndex : public BaseIndex<KeyT, ValueT> {
 
 protected:
   struct KeyValuePair {
@@ -26,19 +20,18 @@ protected:
 
 public:
   BaseStaticIndex(DataTable<KeyT, ValueT> *table_ptr) : 
-    table_ptr_(table_ptr), container_(nullptr), size_(0) {}
+    BaseIndex<KeyT, ValueT>(table_ptr), container_(nullptr), size_(0) {}
   
   virtual ~BaseStaticIndex() {
     delete[] container_;
     container_ = nullptr;
   }
 
-  virtual void find(const KeyT &key, std::vector<Uint64> &values) = 0;
+  virtual void insert(const KeyT &key, const Uint64 &value) final {}
+  
+  virtual void erase(const KeyT &key) final {}
 
-  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) = 0;
-
-
-  void scan(const KeyT &key, std::vector<Uint64> &values) {
+  void scan(const KeyT &key, std::vector<Uint64> &values) override {
     for (size_t i = 0; i < this->size_; ++i) {
       if (this->container_[i].key_ == key) {
         values.push_back(this->container_[i].value_);
@@ -46,21 +39,21 @@ public:
     }
   }
 
-  void scan_reverse(const KeyT &key, std::vector<Uint64> &values) {
+  void scan_reverse(const KeyT &key, std::vector<Uint64> &values) override {
     for (int i = this->size_ - 1; i >= 0; --i) {
       if (this->container_[i].key_ == key) {
         values.push_back(this->container_[i].value_);
       }
     }
   }
+  
+  virtual void prepare_threads(const size_t thread_count) override {}
 
-  virtual void reorganize() = 0;
+  virtual void register_thread(const size_t thread_id) override {}
 
-  virtual void print() const = 0;
+  virtual void print_stats() const override {}
 
-  virtual void print_stats() const {}
-
-  size_t size() const { return size_; }
+  virtual size_t size() const final { return size_; }
 
 protected:
   void base_reorganize() {
@@ -68,11 +61,11 @@ protected:
     ASSERT(container_ == nullptr && size_ == 0, "invalid container");
 
     size_t capacity = 0;
-    capacity = table_ptr_->size();
+    capacity = this->table_ptr_->size();
     
     container_ = new KeyValuePair[capacity];
 
-    DataTableIterator<KeyT, ValueT> iterator(table_ptr_);
+    DataTableIterator<KeyT, ValueT> iterator(this->table_ptr_);
     while (iterator.has_next()) {
       auto entry = iterator.next();
       container_[size_].key_ = *(entry.key_);
@@ -85,8 +78,6 @@ protected:
   }
 
 protected:
-
-  DataTable<KeyT, ValueT> *table_ptr_;
 
   KeyValuePair *container_;
   size_t size_;

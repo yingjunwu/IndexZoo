@@ -10,7 +10,7 @@ namespace dynamic_index {
 namespace multithread {
 
 template<typename KeyT, typename ValueT>
-class ArtTreeIndex : public BaseDynamicIndex<KeyT> {
+class ArtTreeIndex : public BaseDynamicIndex<KeyT, ValueT> {
 
 
 static void load_key_internal(void *ctx, TID tid, art::Key &tree_key) {
@@ -29,7 +29,10 @@ static void load_key_internal(void *ctx, TID tid, art::Key &tree_key) {
 
 public:
 
-  ArtTreeIndex(DataTable<KeyT, ValueT> *table_ptr) : container_(load_key_internal, table_ptr), ti_(container_.getThreadInfo()) {}
+  ArtTreeIndex(DataTable<KeyT, ValueT> *table_ptr) : 
+    BaseDynamicIndex<KeyT, ValueT>(table_ptr), 
+    container_(load_key_internal, table_ptr), 
+    ti_(container_.getThreadInfo()) {}
   
   virtual ~ArtTreeIndex() {}
 

@@ -17,12 +17,12 @@ typedef uint64_t ValueT;
 
 TEST_F(StaticIndexTest, UniqueKeyTest) {
 
-  std::vector<StaticIndexType> index_types {
+  std::vector<IndexType> index_types {
 
-    StaticIndexType::InterpolationIndexType,
-    StaticIndexType::BinaryIndexType,
-    StaticIndexType::KAryIndexType,
-    StaticIndexType::FastIndexType,
+    IndexType::S_Interpolation,
+    IndexType::S_Binary,
+    IndexType::S_KAry,
+    IndexType::S_Fast,
   };
 
   size_t n = 10000;
@@ -31,8 +31,8 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
 
     std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
       new DataTable<uint64_t, uint64_t>());
-    std::unique_ptr<BaseStaticIndex<uint64_t, uint64_t>> data_index(
-      create_static_index<uint64_t, uint64_t>(index_type, data_table.get(), 5, 5));
+    std::unique_ptr<BaseIndex<uint64_t, uint64_t>> data_index(
+      create_index<uint64_t, uint64_t>(index_type, data_table.get(), 5, 5));
 
     std::unordered_map<uint64_t, std::pair<Uint64, uint64_t>> validation_set;
     
@@ -79,12 +79,12 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
 
 TEST_F(StaticIndexTest, NonUniqueKeyTest) {
 
-  std::vector<StaticIndexType> index_types {
+  std::vector<IndexType> index_types {
 
-    StaticIndexType::InterpolationIndexType,
-    // StaticIndexType::BinaryIndexType,
-    // StaticIndexType::BinarySearchIndexType,
-    // StaticIndexType::KAryIndexType,
+    IndexType::S_Interpolation,
+    IndexType::S_Binary,
+    IndexType::S_KAry,
+    IndexType::S_Fast,
   };
 
   size_t n = 10000;
@@ -96,8 +96,8 @@ TEST_F(StaticIndexTest, NonUniqueKeyTest) {
 
     std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
       new DataTable<uint64_t, uint64_t>());
-    std::unique_ptr<BaseStaticIndex<uint64_t, uint64_t>> data_index(
-      create_static_index<uint64_t, uint64_t>(index_type, data_table.get(), 1, 2));
+    std::unique_ptr<BaseIndex<uint64_t, uint64_t>> data_index(
+      create_index<uint64_t, uint64_t>(index_type, data_table.get(), 1, 2));
 
     std::unordered_map<uint64_t, std::unordered_map<Uint64, uint64_t>> validation_set;
     

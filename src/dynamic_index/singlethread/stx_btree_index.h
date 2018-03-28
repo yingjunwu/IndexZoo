@@ -8,11 +8,11 @@
 namespace dynamic_index {
 namespace singlethread {
 
-template<typename KeyT>
-class StxBtreeIndex : public BaseDynamicIndex<KeyT> {
+template<typename KeyT, typename ValueT>
+class StxBtreeIndex : public BaseDynamicIndex<KeyT, ValueT> {
 
 public:
-  StxBtreeIndex() {}
+  StxBtreeIndex(DataTable<KeyT, ValueT> *table_ptr) : BaseDynamicIndex<KeyT, ValueT>(table_ptr) {}
   virtual ~StxBtreeIndex() {}
 
   virtual void insert(const KeyT &key, const Uint64 &value) final {

@@ -10,11 +10,11 @@ namespace multithread {
 
 using namespace wangziqi2013::bwtree;
 
-template<typename KeyT>
-class BwTreeIndex : public BaseDynamicIndex<KeyT> {
+template<typename KeyT, typename ValueT>
+class BwTreeIndex : public BaseDynamicIndex<KeyT, ValueT> {
 
 public:
-  BwTreeIndex() {
+  BwTreeIndex(DataTable<KeyT, ValueT> *table_ptr) : BaseDynamicIndex<KeyT, ValueT>(table_ptr) {
     container_ = new BwTree<KeyT, Uint64>{true};
   }
 

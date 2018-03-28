@@ -7,15 +7,11 @@
 namespace dynamic_index {
 namespace singlethread {
 
-template<typename KeyT>
-class ArtTreeIndex : public BaseDynamicIndex<KeyT> {
+template<typename KeyT, typename ValueT>
+class ArtTreeIndex : public BaseDynamicIndex<KeyT, ValueT> {
 
 public:
-  ArtTreeIndex(const size_t size_hint) {
-    art_tree_init(&container_);
-  }
-
-  ArtTreeIndex() {
+  ArtTreeIndex(DataTable<KeyT, ValueT> *table_ptr) : BaseDynamicIndex<KeyT, ValueT>(table_ptr) {
     art_tree_init(&container_);
   }
   

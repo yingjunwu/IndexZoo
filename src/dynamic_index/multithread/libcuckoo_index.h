@@ -8,12 +8,12 @@
 namespace dynamic_index {
 namespace multithread {
 
-template<typename KeyT>
-class LibcuckooIndex : public BaseDynamicIndex<KeyT> {
+template<typename KeyT, typename ValueT>
+class LibcuckooIndex : public BaseDynamicIndex<KeyT, ValueT> {
 
 public:
-  LibcuckooIndex(const size_t size_hint) : container_(size_hint) {}
-  LibcuckooIndex() {}
+  // LibcuckooIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t size_hint) : BaseDynamicIndex<KeyT, ValueT>(table_ptr), container_(size_hint) {}
+  LibcuckooIndex(DataTable<KeyT, ValueT> *table_ptr) : BaseDynamicIndex<KeyT, ValueT>(table_ptr) {}
   virtual ~LibcuckooIndex() {}
 
   virtual void insert(const KeyT &key, const Uint64 &value) final {

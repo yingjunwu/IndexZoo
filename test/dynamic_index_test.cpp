@@ -18,16 +18,18 @@ typedef uint64_t ValueT;
 
 TEST_F(DynamicIndexTest, UniqueKeyTest) {
 
-  std::vector<DynamicIndexType> index_types {
+  std::vector<IndexType> index_types {
 
-    // DynamicIndexType::SinglethreadBtreeIndexType,
-    DynamicIndexType::SinglethreadStxBtreeIndexType,
-    DynamicIndexType::SinglethreadArtTreeIndexType,
+    // dynamic indexes - singlethread
+    IndexType::D_ST_StxBtree,
+    IndexType::D_ST_ArtTree,
+    // IndexType::D_ST_Btree,
     
-    DynamicIndexType::MultithreadLibcuckooIndexType,
-    DynamicIndexType::MultithreadArtTreeIndexType,
-    DynamicIndexType::MultithreadBwTreeIndexType,
-    DynamicIndexType::MultithreadMasstreeIndexType,
+    // dynamic indexes - multithread
+    IndexType::D_MT_Libcuckoo,
+    IndexType::D_MT_ArtTree,
+    IndexType::D_MT_BwTree,
+    IndexType::D_MT_Masstree,
   };
 
   size_t n = 10000;
@@ -36,8 +38,8 @@ TEST_F(DynamicIndexTest, UniqueKeyTest) {
 
     std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
       new DataTable<uint64_t, uint64_t>());
-    std::unique_ptr<BaseDynamicIndex<uint64_t>> data_index(
-      create_dynamic_index<uint64_t>(index_type, data_table.get()));
+    std::unique_ptr<BaseIndex<uint64_t, uint64_t>> data_index(
+      create_index<uint64_t, uint64_t>(index_type, data_table.get(), 0, 0));
 
     data_index->prepare_threads(1);
     data_index->register_thread(0);
@@ -81,16 +83,18 @@ TEST_F(DynamicIndexTest, UniqueKeyTest) {
 
 TEST_F(DynamicIndexTest, NonUniqueKeyTest) {
 
-  std::vector<DynamicIndexType> index_types {
+  std::vector<IndexType> index_types {
 
-    // DynamicIndexType::SinglethreadBtreeIndexType,
-    DynamicIndexType::SinglethreadStxBtreeIndexType,
-    DynamicIndexType::SinglethreadArtTreeIndexType,
+    // dynamic indexes - singlethread
+    IndexType::D_ST_StxBtree,
+    IndexType::D_ST_ArtTree,
+    // IndexType::D_ST_Btree,
     
-    DynamicIndexType::MultithreadLibcuckooIndexType,
-    DynamicIndexType::MultithreadArtTreeIndexType,
-    DynamicIndexType::MultithreadBwTreeIndexType,
-    // DynamicIndexType::MultithreadMasstreeIndexType,
+    // dynamic indexes - multithread
+    IndexType::D_MT_Libcuckoo,
+    IndexType::D_MT_ArtTree,
+    IndexType::D_MT_BwTree,
+    // IndexType::D_MT_Masstree,
   };
 
   size_t n = 10000;
@@ -102,8 +106,8 @@ TEST_F(DynamicIndexTest, NonUniqueKeyTest) {
 
     std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
       new DataTable<uint64_t, uint64_t>());
-    std::unique_ptr<BaseDynamicIndex<uint64_t>> data_index(
-      create_dynamic_index<uint64_t>(index_type, data_table.get()));
+    std::unique_ptr<BaseIndex<uint64_t, uint64_t>> data_index(
+      create_index<uint64_t, uint64_t>(index_type, data_table.get(), 0, 0));
 
     data_index->prepare_threads(1);
     data_index->register_thread(0);
@@ -147,13 +151,19 @@ TEST_F(DynamicIndexTest, NonUniqueKeyTest) {
 
 // TEST_F(DynamicIndexTest, RangeFindTest) {
 
-//   std::vector<IndexType> index_types {
-//     IndexType::LibcuckooIndexType,
-//     IndexType::ArtTreeSTIndexType,
-//     IndexType::ArtTreeMTIndexType,
-//     IndexType::StxBtreeIndexType,
-//     IndexType::BwTreeIndexType,
-//   };
+  // std::vector<IndexType> index_types {
+
+  //   // dynamic indexes - singlethread
+  //   IndexType::D_ST_StxBtree,
+  //   IndexType::D_ST_ArtTree,
+  //   // IndexType::D_ST_Btree,
+    
+  //   // dynamic indexes - multithread
+  //   IndexType::D_MT_Libcuckoo,
+  //   IndexType::D_MT_ArtTree,
+  //   IndexType::D_MT_BwTree,
+  //   // IndexType::D_MT_Masstree,
+  // };
 
 //   for (auto index_type : index_types) {
 

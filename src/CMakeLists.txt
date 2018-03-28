@@ -3,14 +3,10 @@ PROJECT (IndexZoo)
 FILE (GLOB_RECURSE SRC_LIST "*.cpp" "*.cc" "*.c")
 
 ADD_LIBRARY (indexzoo SHARED ${SRC_LIST})
-ADD_EXECUTABLE (oltp_benchmark oltp_benchmark.cxx)
-ADD_EXECUTABLE (olap_benchmark olap_benchmark.cxx)
+ADD_EXECUTABLE (index_benchmark index_benchmark.cxx)
 
-TARGET_LINK_LIBRARIES (oltp_benchmark indexzoo)
-TARGET_LINK_LIBRARIES (oltp_benchmark jemalloc pthread)
-
-TARGET_LINK_LIBRARIES (olap_benchmark indexzoo)
-TARGET_LINK_LIBRARIES (olap_benchmark jemalloc pthread)
+TARGET_LINK_LIBRARIES (index_benchmark indexzoo)
+TARGET_LINK_LIBRARIES (index_benchmark jemalloc pthread)
 
 
 ADD_DEFINITIONS(-DWORDS_BIGENDIAN_SET=1)
@@ -28,10 +24,10 @@ ADD_DEFINITIONS(-DHAVE_UNALIGNED_ACCESS=1)
 ADD_DEFINITIONS(-DHAVE___BUILTIN_CLZ=1)
 ADD_DEFINITIONS(-DHAVE___BUILTIN_CLZL=1)
 
-INSTALL (TARGETS oltp_benchmark
-    RUNTIME DESTINATION bin
-    )
+# INSTALL (TARGETS oltp_benchmark
+#     RUNTIME DESTINATION bin
+#     )
 
-INSTALL (TARGETS olap_benchmark
+INSTALL (TARGETS index_benchmark
     RUNTIME DESTINATION bin
     )

@@ -23,11 +23,11 @@ extern thread_local threadinfo *ti_;
 namespace dynamic_index {
 namespace multithread {
 
-template<typename KeyT>
-class MasstreeIndex : public BaseDynamicIndex<KeyT> {
+template<typename KeyT, typename ValueT>
+class MasstreeIndex : public BaseDynamicIndex<KeyT, ValueT> {
 
 public:
-  MasstreeIndex() {
+  MasstreeIndex(DataTable<KeyT, ValueT> *table_ptr) : BaseDynamicIndex<KeyT, ValueT>(table_ptr) {
     container_ = new Masstree::default_table();
 
     threadinfo *main_ti = threadinfo::make(threadinfo::TI_MAIN, -1);
