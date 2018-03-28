@@ -1,8 +1,8 @@
 # IndexZoo
 
+## Overview
 The IndexZoo project aims at developing a general platform for performance evaluation of index structures in modern main-memory database systems.
 
-## Motivation
 
 
 
@@ -26,6 +26,7 @@ The IndexZoo project aims at developing a general platform for performance evalu
 |:---------------:|:------:|:-----------------------:|:-----:|
 | Stx-Btree Index |  | [bingmann](https://github.com/bingmann/stx-btree) | Standard B+-tree index |
 | ArtTree Index   | [V. Leis, et al.](https://db.in.tum.de/~leis/papers/ART.pdf) | [armon](https://github.com/armon/libart)                   | |
+| Skiplist Index  |  | [yingjunwu]() | |
 
 ### Static Index Structures (for OLAP workloads)
 

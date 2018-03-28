@@ -19,7 +19,7 @@ public:
 
   virtual void register_thread(const size_t thread_id) override {}
 
-  virtual void reorganize() override {}
+  virtual void reorganize() final {}
 
   virtual void print() const override {}
 
