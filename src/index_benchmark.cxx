@@ -82,8 +82,8 @@ struct Config {
   IndexType index_type_ = IndexType::S_Interpolation;
   ReadType index_read_type_ = ReadType::IndexLookupType;
   DistributionType distribution_type_ = DistributionType::SequenceType;
-  size_t index_param_1_ = 1;
-  size_t index_param_2_ = 2;
+  size_t index_param_1_ = 1; // INVALID_INDEX_PARAM
+  size_t index_param_2_ = 2; // INVALID_INDEX_PARAM
   uint64_t key_upper_bound_ = INVALID_KEY_BOUND;
   double dist_param_1_ = INVALID_DIST_PARAM;
   double dist_param_2_ = INVALID_DIST_PARAM;
