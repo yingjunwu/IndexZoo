@@ -68,14 +68,14 @@ static void validate_key_generator_params(const DistributionType distribution_ty
 
     if (dist_param_1 == INVALID_DIST_PARAM) {
       std::cerr << "expected key generator type: normal" << std::endl;
-      std::cerr << "error: dist_param_1 unset!" << std::endl;
+      std::cerr << "error: stddev (dist_param_1) unset!" << std::endl;
       exit(EXIT_FAILURE);
       return;
     }
 
     std::cout << "key generator type: normal" << std::endl;
     std::cout << "upper bound: " << key_bound << std::endl;
-    std::cout << "dist_param_1: " << dist_param_1 << std::endl;
+    std::cout << "stddev (dist_param_1): " << dist_param_1 << std::endl;
 
   } else if (distribution_type == DistributionType::LognormalType) {
 

@@ -6,6 +6,7 @@
 #include "static_index/binary_index.h"
 #include "static_index/kary_index.h"
 #include "static_index/fast_index.h"
+#include "static_index/persister_index.h"
 
 #include "dynamic_index/singlethread/stx_btree_index.h"
 #include "dynamic_index/singlethread/art_tree_index.h"
@@ -24,6 +25,7 @@ enum class IndexType {
   S_Binary, 
   S_KAry, 
   S_Fast,
+  S_Persister, // this is a special index type. only for data persisting
 
   // dynamic indexes - singlethread
   D_ST_StxBtree = 10,
@@ -49,6 +51,8 @@ static std::string get_index_name(const IndexType index_type) {
     return "static - k-ary index";
   } else if (index_type == IndexType::S_Fast) {
     return "static - fast index";
+  } else if (index_type == IndexType::S_Persister) {
+    return "static - persister index";
   } else if (index_type == IndexType::D_ST_StxBtree) {
     return "dynamic - singlethread - stx-btree index";
   } else if (index_type == IndexType::D_ST_ArtTree) {
@@ -135,6 +139,10 @@ static BaseIndex<KeyT, ValueT>* create_index(const IndexType index_type, DataTab
   } else if (index_type == IndexType::S_Fast) {
 
     return new static_index::FastIndex<KeyT, ValueT>(table_ptr);
+
+  } else if (index_type == IndexType::S_Persister) {
+
+    return new static_index::PersisterIndex<KeyT, ValueT>(table_ptr);
 
   } else if (index_type == IndexType::D_ST_StxBtree) {
 

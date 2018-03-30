@@ -4,6 +4,7 @@
 #include <vector>
 #include <atomic>
 #include <cstring>
+#include <fstream>
 
 #include "offset.h"
 
@@ -127,25 +128,25 @@ public:
     }
   }
 
-  KeyT* get_tuple_key(const BlockIDT block_id, const RelOffsetT rel_offset) {
+  KeyT* get_tuple_key(const BlockIDT block_id, const RelOffsetT rel_offset) const {
 
     char *data = data_blocks_.at(block_id)->get_tuple(rel_offset);
     return (KeyT*)(data);
   }
 
-  ValueT* get_tuple_value(const BlockIDT block_id, const RelOffsetT rel_offset) {
+  ValueT* get_tuple_value(const BlockIDT block_id, const RelOffsetT rel_offset) const {
 
     char *data = data_blocks_.at(block_id)->get_tuple(rel_offset);
     return (ValueT*)(data + sizeof(KeyT));
   }
 
-  KeyT* get_tuple_key(const OffsetT offset) {
+  KeyT* get_tuple_key(const OffsetT offset) const {
 
     char *data = data_blocks_.at(offset.block_id())->get_tuple(offset.rel_offset());
     return (KeyT*)(data);
   }
 
-  ValueT* get_tuple_value(const OffsetT offset) {
+  ValueT* get_tuple_value(const OffsetT offset) const {
 
     char *data = data_blocks_.at(offset.block_id())->get_tuple(offset.rel_offset());
     return (ValueT*)(data + sizeof(KeyT));
@@ -165,6 +166,29 @@ public:
     assert(data_blocks_.size() != 0);
     return data_blocks_.size() * max_block_capacity_;
   }
+
+  // void persist_keys(const std::string &filename) const {
+    
+  //   ASSERT(data_blocks_.size() != 0, "table must contain at least one data block!");
+  //   ASSERT(!(data_blocks_.size() == 1 && data_blocks_.at(0)->size() == 0), "table must contain at least one tuple!");
+
+  //   std::ofstream persist_file;
+  //   persist_file.open(filename);
+  //   // all the blocks except the last
+  //   for (BlockIDT i = 0; i < data_blocks_.size() - 1; ++i) {
+  //     for (RelOffsetT j = 0; j < max_block_capacity_; ++j) {
+  //       persist_file << *get_tuple_key(i, j) << std::endl;
+  //     }
+  //   }
+  //   // the last block
+  //   BlockIDT last_block_id = data_blocks_.size() - 1;
+  //   RelOffsetT last_block_size = data_blocks_.at(last_block_id)->size();
+  //   for (RelOffsetT i = 0; i < last_block_size; ++i) {
+  //     persist_file << *get_tuple_key(last_block_id, i) << std::endl;
+  //   }
+
+  //   persist_file.close();
+  // }
 
 private:
   uint64_t max_block_capacity_;
@@ -189,8 +213,8 @@ public:
   DataTableIterator(DataTable<KeyT, ValueT> *table_ptr) : 
     table_ptr_(table_ptr), curr_block_id_(0), curr_rel_offset_(0) {
     
-    assert(table_ptr_->data_blocks_.size() != 0);
-    assert(!(table_ptr_->data_blocks_.size() == 1 && table_ptr_->data_blocks_.at(0)->size() == 0));
+    ASSERT(table_ptr_->data_blocks_.size() != 0, "table must contain at least one data block!");
+    ASSERT(!(table_ptr_->data_blocks_.size() == 1 && table_ptr_->data_blocks_.at(0)->size() == 0), "table must contain at least one tuple!");
 
     max_rel_offset_ = table_ptr_->max_block_capacity_ - 1; 
 

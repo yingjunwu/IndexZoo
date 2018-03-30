@@ -54,6 +54,7 @@ void usage(FILE *out) {
           "   -u --key_upper_bound   :  key upper bound \n"
           "   -P --dist_param_1      :  1st distribution parameter \n"
           "   -Q --dist_param_2      :  2nd distribution parameter \n"
+          "   -p --persist           :  persist all keys \n"
   );
 }
 
@@ -70,6 +71,7 @@ static struct option opts[] = {
     { "key_upper_bound",   optional_argument, NULL, 'u' },
     { "dist_param_1",      optional_argument, NULL, 'P' },
     { "dist_param_2",      optional_argument, NULL, 'Q' },
+    { "persist",           optional_argument, NULL, 'p' },
     { NULL, 0, NULL, 0 }
 };
 
@@ -94,6 +96,7 @@ struct Config {
   uint64_t reader_count_ = 1;
   uint64_t inserter_count_ = 0;
   uint64_t thread_count_ = 1;
+  bool persist_ = false;
 };
 
 void validate_key_generator_params(const Config &config);
@@ -102,11 +105,15 @@ void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "ht:m:r:s:i:S:T:y:d:u:P:Q:", opts, &idx);
+    int c = getopt_long(argc, argv, "hpt:m:r:s:i:S:T:y:d:u:P:Q:", opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
+      case 'p': {
+        config.persist_ = true;
+        break;
+      }
       case 'i': {
         config.index_type_ = (IndexType)atoi(optarg);
         break;
@@ -167,6 +174,10 @@ void parse_args(int argc, char* argv[], Config &config) {
         break;
       }
     }
+  }
+
+  if (config.persist_ == true) {
+    config.index_type_ = IndexType::S_Persister;
   }
 
   validate_index_params(config.index_type_, config.index_param_1_, config.index_param_2_);
@@ -296,11 +307,16 @@ void run_workload(const Config &config) {
     ValueT value = 100;
     
     OffsetT offset = data_table->insert_tuple(key, value);
-    
+
     data_index->insert(key, offset.raw_data());
   }
 
   data_index->reorganize();
+
+  if (config.persist_ == true) {
+    dynamic_cast<static_index::PersisterIndex<KeyT, ValueT>*>(data_index.get())->persist_keys("data.txt");
+    return;
+  }
 
   operation_counts = new uint64_t[config.thread_count_];
   uint64_t profile_round = (uint64_t)(config.time_duration_ / config.profile_duration_);
