@@ -8,16 +8,16 @@
 class Uint64LognormalKeyGenerator : public BaseKeyGenerator {
 public:
 
-  Uint64LognormalKeyGenerator(const uint64_t thread_id, const double upper_bound, const double m, const double s) :
+  Uint64LognormalKeyGenerator(const uint64_t thread_id, const double upper_bound, const double s) :
     BaseKeyGenerator(thread_id),
     upper_bound_(upper_bound),
     dist_gen_(thread_id),
-    dist_(m, s) {}
+    dist_(0, s) {}
   
   virtual ~Uint64LognormalKeyGenerator() {}
 
   virtual uint64_t get_insert_key() final {
-    return uint64_t(std::round(dist_(dist_gen_)));
+    return uint64_t(dist_(dist_gen_) * upper_bound_ / 10);
   }
 
   virtual uint64_t get_read_key() final {

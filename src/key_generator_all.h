@@ -33,7 +33,7 @@ static BaseKeyGenerator* construct_key_generator(const DistributionType distribu
   } else {
     assert(distribution_type == DistributionType::LognormalType);
 
-    return new Uint64LognormalKeyGenerator(thread_id, key_bound, dist_param_1, dist_param_2);
+    return new Uint64LognormalKeyGenerator(thread_id, key_bound, dist_param_1);
   
   }
 }
@@ -89,22 +89,14 @@ static void validate_key_generator_params(const DistributionType distribution_ty
 
     if (dist_param_1 == INVALID_DIST_PARAM) {
       std::cerr << "expected key generator type: lognormal" << std::endl;
-      std::cerr << "error: dist_param_1 unset!" << std::endl;
-      exit(EXIT_FAILURE);
-      return;
-    }
-
-    if (dist_param_2 == INVALID_DIST_PARAM) {
-      std::cerr << "expected key generator type: lognormal" << std::endl;
-      std::cerr << "error: dist_param_2 unset!" << std::endl;
+      std::cerr << "error: stddev (dist_param_1) unset! suggested range: [0, 0.5]." << std::endl;
       exit(EXIT_FAILURE);
       return;
     }
 
     std::cout << "key generator type: lognormal" << std::endl;
     std::cout << "upper bound: " << key_bound << std::endl;
-    std::cout << "dist_param_1: " << dist_param_1 << std::endl;
-    std::cout << "dist_param_2: " << dist_param_2 << std::endl;
+    std::cout << "stddev (dist_param_1): " << dist_param_1 << std::endl;
 
   }
 

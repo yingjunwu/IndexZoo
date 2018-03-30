@@ -167,28 +167,28 @@ public:
     return data_blocks_.size() * max_block_capacity_;
   }
 
-  // void persist_keys(const std::string &filename) const {
+  void persist_keys(const std::string &filename) const {
     
-  //   ASSERT(data_blocks_.size() != 0, "table must contain at least one data block!");
-  //   ASSERT(!(data_blocks_.size() == 1 && data_blocks_.at(0)->size() == 0), "table must contain at least one tuple!");
+    ASSERT(data_blocks_.size() != 0, "table must contain at least one data block!");
+    ASSERT(!(data_blocks_.size() == 1 && data_blocks_.at(0)->size() == 0), "table must contain at least one tuple!");
 
-  //   std::ofstream persist_file;
-  //   persist_file.open(filename);
-  //   // all the blocks except the last
-  //   for (BlockIDT i = 0; i < data_blocks_.size() - 1; ++i) {
-  //     for (RelOffsetT j = 0; j < max_block_capacity_; ++j) {
-  //       persist_file << *get_tuple_key(i, j) << std::endl;
-  //     }
-  //   }
-  //   // the last block
-  //   BlockIDT last_block_id = data_blocks_.size() - 1;
-  //   RelOffsetT last_block_size = data_blocks_.at(last_block_id)->size();
-  //   for (RelOffsetT i = 0; i < last_block_size; ++i) {
-  //     persist_file << *get_tuple_key(last_block_id, i) << std::endl;
-  //   }
+    std::ofstream persist_file;
+    persist_file.open(filename);
+    // all the blocks except the last
+    for (BlockIDT i = 0; i < data_blocks_.size() - 1; ++i) {
+      for (RelOffsetT j = 0; j < max_block_capacity_; ++j) {
+        persist_file << *get_tuple_key(i, j) << std::endl;
+      }
+    }
+    // the last block
+    BlockIDT last_block_id = data_blocks_.size() - 1;
+    RelOffsetT last_block_size = data_blocks_.at(last_block_id)->size();
+    for (RelOffsetT i = 0; i < last_block_size; ++i) {
+      persist_file << *get_tuple_key(last_block_id, i) << std::endl;
+    }
 
-  //   persist_file.close();
-  // }
+    persist_file.close();
+  }
 
 private:
   uint64_t max_block_capacity_;
