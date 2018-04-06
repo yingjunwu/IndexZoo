@@ -1,9 +1,9 @@
 #pragma once
 
-#include "uint64_uniform_key_generator.h"
-#include "uint64_normal_key_generator.h"
-#include "uint64_lognormal_key_generator.h"
-#include "uint64_sequence_key_generator.h"
+#include "uniform_key_generator.h"
+#include "normal_key_generator.h"
+#include "lognormal_key_generator.h"
+#include "sequence_key_generator.h"
 
 
 enum class DistributionType {
@@ -16,24 +16,26 @@ enum class DistributionType {
 static const double INVALID_DIST_PARAM = std::numeric_limits<double>::max();
 static const uint64_t INVALID_KEY_BOUND = std::numeric_limits<uint64_t>::max();
 
-static BaseKeyGenerator* construct_key_generator(const DistributionType distribution_type, const uint64_t thread_id, const uint64_t key_bound, const double dist_param_1, const double dist_param_2) {
+template<typename KeyT>
+static BaseKeyGenerator<KeyT>* construct_key_generator(const DistributionType distribution_type, const uint64_t thread_id, const uint64_t key_bound, const double dist_param_1, const double dist_param_2) {
 
   if (distribution_type == DistributionType::SequenceType) {
 
-    return new Uint64SequenceKeyGenerator(thread_id);
+    // return new SequenceKeyGenerator<KeyT>(thread_id);
+    return nullptr;
 
   } else if (distribution_type == DistributionType::UniformType) {
 
-    return new Uint64UniformKeyGenerator(thread_id, key_bound);
+    return new UniformKeyGenerator<KeyT>(thread_id, key_bound);
 
   } else if (distribution_type == DistributionType::NormalType) {
 
-    return new Uint64NormalKeyGenerator(thread_id, key_bound, dist_param_1);
+    return new NormalKeyGenerator<KeyT>(thread_id, key_bound, dist_param_1);
   
   } else {
     assert(distribution_type == DistributionType::LognormalType);
 
-    return new Uint64LognormalKeyGenerator(thread_id, key_bound, dist_param_1);
+    return new LognormalKeyGenerator<KeyT>(thread_id, key_bound, dist_param_1);
   
   }
 }

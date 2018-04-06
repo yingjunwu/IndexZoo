@@ -207,7 +207,7 @@ void run_inserter_thread(const uint64_t &thread_id, const Config &config) {
 
   data_index->register_thread(thread_id);
 
-  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(config.distribution_type_, thread_id, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_));
+  std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, thread_id, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_));
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -236,7 +236,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
 
   data_index->register_thread(thread_id);
 
-  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(config.distribution_type_, thread_id, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_));
+  std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, thread_id, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_));
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -299,7 +299,7 @@ void run_workload(const Config &config) {
   data_index->prepare_threads(config.thread_count_);
   data_index->register_thread(0);
 
-  std::unique_ptr<BaseKeyGenerator> key_generator(construct_key_generator(config.distribution_type_, 0, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_));
+  std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, 0, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_));
 
   for (size_t i = 0; i < config.key_count_; ++i) {
 
