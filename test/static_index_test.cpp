@@ -13,9 +13,6 @@
 
 class StaticIndexTest : public IndexZooTest {};
 
-typedef uint64_t ValueT;
-
-
 template<typename KeyT, typename ValueT>
 void test_unique_key(const IndexType index_type) {
 
@@ -32,7 +29,6 @@ void test_unique_key(const IndexType index_type) {
   for (size_t i = 0; i < n; ++i) {
 
     KeyT key = n - i - 1;
-    // uint64_t key = i;
     ValueT value = i + 2048;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -45,7 +41,6 @@ void test_unique_key(const IndexType index_type) {
 
   // reorganize data
   data_index->reorganize();
-  // data_index->print();
 
   // find
   for (size_t i = 0; i < n; ++i) {
@@ -108,7 +103,7 @@ void test_non_unique_key(const IndexType index_type) {
   for (size_t i = 0; i < n; ++i) {
 
     KeyT key = rand_gen.next<KeyT>() / m;
-    uint64_t value = i + 2048;
+    ValueT value = i + 2048;
     
     OffsetT offset = data_table->insert_tuple(key, value);
     
@@ -120,7 +115,7 @@ void test_non_unique_key(const IndexType index_type) {
 
   // find
   for (auto entry : validation_set) {
-    uint64_t key = entry.first;
+    KeyT key = entry.first;
 
     std::vector<Uint64> offsets;
 
@@ -129,7 +124,7 @@ void test_non_unique_key(const IndexType index_type) {
     EXPECT_EQ(offsets.size(), entry.second.size());
 
     for (auto offset : offsets) {
-      uint64_t *value = data_table->get_tuple_value(offset);
+      ValueT *value = data_table->get_tuple_value(offset);
 
       EXPECT_NE(entry.second.end(), entry.second.find(offset));
 
@@ -151,6 +146,13 @@ TEST_F(StaticIndexTest, NonUniqueKeyTest) {
 
   for (auto index_type : index_types) {
 
+    // key type is set to uint16_t
+    test_non_unique_key<uint16_t, uint64_t>(index_type);
+
+    // key type is set to uint32_t
+    test_non_unique_key<uint32_t, uint64_t>(index_type);
+
+    // key type is set to uint64_t
     test_non_unique_key<uint64_t, uint64_t>(index_type);
 
   }

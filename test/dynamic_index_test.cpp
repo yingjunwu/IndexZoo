@@ -14,7 +14,53 @@
 
 class DynamicIndexTest : public IndexZooTest {};
 
-typedef uint64_t ValueT;
+template<typename KeyT, typename ValueT>
+void test_unique_key(const IndexType index_type) {
+
+  size_t n = 10000;
+
+  std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
+    new DataTable<KeyT, ValueT>());
+  std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
+    create_index<KeyT, ValueT>(index_type, data_table.get()));
+
+  data_index->prepare_threads(1);
+  data_index->register_thread(0);
+
+  std::unordered_map<KeyT, std::pair<Uint64, ValueT>> validation_set;
+  
+  // insert
+  for (size_t i = 0; i < n; ++i) {
+
+    KeyT key = i;
+    ValueT value = i + 2048;
+    
+    OffsetT offset = data_table->insert_tuple(key, value);
+    
+    validation_set.insert(
+      std::pair<KeyT, std::pair<Uint64, ValueT>>(
+        key, std::pair<Uint64, ValueT>(offset.raw_data(), value)));
+
+    data_index->insert(key, offset.raw_data());
+  }
+
+  // find
+  for (size_t i = 0; i < n; ++i) {
+    KeyT key = i;
+
+    std::vector<Uint64> offsets;
+
+    data_index->find(key, offsets);
+
+    EXPECT_EQ(offsets.size(), 1);
+
+    ValueT *value = data_table->get_tuple_value(offsets.at(0));
+
+    EXPECT_EQ(offsets.at(0), validation_set.find(key)->second.first);
+
+    EXPECT_EQ(*value, validation_set.find(key)->second.second);
+  }
+}
 
 TEST_F(DynamicIndexTest, UniqueKeyTest) {
 
@@ -32,54 +78,71 @@ TEST_F(DynamicIndexTest, UniqueKeyTest) {
     IndexType::D_MT_Masstree,
   };
 
-  size_t n = 10000;
-
   for (auto index_type : index_types) {
-
-    std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
-      new DataTable<uint64_t, uint64_t>());
-    std::unique_ptr<BaseIndex<uint64_t, uint64_t>> data_index(
-      create_index<uint64_t, uint64_t>(index_type, data_table.get()));
-
-    data_index->prepare_threads(1);
-    data_index->register_thread(0);
-
-    std::unordered_map<uint64_t, std::pair<Uint64, uint64_t>> validation_set;
+    // key type is set to uint16_t
+    test_unique_key<uint16_t, uint64_t>(index_type);
     
-    // insert
-    for (size_t i = 0; i < n; ++i) {
-
-      uint64_t key = i;
-      uint64_t value = i + 2048;
-      
-      OffsetT offset = data_table->insert_tuple(key, value);
-      
-      validation_set.insert(
-        std::pair<uint64_t, std::pair<Uint64, uint64_t>>(
-          key, std::pair<Uint64, uint64_t>(offset.raw_data(), value)));
-
-      data_index->insert(key, offset.raw_data());
-    }
-
-    // find
-    for (size_t i = 0; i < n; ++i) {
-      uint64_t key = i;
-
-      std::vector<Uint64> offsets;
-
-      data_index->find(key, offsets);
-
-      EXPECT_EQ(offsets.size(), 1);
-
-      uint64_t *value = data_table->get_tuple_value(offsets.at(0));
-
-      EXPECT_EQ(offsets.at(0), validation_set.find(key)->second.first);
-
-      EXPECT_EQ(*value, validation_set.find(key)->second.second);
-    }
+    // key type is set to uint32_t
+    test_unique_key<uint32_t, uint64_t>(index_type);
+    
+    // key type is set to uint64_t
+    test_unique_key<uint64_t, uint64_t>(index_type);
   }
 
 }
+
+
+template<typename KeyT, typename ValueT>
+void test_non_unique_key(const IndexType index_type) {
+
+  size_t n = 10000;
+  size_t m = 1000;
+  
+  FastRandom rand_gen(0);
+
+  std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
+    new DataTable<KeyT, ValueT>());
+  std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
+    create_index<KeyT, ValueT>(index_type, data_table.get()));
+
+  data_index->prepare_threads(1);
+  data_index->register_thread(0);
+
+  std::unordered_map<KeyT, std::unordered_map<Uint64, ValueT>> validation_set;
+  
+  // insert
+  for (size_t i = 0; i < n; ++i) {
+
+    KeyT key = rand_gen.next<KeyT>() / m;
+    ValueT value = i + 2048;
+    
+    OffsetT offset = data_table->insert_tuple(key, value);
+    
+    validation_set[key][offset.raw_data()] = value;
+
+    data_index->insert(key, offset.raw_data());
+  }
+
+  // find
+  for (auto entry : validation_set) {
+    KeyT key = entry.first;
+
+    std::vector<Uint64> offsets;
+
+    data_index->find(key, offsets);
+
+    EXPECT_EQ(offsets.size(), entry.second.size());
+
+    for (auto offset : offsets) {
+      ValueT *value = data_table->get_tuple_value(offset);
+
+      EXPECT_NE(entry.second.end(), entry.second.find(offset));
+
+      EXPECT_EQ(*value, entry.second.at(offset));
+    }
+  }
+}
+
 
 TEST_F(DynamicIndexTest, NonUniqueKeyTest) {
 
@@ -97,54 +160,18 @@ TEST_F(DynamicIndexTest, NonUniqueKeyTest) {
     // IndexType::D_MT_Masstree,
   };
 
-  size_t n = 10000;
-  size_t m = 1000;
-
   for (auto index_type : index_types) {
 
-    FastRandom rand_gen(0);
+    // key type is set to uint16_t
+    test_non_unique_key<uint16_t, uint64_t>(index_type);
 
-    std::unique_ptr<DataTable<uint64_t, uint64_t>> data_table(
-      new DataTable<uint64_t, uint64_t>());
-    std::unique_ptr<BaseIndex<uint64_t, uint64_t>> data_index(
-      create_index<uint64_t, uint64_t>(index_type, data_table.get()));
+    // key type is set to uint32_t
+    test_non_unique_key<uint32_t, uint64_t>(index_type);
 
-    data_index->prepare_threads(1);
-    data_index->register_thread(0);
+    // key type is set to uint64_t
+    test_non_unique_key<uint64_t, uint64_t>(index_type);
 
-    std::unordered_map<uint64_t, std::unordered_map<Uint64, uint64_t>> validation_set;
-    
-    // insert
-    for (size_t i = 0; i < n; ++i) {
 
-      uint64_t key = rand_gen.next<uint64_t>() / m;
-      uint64_t value = i + 2048;
-      
-      OffsetT offset = data_table->insert_tuple(key, value);
-      
-      validation_set[key][offset.raw_data()] = value;
-
-      data_index->insert(key, offset.raw_data());
-    }
-
-    // find
-    for (auto entry : validation_set) {
-      uint64_t key = entry.first;
-
-      std::vector<Uint64> offsets;
-
-      data_index->find(key, offsets);
-
-      EXPECT_EQ(offsets.size(), entry.second.size());
-
-      for (auto offset : offsets) {
-        uint64_t *value = data_table->get_tuple_value(offset);
-
-        EXPECT_NE(entry.second.end(), entry.second.find(offset));
-
-        EXPECT_EQ(*value, entry.second.at(offset));
-      }
-    }
   }
 
 }
