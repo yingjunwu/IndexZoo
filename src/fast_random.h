@@ -8,19 +8,14 @@ class FastRandom {
 
   FastRandom() : seed_(0) { set_seed0(seed_); }
 
-  FastRandom(unsigned long seed) : seed_(seed) { set_seed0(seed_); }
+  FastRandom(const uint64_t seed) : seed_(seed) { set_seed0(seed_); }
 
-  inline unsigned long next() {
-    return ((unsigned long)next(32) << 32) + next(32);
-  }
-
-  inline uint32_t next_u32() { return next(32); }
-
-  inline uint16_t next_u16() { return (uint16_t)next(16); }
+  template<typename T> 
+  inline T next();
 
   /** [0.0, 1.0) */
   inline double next_uniform() {
-    return (((unsigned long)next(26) << 27) + next(27)) / (double)(1L << 53);
+    return ((((uint64_t)next(26)) << 27) + next(27)) / (double)(1L << 53);
   }
 
   inline char next_char() { return next(8) % 256; }
@@ -31,31 +26,44 @@ class FastRandom {
     return readables[next(6)];
   }
 
-  inline std::string next_string(size_t len) {
-    std::string s(len, 0);
-    for (size_t i = 0; i < len; i++) s[i] = next_char();
-    return s;
+  inline void next_string(const size_t len, std::string &s) {
+    s.resize(len, 0);
+    for (size_t i = 0; i < len; i++) {
+      s[i] = next_char();
+    }
   }
 
-  inline std::string next_readable_string(size_t len) {
-    std::string s(len, 0);
-    for (size_t i = 0; i < len; i++) s[i] = next_readable_char();
-    return s;
+  inline void next_readable_string(const size_t len, std::string &s) {
+    s.resize(len, 0);
+    for (size_t i = 0; i < len; i++) {
+      s[i] = next_readable_char();
+    }
   }
 
-  inline unsigned long get_seed() { return seed_; }
+  inline uint64_t get_seed() { return seed_; }
 
-  inline void set_seed(unsigned long seed) { seed_ = seed; }
+  inline void set_seed(const uint64_t seed) { seed_ = seed; }
 
  private:
-  inline void set_seed0(unsigned long seed) {
+  inline void set_seed0(const uint64_t seed) {
     seed_ = (seed ^ 0x5DEECE66DL) & ((1L << 48) - 1);
   }
 
-  inline unsigned long next(unsigned int bits) {
+  inline uint32_t next(const unsigned int bits) {
     seed_ = (seed_ * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
-    return (unsigned long)(seed_ >> (48 - bits));
+    return (uint32_t)(seed_ >> (48 - bits));
   }
 
-  unsigned long seed_;
+  uint64_t seed_;
 };
+
+
+
+template<>
+inline uint64_t FastRandom::next<uint64_t>() { return ((uint64_t)next(32) << 32) + next(32); }
+
+template<>
+inline uint32_t FastRandom::next<uint32_t>() { return next(32); }
+
+template<>
+inline uint16_t FastRandom::next<uint16_t>() { return (uint16_t)next(16); }

@@ -13,11 +13,11 @@ public:
   virtual ~Uint64UniformKeyGenerator() {}
   
   virtual uint64_t get_insert_key() final {
-    return rand_gen_.next() % upper_bound_;
+    return rand_gen_.next<uint64_t>() % upper_bound_;
   }
 
   virtual uint64_t get_read_key() final {
-    return rand_gen_.next() % upper_bound_;
+    return rand_gen_.next<uint64_t>() % upper_bound_;
   }
 
 private:

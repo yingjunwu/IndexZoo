@@ -117,7 +117,7 @@ TEST_F(DynamicIndexTest, NonUniqueKeyTest) {
     // insert
     for (size_t i = 0; i < n; ++i) {
 
-      uint64_t key = rand_gen.next() / m;
+      uint64_t key = rand_gen.next<uint64_t>() / m;
       uint64_t value = i + 2048;
       
       OffsetT offset = data_table->insert_tuple(key, value);

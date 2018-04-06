@@ -29,7 +29,7 @@ public:
   }
 
   virtual uint64_t get_read_key() final {
-    return rand_gen_.next() % global_curr_key_;
+    return rand_gen_.next<uint64_t>() % global_curr_key_;
   }
 
 private:

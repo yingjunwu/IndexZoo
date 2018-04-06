@@ -93,7 +93,9 @@ public:
 
     this->base_reorganize();
 
-    ASSERT(std::log(this->size_) / std::log(2) > num_layers_, "exceed maximum layers");
+    size_t inner_node_size = std::pow(2.0, num_layers_) - 1;
+
+    ASSERT(inner_node_size < this->size_, "exceed maximum layers");
 
     key_min_ = this->container_[0].key_;
     key_max_ = this->container_[this->size_ - 1].key_;
@@ -107,13 +109,9 @@ public:
     }
   }
 
-  virtual void print() const final {
+  virtual void print() const final {}
 
-  }
-
-  virtual void print_stats() const final {
-
-  }
+  virtual void print_stats() const final {}
 
 private: 
 
@@ -148,7 +146,7 @@ private:
     construct_inner_layers_internal(mid_offset + 1, end_offset, new_base_pos, dst_pos * 2 + 1, curr_layer + 1);
   }
 
-
+  // find in leaf nodes
   size_t find_internal(const KeyT &key, const int offset_begin, const int offset_end) {
     if (offset_begin > offset_end) {
       return this->size_;
@@ -165,6 +163,7 @@ private:
     }
   }
 
+  // find in inner nodes
   std::pair<int, int> find_inner_layers(const KeyT &key) {
 
     if (num_layers_ == 0) { return std::pair<int, int>(0, this->size_); }
@@ -185,6 +184,7 @@ private:
 
   }
 
+  // helper function for find_inner_layers()
   std::pair<int, int> find_inner_layers_internal(const KeyT &key, const int begin_offset, const int end_offset, const size_t base_pos, const size_t dst_pos, const size_t curr_layer) {
 
     if (num_layers_ == curr_layer) { return std::pair<int, int>(begin_offset, end_offset); }
