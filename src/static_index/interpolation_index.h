@@ -41,9 +41,10 @@ class InterpolationIndex : public BaseStaticIndex<KeyT, ValueT> {
   };
 
 public:
-  InterpolationIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_segments = 1) : BaseStaticIndex<KeyT, ValueT>(table_ptr) {
+  InterpolationIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_segments = 1) 
+    : BaseStaticIndex<KeyT, ValueT>(table_ptr) {
 
-    assert(num_segments >= 1);
+    ASSERT(num_segments >= 1, "must have at least one segment");
 
     num_segments_ = num_segments;
     segment_key_boundaries_ = new KeyT[num_segments_ + 1];
@@ -102,13 +103,20 @@ public:
     //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ] -- if i == num_segments_ - 1
     if (segment_id < num_segments_ - 1) {
 
-      assert(segment_key_boundaries_[segment_id] <= key && key < segment_key_boundaries_[segment_id + 1]);
+      ASSERT(segment_key_boundaries_[segment_id] <= key, 
+        "beyond boundary: " << segment_key_boundaries_[segment_id] << " " << key);
+      ASSERT(key < segment_key_boundaries_[segment_id + 1], 
+        "beyond boundary: " << key << " " << segment_key_boundaries_[segment_id + 1]);
 
     } else {
 
-      assert(segment_id == num_segments_ - 1);
+      ASSERT(segment_id == num_segments_ - 1, 
+        "incorrect segment id: " << segment_id << " " << num_segments_ - 1);
 
-      assert(segment_key_boundaries_[segment_id] <= key && key <= segment_key_boundaries_[segment_id + 1]);
+      ASSERT(segment_key_boundaries_[segment_id] <= key, 
+        "beyond boundary: " << segment_key_boundaries_[segment_id] << " " << key);
+      ASSERT(key <= segment_key_boundaries_[segment_id + 1], 
+        "beyond boundary: " << key << " " << segment_key_boundaries_[segment_id + 1]);
     }
 
     int segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];
@@ -236,12 +244,20 @@ public:
     //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ] -- if i == num_segments_ - 1
     if (segment_id < num_segments_ - 1) {
 
-      assert(segment_key_boundaries_[segment_id] <= lhs_key && lhs_key < segment_key_boundaries_[segment_id + 1]);
+      ASSERT(segment_key_boundaries_[segment_id] <= lhs_key, 
+        "beyond boundary: " << segment_key_boundaries_[segment_id] << " " << lhs_key);
+      ASSERT(lhs_key < segment_key_boundaries_[segment_id + 1], 
+        "beyond boundary: " << lhs_key << " " << segment_key_boundaries_[segment_id + 1]);
 
     } else {
-      assert(segment_id == num_segments_ - 1);
 
-      assert(segment_key_boundaries_[segment_id] <= lhs_key && lhs_key <= segment_key_boundaries_[segment_id + 1]);
+      ASSERT(segment_id == num_segments_ - 1, 
+        "incorrect segment id: " << segment_id << " " << num_segments_ - 1);
+
+      ASSERT(segment_key_boundaries_[segment_id] <= lhs_key, 
+        "beyond boundary: " << segment_key_boundaries_[segment_id] << " " << lhs_key);
+      ASSERT(lhs_key <= segment_key_boundaries_[segment_id + 1], 
+        "beyond boundary: " << lhs_key << " " << segment_key_boundaries_[segment_id + 1]);
     }
 
     int segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];

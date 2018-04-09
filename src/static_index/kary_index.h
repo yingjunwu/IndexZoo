@@ -12,7 +12,9 @@ template<typename KeyT, typename ValueT>
 class KAryIndex : public BaseStaticIndex<KeyT, ValueT> {
 
 public:
-  KAryIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_layers, const size_t k) : BaseStaticIndex<KeyT, ValueT>(table_ptr), num_layers_(num_layers), k_(k) {}
+  KAryIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_layers, const size_t k) : BaseStaticIndex<KeyT, ValueT>(table_ptr), num_layers_(num_layers), k_(k) {
+    ASSERT(k_ >= 2, "k must be larger than or equal to 2");
+  }
 
   virtual ~KAryIndex() {
     if (num_layers_ != 0) {
@@ -112,11 +114,13 @@ public:
   }
 
   virtual void print() const final {
-    size_t inner_size = std::pow(k_, num_layers_) - 1;
-    for (size_t i = 0; i < inner_size; ++i) {
-      std::cout << inner_nodes_[i] << " ";
+    if (inner_nodes_ != nullptr) {
+      size_t inner_size = std::pow(k_, num_layers_) - 1;
+      for (size_t i = 0; i < inner_size; ++i) {
+        std::cout << inner_nodes_[i] << " ";
+      }
+      std::cout << std::endl;
     }
-    std::cout << std::endl;
   }
 
   virtual void print_stats() const final {}

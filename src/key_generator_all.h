@@ -5,7 +5,6 @@
 #include "lognormal_key_generator.h"
 #include "sequence_key_generator.h"
 
-
 enum class DistributionType {
   SequenceType = 0,
   UniformType,
@@ -21,8 +20,7 @@ static BaseKeyGenerator<KeyT>* construct_key_generator(const DistributionType di
 
   if (distribution_type == DistributionType::SequenceType) {
 
-    // return new SequenceKeyGenerator<KeyT>(thread_id);
-    return nullptr;
+    return new SequenceKeyGenerator<KeyT>(thread_id);
 
   } else if (distribution_type == DistributionType::UniformType) {
 

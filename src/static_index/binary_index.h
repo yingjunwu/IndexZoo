@@ -146,7 +146,7 @@ private:
     construct_inner_layers_internal(mid_offset + 1, end_offset, new_base_pos, dst_pos * 2 + 1, curr_layer + 1);
   }
 
-  // find in leaf nodes
+  // find in leaf nodes, simple binary search
   size_t find_internal(const KeyT &key, const int offset_begin, const int offset_end) {
     if (offset_begin > offset_end) {
       return this->size_;

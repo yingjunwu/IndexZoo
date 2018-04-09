@@ -41,7 +41,9 @@ def ConvertEpsToPdf(dir_filename):
   os.system("rm -rf " + dir_filename + ".eps")
 
 
-def draw_figure(key_list, pos_list, key_bound, filename):
+def draw_figure(key_list, pos_list, filename):
+
+  key_bound = key_list[len(key_list) - 1]
 
   fig = plt.figure(figsize=(8,6))
   figure = fig.add_subplot(111)
@@ -65,15 +67,14 @@ def draw_figure(key_list, pos_list, key_bound, filename):
 if __name__ == "__main__":
 
   filename = "data.txt"
-  if len(sys.argv) != 3:
-    print("usage: " + sys.argv[0] + " filename key_bound")
+  if len(sys.argv) != 2:
+    print("usage: " + sys.argv[0] + " filename")
     sys.exit()
   else:
     filename = sys.argv[1]
-    key_bound = int(sys.argv[2])
 
   print("filename: " + filename)
   
   pos_list, key_list = common.read_file(filename)
 
-  draw_figure(pos_list, key_list, key_bound, "data.pdf")
+  draw_figure(pos_list, key_list, "data.pdf")

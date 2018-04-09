@@ -5,6 +5,8 @@
 #include <csignal>
 #include <iostream>
 
+typedef uint16_t Uint16;
+typedef uint32_t Uint32;
 typedef uint64_t Uint64;
 
 #define COMPILER_MEMORY_FENCE asm volatile("" ::: "memory")

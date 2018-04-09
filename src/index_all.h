@@ -122,8 +122,6 @@ template<typename KeyT, typename ValueT>
 static BaseIndex<KeyT, ValueT>* create_index(const IndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const size_t index_param_1 = INVALID_INDEX_PARAM, const size_t index_param_2 = INVALID_INDEX_PARAM) {
   if (index_type == IndexType::S_Interpolation) {
 
-    ASSERT(index_param_1 != 0, "number of segments cannot be 0");
-
     return new static_index::InterpolationIndex<KeyT, ValueT>(table_ptr, index_param_1);
   
   } else if (index_type == IndexType::S_Binary) {
@@ -132,13 +130,11 @@ static BaseIndex<KeyT, ValueT>* create_index(const IndexType index_type, DataTab
 
   } else if (index_type == IndexType::S_KAry) {
 
-    ASSERT(index_param_2 >= 2, "k must be larger than or equal to 2");
-
     return new static_index::KAryIndex<KeyT, ValueT>(table_ptr, index_param_1, index_param_2);
 
   } else if (index_type == IndexType::S_Fast) {
 
-    return new static_index::FastIndex<KeyT, ValueT>(table_ptr);
+    return new static_index::FastIndex<KeyT, ValueT>(table_ptr, index_param_1);
 
   } else if (index_type == IndexType::S_Persister) {
 

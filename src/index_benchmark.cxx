@@ -36,6 +36,7 @@ void usage(FILE *out) {
           "                              -- (21) dynamic - multithread  - art-tree index \n"
           "                              -- (22) dynamic - multithread  - bw-tree index \n"
           "                              -- (23) dynamic - multithread  - masstree index \n"
+          "   -k --key_size          :  index key size (default: 8 bytes) \n"
           "   -S --index_param_1     :  1st index parameter \n"
           "   -T --index_param_2     :  2nd index parameter \n"
           "   -y --read_type         :  read type: \n"
@@ -60,6 +61,7 @@ void usage(FILE *out) {
 
 static struct option opts[] = {
     { "index",             optional_argument, NULL, 'i' },
+    { "key_size",          optional_argument, NULL, 'k' },
     { "read_type",         optional_argument, NULL, 'y' },
     { "index_param_1",     optional_argument, NULL, 'S' },
     { "index_param_2",     optional_argument, NULL, 'T' },
@@ -85,6 +87,7 @@ struct Config {
   IndexType index_type_ = IndexType::S_Interpolation;
   ReadType index_read_type_ = ReadType::IndexLookupType;
   DistributionType distribution_type_ = DistributionType::SequenceType;
+  size_t key_size_ = 8; // unit: bytes
   size_t index_param_1_ = 1; // INVALID_INDEX_PARAM
   size_t index_param_2_ = 2; // INVALID_INDEX_PARAM
   uint64_t key_upper_bound_ = INVALID_KEY_BOUND;
@@ -105,7 +108,7 @@ void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "hpt:m:r:s:i:S:T:y:d:u:P:Q:", opts, &idx);
+    int c = getopt_long(argc, argv, "hpt:m:r:s:i:k:S:T:y:d:u:P:Q:", opts, &idx);
 
     if (c == -1) break;
 
@@ -116,6 +119,10 @@ void parse_args(int argc, char* argv[], Config &config) {
       }
       case 'i': {
         config.index_type_ = (IndexType)atoi(optarg);
+        break;
+      }
+      case 'k': {
+        config.key_size_ = atoi(optarg);
         break;
       }
       case 'S': {
@@ -194,14 +201,9 @@ void parse_args(int argc, char* argv[], Config &config) {
 bool is_running = false;
 uint64_t *operation_counts = nullptr;
 
-typedef Uint64 KeyT;
-typedef Uint64 ValueT;
 
-// table and index
-std::unique_ptr<DataTable<KeyT, ValueT>> data_table(nullptr);
-std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(nullptr);
-
-void run_inserter_thread(const uint64_t &thread_id, const Config &config) {
+template<typename KeyT, typename ValueT>
+void run_inserter_thread(const uint64_t &thread_id, const Config &config, DataTable<KeyT, ValueT> *data_table, BaseIndex<KeyT, ValueT> *data_index) {
 
   pin_to_core(thread_id);
 
@@ -224,13 +226,15 @@ void run_inserter_thread(const uint64_t &thread_id, const Config &config) {
     
     OffsetT offset = data_table->insert_tuple(key, value);
 
+    // insert tuple locations into index
     data_index->insert(key, offset.raw_data());
     
     ++operation_count;
   }
 }
 
-void run_reader_thread(const uint64_t &thread_id, const Config &config) {
+template<typename KeyT, typename ValueT>
+void run_reader_thread(const uint64_t &thread_id, const Config &config, DataTable<KeyT, ValueT> *data_table, BaseIndex<KeyT, ValueT> *data_index) {
 
   pin_to_core(thread_id);
 
@@ -252,6 +256,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
       
       std::vector<Uint64> values;
 
+      // retrieve tuple locations
       data_index->find(key, values);
       
       ++operation_count;
@@ -268,6 +273,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
       
       std::vector<Uint64> values;
 
+      // retrieve tuple locations
       data_index->scan(key, values);
       
       ++operation_count;
@@ -285,6 +291,7 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
       
       std::vector<Uint64> values;
 
+      // retrieve tuple locations
       data_index->scan_reverse(key, values);
       
       ++operation_count;
@@ -293,8 +300,16 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config) {
   }
 }
 
-
+template<typename KeyT, typename ValueT>
 void run_workload(const Config &config) {
+
+  // create table
+  std::unique_ptr<DataTable<KeyT, ValueT>> data_table(nullptr);
+  data_table.reset(new DataTable<KeyT, ValueT>());
+
+  // create index
+  std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(nullptr);
+  data_index.reset(create_index<KeyT, ValueT>(config.index_type_, data_table.get(), config.index_param_1_, config.index_param_2_));
 
   data_index->prepare_threads(config.thread_count_);
   data_index->register_thread(0);
@@ -345,11 +360,11 @@ void run_workload(const Config &config) {
   uint64_t thread_count = 0;
   // inserter threads
   for (; thread_count < config.inserter_count_; ++thread_count) {
-    worker_threads.push_back(std::move(std::thread(run_inserter_thread, thread_count, config)));
+    worker_threads.push_back(std::move(std::thread(run_inserter_thread<KeyT, ValueT>, thread_count, config, data_table.get(), data_index.get())));
   }
   // reader threads
   for (; thread_count < config.thread_count_; ++thread_count) {
-    worker_threads.push_back(std::move(std::thread(run_reader_thread, thread_count, config)));
+    worker_threads.push_back(std::move(std::thread(run_reader_thread<KeyT, ValueT>, thread_count, config, data_table.get(), data_index.get())));
   }
 
   std::cout << "        TIME         INSERT      READ       RAM (act.)   RAM (est.)" << std::endl;
@@ -462,10 +477,14 @@ int main(int argc, char* argv[]) {
 
   parse_args(argc, argv, config);
 
-  data_table.reset(new DataTable<KeyT, ValueT>());
-
-  data_index.reset(create_index<KeyT, ValueT>(config.index_type_, data_table.get(), config.index_param_1_, config.index_param_2_));
-
-  run_workload(config);
+  if (config.key_size_ == 2) {
+    run_workload<Uint16, Uint64>(config);
+  } 
+  else if (config.key_size_ == 4) {
+    run_workload<Uint32, Uint64>(config);
+  }
+  else if (config.key_size_ == 8) {
+    run_workload<Uint64, Uint64>(config);
+  }
   
 }

@@ -16,7 +16,7 @@ public:
 
   virtual ~SequenceKeyGenerator() {}
   
-  virtual uint64_t get_insert_key() final {
+  virtual KeyT get_insert_key() final {
     if (local_curr_key_ == local_max_key_){
       KeyT key = global_curr_key_.fetch_add(batch_key_count_, std::memory_order_relaxed);
       local_curr_key_ = key;
@@ -29,7 +29,7 @@ public:
 
   }
 
-  virtual uint64_t get_read_key() final {
+  virtual KeyT get_read_key() final {
     return rand_gen_.next<KeyT>() % global_curr_key_;
   }
 
