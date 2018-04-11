@@ -9,6 +9,9 @@ namespace static_index {
 template<typename KeyT, typename ValueT>
 class FastIndex : public BaseStaticIndex<KeyT, ValueT> {
 
+  // the FAST index paper assumes SIMD size is 128 bits.
+  // It is hard to extend its method to 256/512-bit SIMD
+  // as most computers' cacheline size is 64 bytes.
   const size_t SIMD_SIZE = 16; // unit: byte (128 bits)
   const size_t CACHELINE_SIZE = 64; // unit: byte
   const size_t PAGE_SIZE = 4096; // unit: byte (4 KB)

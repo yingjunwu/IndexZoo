@@ -21,10 +21,10 @@ static void load_key_internal(void *ctx, TID tid, art::Key &tree_key) {
 
   tree_key.setKeyLen(sizeof(KeyT));
 
-  // uint8_t *tree_key_data = &(tree_key[0]);
-  // memcpy(tree_key_data, key_ptr, sizeof(KeyT));
+  uint8_t *tree_key_data = &(tree_key[0]);
+  memcpy(tree_key_data, key_ptr, sizeof(KeyT));
 
-  reinterpret_cast<uint64_t *>(&tree_key[0])[0] = __builtin_bswap64(*key_ptr);
+  // reinterpret_cast<uint64_t *>(&tree_key[0])[0] = __builtin_bswap64(*key_ptr);
 }
 
 public:
@@ -70,10 +70,10 @@ private:
   void load_key(const KeyT &key, art::Key &tree_key) {
     tree_key.setKeyLen(sizeof(KeyT));
 
-    // uint8_t *tree_key_data = &(tree_key[0]);
-    // memcpy(tree_key_data, &key, sizeof(KeyT));
+    uint8_t *tree_key_data = &(tree_key[0]);
+    memcpy(tree_key_data, &key, sizeof(KeyT));
 
-    reinterpret_cast<uint64_t *>(&tree_key[0])[0] = __builtin_bswap64(key);
+    // reinterpret_cast<uint64_t *>(&tree_key[0])[0] = __builtin_bswap64(key);
 
   }
 
