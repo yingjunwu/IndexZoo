@@ -109,6 +109,7 @@ static void validate_index_params(const IndexType index_type, const size_t index
   } else if (index_type == IndexType::S_Fast) {
     
     std::cout << "index type: static - fast index" << std::endl;
+    std::cout << "number of layers: " << index_param_1 << std::endl;
 
   } else {
     
@@ -134,7 +135,7 @@ static BaseIndex<KeyT, ValueT>* create_index(const IndexType index_type, DataTab
 
   } else if (index_type == IndexType::S_Fast) {
 
-    return new static_index::FastIndex<KeyT, ValueT>(table_ptr, index_param_1);
+    return new static_index::FastIndex<KeyT, ValueT>(table_ptr, 8/*index_param_1*/);
 
   } else if (index_type == IndexType::S_Persister) {
 

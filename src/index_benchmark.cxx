@@ -476,15 +476,15 @@ int main(int argc, char* argv[]) {
   Config config;
 
   parse_args(argc, argv, config);
-
-  if (config.key_size_ == 2) {
-    run_workload<Uint16, Uint64>(config);
-  } 
-  else if (config.key_size_ == 4) {
+  
+  if (config.key_size_ == 4) {
     run_workload<Uint32, Uint64>(config);
   }
   else if (config.key_size_ == 8) {
     run_workload<Uint64, Uint64>(config);
+  } else {
+    std::cerr << "do not support key size = " << config.key_size_ << std::endl;
+
   }
   
 }

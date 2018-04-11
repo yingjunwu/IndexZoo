@@ -62,24 +62,27 @@ void test_unique_key(const IndexType index_type) {
 
 TEST_F(StaticIndexTest, UniqueKeyTest) {
 
-  std::vector<IndexType> index_types {
+  // std::vector<IndexType> index_types {
 
-    IndexType::S_Interpolation,
-    IndexType::S_Binary,
-    IndexType::S_KAry,
-    // IndexType::S_Fast,
-  };
+  //   IndexType::S_Interpolation,
+  //   IndexType::S_Binary,
+  //   IndexType::S_KAry,
+  //   // IndexType::S_Fast,
+  // };
 
-  for (auto index_type : index_types) {
-    // key type is set to uint16_t
-    test_unique_key<uint16_t, uint64_t>(index_type);
+  // for (auto index_type : index_types) {
+  //   // key type is set to uint16_t
+  //   test_unique_key<uint16_t, uint64_t>(index_type);
     
-    // key type is set to uint32_t
-    test_unique_key<uint32_t, uint64_t>(index_type);
+  //   // key type is set to uint32_t
+  //   test_unique_key<uint32_t, uint64_t>(index_type);
     
-    // key type is set to uint64_t
-    test_unique_key<uint64_t, uint64_t>(index_type);
-  }
+  //   // key type is set to uint64_t
+  //   test_unique_key<uint64_t, uint64_t>(index_type);
+  // }
+
+  IndexType index_type = IndexType::S_Fast;
+  test_unique_key<uint32_t, uint64_t>(index_type);
 
 }
 
@@ -134,27 +137,27 @@ void test_non_unique_key(const IndexType index_type) {
 
 }
 
-TEST_F(StaticIndexTest, NonUniqueKeyTest) {
+// TEST_F(StaticIndexTest, NonUniqueKeyTest) {
 
-  std::vector<IndexType> index_types {
+//   std::vector<IndexType> index_types {
 
-    IndexType::S_Interpolation,
-    IndexType::S_Binary,
-    IndexType::S_KAry,
-    IndexType::S_Fast,
-  };
+//     // IndexType::S_Interpolation,
+//     // IndexType::S_Binary,
+//     // IndexType::S_KAry,
+//     // IndexType::S_Fast,
+//   };
 
-  for (auto index_type : index_types) {
+//   for (auto index_type : index_types) {
 
-    // key type is set to uint16_t
-    test_non_unique_key<uint16_t, uint64_t>(index_type);
+//     // key type is set to uint16_t
+//     test_non_unique_key<uint16_t, uint64_t>(index_type);
 
-    // key type is set to uint32_t
-    test_non_unique_key<uint32_t, uint64_t>(index_type);
+//     // key type is set to uint32_t
+//     test_non_unique_key<uint32_t, uint64_t>(index_type);
 
-    // key type is set to uint64_t
-    test_non_unique_key<uint64_t, uint64_t>(index_type);
+//     // key type is set to uint64_t
+//     test_non_unique_key<uint64_t, uint64_t>(index_type);
 
-  }
+//   }
 
-}
+// }
