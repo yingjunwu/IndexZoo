@@ -149,10 +149,10 @@ TEST_F(StaticIndexTest, NonUniqueKeyTest) {
   for (auto index_type : index_types) {
 
     // key type is set to uint16_t
-    // test_static_index_non_unique_key<uint16_t, uint64_t>(index_type);
+    test_static_index_non_unique_key<uint16_t, uint64_t>(index_type);
 
     // key type is set to uint32_t
-    // test_static_index_non_unique_key<uint32_t, uint64_t>(index_type);
+    test_static_index_non_unique_key<uint32_t, uint64_t>(index_type);
 
     // key type is set to uint64_t
     test_static_index_non_unique_key<uint64_t, uint64_t>(index_type);
