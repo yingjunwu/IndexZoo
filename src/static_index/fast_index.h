@@ -20,12 +20,14 @@ class FastIndex : public BaseStaticIndex<KeyT, ValueT> {
 public:
   FastIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_layers): BaseStaticIndex<KeyT, ValueT>(table_ptr), num_layers_(num_layers) {
 
+    ASSERT(sizeof(KeyT) == 4, "only support 4-byte keys");
+
     // compute size for simd block
     simd_key_capacity_ = SIMD_SIZE / sizeof(KeyT) - 1;
     simd_depth_ = std::log(simd_key_capacity_ + 1) / std::log(2);
     // currently only support simd_key_capacity = 3.
-    ASSERT(simd_key_capacity_ == 3, 
-      "do not support key size = " << sizeof(KeyT) << " bytes");
+    // ASSERT(simd_key_capacity_ == 3, 
+    //   "do not support key size = " << sizeof(KeyT) << " bytes");
 
     // compute size for cacheline block
     cacheline_key_capacity_ = CACHELINE_SIZE / sizeof(KeyT) - 1;
