@@ -4,10 +4,7 @@
 The IndexZoo project aims at developing a general platform for performance evaluation of index structures in modern main-memory database systems.
 
 
-
-
 ## Assumptions
-
 
 ## Supported Index Structures
 
@@ -38,20 +35,18 @@ The IndexZoo project aims at developing a general platform for performance evalu
 | Interpolation Index | | [yingjunwu]() | |
 | FAST Index          | [C. Kim, et al.](https://dl.acm.org/citation.cfm?id=1807206) | [yingjunwu]() | |
 
+### Under Implementation
+
+
 ## Benchmarks
 
-## TODO List
-
-### Index Structures
+Currently, IndexZoo only supports integer-based keys. In the future, we are going to support float/double/string key types.
 
 
-
-### Benchmarks
-- Support string-based benchmarks
 
 ## Installation
 
-IndexZoo has been tested to work on the following platforms:
+IndexZoo has been tested under the following platforms:
 
 - Ubuntu 16.04
 

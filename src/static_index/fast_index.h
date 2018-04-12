@@ -23,31 +23,44 @@ public:
     ASSERT(sizeof(KeyT) == 4, "only support 4-byte keys");
 
     // compute size for simd block
-    simd_key_capacity_ = SIMD_SIZE / sizeof(KeyT) - 1;
+    // max simd block key capacity
+    simd_key_capacity_ = SIMD_SIZE / sizeof(KeyT);
+    // max simd block depth, depth < log2(capacity + 1)
     simd_depth_ = std::log(simd_key_capacity_ + 1) / std::log(2);
-    // currently only support simd_key_capacity = 3.
-    // ASSERT(simd_key_capacity_ == 3, 
-    //   "do not support key size = " << sizeof(KeyT) << " bytes");
+    // update simd block key capacity
+    simd_key_capacity_ = std::pow(2.0, simd_depth_) - 1;
 
     // compute size for cacheline block
-    cacheline_key_capacity_ = CACHELINE_SIZE / sizeof(KeyT) - 1;
+    // max cacheline block key capacity
+    cacheline_key_capacity_ = CACHELINE_SIZE / sizeof(KeyT);
+    // max cacheline block depth, depth < log2(capacity + 1)
     cacheline_depth_ = std::log(cacheline_key_capacity_ + 1) / std::log(2);
+    // update cacheline block depth and key capacity
+    // cacheline_depth % simd_depth must be 0.
     if (cacheline_depth_ % simd_depth_ != 0) {
       cacheline_depth_ = (cacheline_depth_ / simd_depth_) * simd_depth_;
       cacheline_key_capacity_ = std::pow(2.0, cacheline_depth_) - 1;
     }
+    ASSERT(cacheline_key_capacity_ % simd_key_capacity_ == 0, "mismatch: " << cacheline_key_capacity_ << " " << simd_key_capacity_);
+    cacheline_capacity_ = cacheline_key_capacity_ / simd_key_capacity_;
 
     // compute size for page block
-    page_key_capacity_ = PAGE_SIZE / sizeof(KeyT) - 1;
+    // max page block key capacity
+    page_key_capacity_ = PAGE_SIZE / sizeof(KeyT);
+    // max page block depth, depth < log2(capacity + 1)
     page_depth_ = std::log(page_key_capacity_ + 1) / std::log(2);
+    // update page block depth and key capacity
+    // page_depth % cacheline_depth must be 0.
     if (page_depth_ % cacheline_depth_ != 0) {
       page_depth_ = (page_depth_ / cacheline_depth_) * cacheline_depth_;
       page_key_capacity_ = std::pow(2.0, page_depth_) - 1;
     }
+    ASSERT(page_key_capacity_ % cacheline_key_capacity_ == 0, "mismatch: " << page_key_capacity_ << " " << cacheline_key_capacity_);
+    page_capacity_ = page_key_capacity_ / simd_key_capacity_;
 
-    std::cout << "simd: " << simd_key_capacity_ << " " << simd_depth_ << std::endl;
-    std::cout << "cacheline: " << cacheline_key_capacity_ << " " << cacheline_depth_ << std::endl;
-    std::cout << "page: " << page_key_capacity_ << " " << page_depth_ << std::endl;
+    // std::cout << "simd: " << simd_key_capacity_ << " " << simd_depth_ << std::endl;
+    // std::cout << "cacheline: " << cacheline_key_capacity_ << " " << cacheline_depth_ << std::endl;
+    // std::cout << "page: " << page_key_capacity_ << " " << page_depth_ << std::endl;
 
     ASSERT(num_layers_ % page_depth_ == 0, 
       "do not support number of layers = " << num_layers_ << " " << page_depth_);
@@ -134,16 +147,17 @@ public:
 
     this->base_reorganize();
 
-    size_t inner_node_size = std::pow(2.0, num_layers_) - 1;
+    // size_t inner_node_size = std::pow(2.0, num_layers_) - 1;
 
-    ASSERT(inner_node_size < this->size_, "exceed maximum layers");
+    // ASSERT(inner_node_size < this->size_, "exceed maximum layers");
 
     key_min_ = this->container_[0].key_;
     key_max_ = this->container_[this->size_ - 1].key_;
 
     if (num_layers_ != 0) {
+      // for now, we simply build a single cacheline block.
       // size_t inner_size = std::pow(2, num_layers_) - 1;
-      inner_size_ = 272;
+      inner_size_ = CACHELINE_SIZE;
       inner_nodes_ = new KeyT[inner_size_];
       memset(inner_nodes_, 0, sizeof(KeyT) * inner_size_);
       construct_inner_layers();
@@ -226,6 +240,8 @@ private:
 
   // we only support the case for simd key capacity = 3.
   void construct_simd_block(const size_t current_pos, const size_t lhs_offset, const size_t rhs_offset) {
+
+    ASSERT(simd_key_capacity_ == 3, "SIMD block key capacity not equal to 3: " << simd_key_capacity_);
 
     size_t med = median(lhs_offset, rhs_offset);
     inner_nodes_[current_pos] = this->container_[med].key_;
@@ -329,9 +345,11 @@ private:
 
   size_t cacheline_key_capacity_;
   size_t cacheline_depth_;
+  size_t cacheline_capacity_;
 
   size_t page_key_capacity_;
   size_t page_depth_;
+  size_t page_capacity_;
 
 };
 

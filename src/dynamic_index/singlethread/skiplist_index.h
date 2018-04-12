@@ -28,7 +28,7 @@ public:
   }
 
   virtual size_t size() const final {
-
+    return 0;
   }
 
 };
