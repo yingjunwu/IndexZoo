@@ -59,13 +59,8 @@ public:
     ASSERT(page_key_capacity_ % cacheline_key_capacity_ == 0, "mismatch: " << page_key_capacity_ << " " << cacheline_key_capacity_);
     page_capacity_ = page_key_capacity_ / simd_key_capacity_;
 
-    // std::cout << "simd: " << simd_key_capacity_ << " " << simd_depth_ << std::endl;
-    // std::cout << "cacheline: " << cacheline_key_capacity_ << " " << cacheline_depth_ << std::endl;
-    // std::cout << "page: " << page_key_capacity_ << " " << page_depth_ << std::endl;
-
-    ASSERT(num_layers_ % page_depth_ == 0, 
-      "do not support number of layers = " << num_layers_ << " " << page_depth_);
-
+    ASSERT(num_layers_ % cacheline_depth_ == 0, 
+      "do not support number of layers = " << num_layers_ << " " << cacheline_depth_);
   }
 
   virtual ~FastIndex() {
@@ -148,21 +143,24 @@ public:
 
     this->base_reorganize();
 
-    // size_t inner_node_size = std::pow(2.0, num_layers_) - 1;
+    size_t inner_node_size = std::pow(2.0, num_layers_) - 1;
 
-    // ASSERT(inner_node_size < this->size_, "exceed maximum layers");
+    ASSERT(inner_node_size < this->size_, "exceed maximum layers");
 
     key_min_ = this->container_[0].key_;
     key_max_ = this->container_[this->size_ - 1].key_;
 
     if (num_layers_ != 0) {
-      // for now, we simply build a single cacheline block.
-      // size_t inner_size = std::pow(2, num_layers_) - 1;
-      inner_size_ = CACHELINE_SIZE;
+
+      size_t num_cachelines = inner_node_size / cacheline_key_capacity_;
+      inner_size_ = num_cachelines * CACHELINE_SIZE / sizeof(KeyT);
+      std::cout << "num cachelines = " << num_cachelines << " " << inner_size_ << std::endl;
       inner_nodes_ = new KeyT[inner_size_];
       memset(inner_nodes_, 0, sizeof(KeyT) * inner_size_);
+
       construct_inner_layers();
     } else {
+
       inner_nodes_ = nullptr;
     }
 
@@ -171,7 +169,6 @@ public:
 
   virtual void print() const final {
     if (inner_nodes_ != nullptr) {
-      // size_t inner_size = std::pow(2, num_layers_) - 1;
       for (size_t i = 0; i < inner_size_; ++i) {
         std::cout << inner_nodes_[i] << " ";
       }
@@ -185,40 +182,27 @@ public:
 
 private:
 
-  size_t median(const size_t lhs, const size_t rhs) { return (lhs + rhs) / 2; }
-
   void construct_inner_layers() {
     ASSERT(num_layers_ != 0, "number of layers cannot be 0");
-    // calculate number of page blocks in the index
-    // size_t inner_node_size = std::pow(2.0, num_layers_) - 1;
 
-    // size_t offset = construct_page_block(0, 0, inner_node_size);
+    // level 0
+    construct_cacheline_block(0, 0, this->size_ - 1);
+    size_t current_pos = 16;
 
-    // while (offset < inner_node_size) {
-    //   offset = construct_page_block(offset, inner_node_size);
-    // }
-    construct_page_block(0, 0, this->size_ - 1);
+    size_t levels = num_layers_ / cacheline_depth_;
 
-    size_t step = (this->size_ - 1) / 256;
+    for (size_t i = 1; i < levels; ++i) {
+      std::cout << "construct levels = " << i << std::endl;
+      size_t num_cachelines = std::pow(16, i);
+      size_t step = (this->size_ - 1) / 16;
 
-    // for (size_t i = 0; i < 256; ++i) {
-    //   construct_page_block(0 + 256 * i, 0 + step * i, 0 + step * (i + 1));
-    // }
-
-  }
-
-  // we assume pagesize = 4 KB.
-  void construct_page_block(const size_t current_pos, const size_t lhs_offset, const size_t rhs_offset) {
-
-    construct_cacheline_block(current_pos, lhs_offset, rhs_offset);
-
-    // size_t step = (rhs_offset - lhs_offset) / 16;
-
-    // for (size_t i = 0; i < 16; ++i) {
-    //   construct_cacheline_block(current_pos + 16 * (i + 1), lhs_offset + step * i, lhs_offset + step * (i + 1));
-    // }
-
-    // return current_pos + 256;
+      for (size_t j = 0; j < num_cachelines - 1; ++j) {
+        construct_cacheline_block(current_pos, step * j, step * (j + 1) - 1);
+        current_pos += 16;
+      }
+      construct_cacheline_block(current_pos, step * (num_cachelines - 1), this->size_ - 1);
+      current_pos += 16;
+    }
   }
  
   // we only support the case for simd key capacity = 3.
@@ -231,12 +215,13 @@ private:
     size_t step = (rhs_offset - lhs_offset) / 4;
 
     // level 1
-    for (size_t i = 0; i < 4; ++i) {
-      construct_simd_block(current_pos + 3 * (i + 1), lhs_offset + step * i, lhs_offset + step * (i + 1));
+    for (size_t i = 0; i < 3; ++i) {
+      construct_simd_block(current_pos + 3 * (i + 1), lhs_offset + step * i, lhs_offset + step * (i + 1) - 1);
     }
+
+    construct_simd_block(current_pos + 3 * 4, lhs_offset + step * 3, rhs_offset);
     
-    // CPU fetches data in cacheline size. 
-    // return current_pos + 16;
+    // CPU fetches data in cacheline size.
   }
 
   // we only support the case for simd key capacity = 3.
@@ -244,14 +229,15 @@ private:
 
     ASSERT(simd_key_capacity_ == 3, "SIMD block key capacity not equal to 3: " << simd_key_capacity_);
 
-    size_t med = median(lhs_offset, rhs_offset);
-    inner_nodes_[current_pos] = this->container_[med].key_;
-    inner_nodes_[current_pos + 1] = this->container_[median(lhs_offset, med)].key_;
-    inner_nodes_[current_pos + 2] = this->container_[median(med, rhs_offset)].key_;
+    size_t step = (rhs_offset - lhs_offset) / 4;
+
+    inner_nodes_[current_pos + 0] = this->container_[lhs_offset + 2 * step].key_;
+    inner_nodes_[current_pos + 1] = this->container_[lhs_offset + 1 * step].key_;
+    inner_nodes_[current_pos + 2] = this->container_[lhs_offset + 3 * step].key_;
 
   }
 
-  // find in leaf nodes, simple binary search [incl., excl.)
+  // find in leaf nodes, simple binary search [incl., incl.]
   size_t find_internal(const KeyT &key, const int offset_begin, const int offset_end) {
     if (offset_begin > offset_end) {
       return this->size_;
@@ -268,68 +254,51 @@ private:
     }
   }
 
+
+  // search in simd block
+  void lookup_simd_block(const KeyT &key, size_t &current_pos, size_t &lhs_offset, size_t &rhs_offset) {
+
+    size_t step = (rhs_offset - lhs_offset) / 4;
+
+    if (key >= inner_nodes_[current_pos + 2]) { 
+      current_pos = current_pos + 3 * 4;
+      rhs_offset = rhs_offset;
+      lhs_offset = lhs_offset + 3 * step;
+    }
+    else if (key >= inner_nodes_[current_pos + 0]) { 
+      current_pos = current_pos + 3 * 3;
+      rhs_offset = lhs_offset + 3 * step - 1;
+      lhs_offset = lhs_offset + 2 * step;
+    } 
+    else if (key >= inner_nodes_[current_pos + 1]) { 
+      current_pos = current_pos + 3 * 2;
+      rhs_offset = lhs_offset + 2 * step - 1;
+      lhs_offset = lhs_offset + 1 * step;
+    } 
+    else {
+      current_pos = current_pos + 3 * 1;
+      rhs_offset = lhs_offset + 1 * step - 1;
+      lhs_offset = lhs_offset;
+    }
+  }
+
   // find in inner nodes
   std::pair<int, int> find_inner_layers(const KeyT &key) {
-    // return std::pair<int, int>(0, this->size_);
 
-    if (num_layers_ == 0) { return std::pair<int, int>(0, this->size_); }
+    if (num_layers_ == 0) { return std::pair<int, int>(0, this->size_ - 1); }
 
-    // search in cacheline block
-    int begin_offset = 0;
-    int end_offset = this->size_ - 1;
+    size_t current_pos = 0;
+    size_t lhs_offset = 0;
+    size_t rhs_offset = this->size_ - 1;
     
-    int mid_offset = median(begin_offset, end_offset);
-    int lhs_mid_offset = median(begin_offset, mid_offset);
-    int rhs_mid_offset = median(mid_offset, end_offset);
-
-    // search in level 0 simd block
-    int part = -1;
-    if (key > inner_nodes_[2]) { 
-      part = 3;
-      return std::pair<int, int>(rhs_mid_offset + 1, end_offset + 1); 
-    }
-    else if (key > inner_nodes_[0]) { 
-      part = 2;
-      return std::pair<int, int>(mid_offset + 1, rhs_mid_offset + 1); 
-    } 
-    else if (key > inner_nodes_[1]) { 
-      part = 1;
-      return std::pair<int, int>(lhs_mid_offset + 1, mid_offset + 1); 
-    } 
-    else {
-      part = 0;
-      return std::pair<int, int>(0, lhs_mid_offset + 1);
-    }
-    size_t step = (end_offset - begin_offset) / 16;
-    // search in level 1 simd block
-    int current_pos = (part + 1) * 3;
-    std::cout << inner_nodes_[current_pos + 2] << " " << inner_nodes_[current_pos + 0] << " " << inner_nodes_[current_pos + 1] << std::endl;
-    if (key > inner_nodes_[current_pos + 2]) {
-      part = part * 4 + 3;
-    }
-    else if (key > inner_nodes_[current_pos + 0]) {
-      part = part * 4 + 2;
-    }
-    else if (key > inner_nodes_[current_pos + 1]) {
-      part = part * 4 + 1;
-    }
-    else {
-      part = part * 4 + 0;
-    }
-    std::cout << "key = " << key << " " << 0 + step * part << " " << 0 + step * (part + 1) + 1 << " " << part << std::endl;
-    // std::cout << "part = " << part << std::endl;
-    return std::pair<int, int>(0 + step * part, 0 + step * (part + 1) + 2);
+    lookup_simd_block(key, current_pos, lhs_offset, rhs_offset);
     
+    lookup_simd_block(key, current_pos, lhs_offset, rhs_offset);
+    // lookup_simd_block(key, current_pos, lhs_offset, rhs_offset);
+    // lookup_simd_block(key, current_pos, lhs_offset, rhs_offset);
+    // std::cout << "key = " << key << " " << lhs_offset << " " << rhs_offset << std::endl;
 
-    // size_t base_pos = 1;
-    // size_t next_layer = 1;
-
-    // if (key < inner_nodes_[0]) {
-    //   return find_inner_layers_internal(key, begin_offset, mid_offset - 1, base_pos, 0, next_layer);
-    // } else {
-    //   return find_inner_layers_internal(key, mid_offset + 1, end_offset, base_pos, 1, next_layer);
-    // }
-
+    return std::pair<int, int>(lhs_offset, rhs_offset);
   }
 
 private:
