@@ -39,8 +39,9 @@ public:
     // cacheline_depth % simd_depth must be 0.
     if (cacheline_depth_ % simd_depth_ != 0) {
       cacheline_depth_ = (cacheline_depth_ / simd_depth_) * simd_depth_;
-      cacheline_key_capacity_ = std::pow(2.0, cacheline_depth_) - 1;
-    }
+    } 
+    cacheline_key_capacity_ = std::pow(2.0, cacheline_depth_) - 1;
+
     ASSERT(cacheline_key_capacity_ % simd_key_capacity_ == 0, "mismatch: " << cacheline_key_capacity_ << " " << simd_key_capacity_);
     cacheline_capacity_ = cacheline_key_capacity_ / simd_key_capacity_;
 
@@ -211,11 +212,11 @@ private:
 
     construct_cacheline_block(current_pos, lhs_offset, rhs_offset);
 
-    size_t step = (rhs_offset - lhs_offset) / 16;
+    // size_t step = (rhs_offset - lhs_offset) / 16;
 
-    for (size_t i = 0; i < 16; ++i) {
-      construct_cacheline_block(current_pos + 16 * (i + 1), lhs_offset + step * i, lhs_offset + step * (i + 1));
-    }
+    // for (size_t i = 0; i < 16; ++i) {
+    //   construct_cacheline_block(current_pos + 16 * (i + 1), lhs_offset + step * i, lhs_offset + step * (i + 1));
+    // }
 
     // return current_pos + 256;
   }
@@ -285,19 +286,19 @@ private:
     int part = -1;
     if (key > inner_nodes_[2]) { 
       part = 3;
-      // return std::pair<int, int>(rhs_mid_offset + 1, end_offset + 1); 
+      return std::pair<int, int>(rhs_mid_offset + 1, end_offset + 1); 
     }
     else if (key > inner_nodes_[0]) { 
       part = 2;
-      // return std::pair<int, int>(mid_offset + 1, rhs_mid_offset + 1); 
+      return std::pair<int, int>(mid_offset + 1, rhs_mid_offset + 1); 
     } 
     else if (key > inner_nodes_[1]) { 
       part = 1;
-      // return std::pair<int, int>(lhs_mid_offset + 1, mid_offset + 1); 
+      return std::pair<int, int>(lhs_mid_offset + 1, mid_offset + 1); 
     } 
     else {
       part = 0;
-      // return std::pair<int, int>(0, lhs_mid_offset + 1);
+      return std::pair<int, int>(0, lhs_mid_offset + 1);
     }
     size_t step = (end_offset - begin_offset) / 16;
     // search in level 1 simd block
