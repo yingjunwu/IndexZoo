@@ -16,6 +16,11 @@ class FastIndex : public BaseStaticIndex<KeyT, ValueT> {
   const size_t CACHELINE_SIZE = 64; // unit: byte
   const size_t PAGE_SIZE = 4096; // unit: byte (4 KB)
 
+struct BlockLookupInfo {
+  size_t current_pos_;
+  size_t lhs_offset_;
+  size_t rhs_offset_;
+};
 
 public:
   FastIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_layers): BaseStaticIndex<KeyT, ValueT>(table_ptr), num_layers_(num_layers) {
@@ -154,7 +159,7 @@ public:
 
       size_t num_cachelines = inner_node_size / cacheline_key_capacity_;
       inner_size_ = num_cachelines * CACHELINE_SIZE / sizeof(KeyT);
-      std::cout << "num cachelines = " << num_cachelines << " " << inner_size_ << std::endl;
+      std::cout << "num cachelines = " << num_cachelines << ", inner size = " << inner_size_ << std::endl;
       inner_nodes_ = new KeyT[inner_size_];
       memset(inner_nodes_, 0, sizeof(KeyT) * inner_size_);
 
@@ -187,14 +192,14 @@ private:
 
     // level 0
     construct_cacheline_block(0, 0, this->size_ - 1);
-    size_t current_pos = 16;
+    size_t current_pos = 16; // cacheline size
 
     size_t levels = num_layers_ / cacheline_depth_;
 
     for (size_t i = 1; i < levels; ++i) {
-      std::cout << "construct levels = " << i << std::endl;
+      // std::cout << "construct levels = " << i << std::endl;
       size_t num_cachelines = std::pow(16, i);
-      size_t step = (this->size_ - 1) / num_cachelines;
+      size_t step = this->size_ / num_cachelines;
 
       for (size_t j = 0; j < num_cachelines - 1; ++j) {
         construct_cacheline_block(current_pos, step * j, step * (j + 1) - 1);
@@ -212,7 +217,7 @@ private:
     // level 0
     construct_simd_block(current_pos, lhs_offset, rhs_offset);
 
-    size_t step = (rhs_offset - lhs_offset) / 4;
+    size_t step = (rhs_offset - lhs_offset + 1) / 4;
 
     // level 1
     for (size_t i = 0; i < 3; ++i) {
@@ -229,7 +234,7 @@ private:
 
     ASSERT(simd_key_capacity_ == 3, "SIMD block key capacity not equal to 3: " << simd_key_capacity_);
 
-    size_t step = (rhs_offset - lhs_offset) / 4;
+    size_t step = (rhs_offset - lhs_offset + 1) / 4;
 
     inner_nodes_[current_pos + 0] = this->container_[lhs_offset + 2 * step].key_;
     inner_nodes_[current_pos + 1] = this->container_[lhs_offset + 1 * step].key_;
@@ -242,77 +247,84 @@ private:
 
     if (num_layers_ == 0) { return std::pair<int, int>(0, this->size_ - 1); }
 
-    size_t base_pos = 0;
-    size_t branch_id = lookup_cacheline_block(key, base_pos);
-
-    base_pos += 16 * (branch_id + 1);
+    BlockLookupInfo info;
+    // cacheline level 0
+    size_t branch_id = lookup_cacheline_block(key, 0, 0, this->size_ - 1, info);
+    // return std::pair<int, int>(info.lhs_offset_, info.rhs_offset_);
 
     size_t levels = num_layers_ / cacheline_depth_;
 
-    if (levels == 1) {
-      size_t step = (this->size_ - 1) / 16;
+    if (levels == 2) {
+
+      size_t step = this->size_ / 16;
+
+      size_t new_pos = CACHELINE_SIZE / sizeof(KeyT) * (1 + branch_id);
+
+      // cacheline level 1
+      size_t new_branch_id;
       if (branch_id < 15) {
-        std::cout << "output: " << key << " " << branch_id << " " << step * branch_id << " " << step * (branch_id + 1) << std::endl;
-        return std::pair<int, int>(step * branch_id, step * (branch_id + 1) - 1);
+
+        new_branch_id = lookup_cacheline_block(key, new_pos, branch_id * step, (branch_id + 1) * step - 1, info);
+        // std::cout << "offset: " << branch_id * step << " " << (branch_id + 1) * step - 1 << std::endl;
       } else {
-        std::cout << "output: " << key << " " << branch_id << " " << step * branch_id << " " << step * this->size_ - 1 << std::endl;
-        return std::pair<int, int>(step * branch_id, this->size_ - 1);
-
+        new_branch_id = lookup_cacheline_block(key, new_pos, branch_id * step, this->size_ - 1, info);
+        // std::cout << "offset: " << branch_id * step << " " << this->size_ - 1 << std::endl;
       }
+      // std::cout << "output: " << key << " " << step << " " << new_pos << " " << branch_id << " " << new_branch_id << " " << info.lhs_offset_ << " " << info.rhs_offset_ << std::endl;
+      
     }
-    return std::pair<int, int>(0, this->size_ - 1);
-
-    // for (size_t i = 1; i < levels; ++i) {
-
-    //   size_t num_cachelines = std::pow(16, i);
-    //   size_t step = (this->size_ - 1) / num_cachelines;
-
-    //   base_pos += num_cachelines * 16;
-    // }
-
-    // return std::pair<int, int>(lhs_offset, rhs_offset);
+    return std::pair<int, int>(info.lhs_offset_, info.rhs_offset_);
   }
 
   // search in cacheline block
-  size_t lookup_cacheline_block(const KeyT &key, const size_t current_pos) {
+  size_t lookup_cacheline_block(const KeyT &key, const size_t current_pos, const size_t lhs_offset, const size_t rhs_offset, BlockLookupInfo &info) {
 
-    size_t branch_id = lookup_simd_block(key, current_pos);
+    size_t branch_id = lookup_simd_block(key, current_pos, lhs_offset, rhs_offset, info);
+    
     size_t new_pos = current_pos + 3 * (branch_id + 1);
 
-    size_t new_branch_id = lookup_simd_block(key, new_pos);
+    size_t step = (rhs_offset - lhs_offset + 1) / 4;
 
-    std::cout << "branch: " << branch_id << " " << new_branch_id << " " << branch_id * 4 + new_branch_id << std::endl;
+    size_t new_branch_id;
+    if (branch_id < 3) {
+
+      new_branch_id = lookup_simd_block(key, new_pos, lhs_offset + step * branch_id, lhs_offset + step * (branch_id + 1) - 1, info); 
+    } else {
+      new_branch_id = lookup_simd_block(key, new_pos, lhs_offset + step * branch_id, rhs_offset, info);       
+    }
+
     return branch_id * 4 + new_branch_id;
   }
 
   // search in simd block
-  size_t lookup_simd_block(const KeyT &key, const size_t current_pos/*, size_t &lhs_offset, size_t &rhs_offset*/) {
+  size_t lookup_simd_block(const KeyT &key, const size_t current_pos, const size_t lhs_offset, const size_t rhs_offset, BlockLookupInfo &info) {
+    // std::cout << "key = " << key << ", lookup simd: " << lhs_offset << " " << rhs_offset << std::endl;
 
-    // size_t step = (rhs_offset - lhs_offset) / 4;
+    size_t step = (rhs_offset - lhs_offset + 1) / 4;
 
     if (key >= inner_nodes_[current_pos + 2]) {
-      // current_pos = current_pos + 3 * 4;
+      info.current_pos_ = current_pos + 3 * 4;
+      info.lhs_offset_ = lhs_offset + 3 * step;
+      info.rhs_offset_ = rhs_offset;
       return 3;
-      // rhs_offset = rhs_offset;
-      // lhs_offset = lhs_offset + 3 * step;
     }
     else if (key >= inner_nodes_[current_pos + 0]) {
-      // current_pos = current_pos + 3 * 3;
+      info.current_pos_ = current_pos + 3 * 3;
+      info.lhs_offset_ = lhs_offset + 2 * step;
+      info.rhs_offset_ = lhs_offset + 3 * step - 1;
       return 2;
-      // rhs_offset = lhs_offset + 3 * step - 1;
-      // lhs_offset = lhs_offset + 2 * step;
     } 
     else if (key >= inner_nodes_[current_pos + 1]) { 
-      // current_pos = current_pos + 3 * 2;
+      info.current_pos_ = current_pos + 3 * 2;
+      info.lhs_offset_ = lhs_offset + 1 * step;
+      info.rhs_offset_ = lhs_offset + 2 * step - 1;
       return 1;
-      // rhs_offset = lhs_offset + 2 * step - 1;
-      // lhs_offset = lhs_offset + 1 * step;
     } 
     else {
-      // current_pos = current_pos + 3 * 1;
+      info.current_pos_ = current_pos + 3 * 1;
+      info.lhs_offset_ = lhs_offset;
+      info.rhs_offset_ = lhs_offset + 1 * step - 1;
       return 0;
-      // rhs_offset = lhs_offset + 1 * step - 1;
-      // lhs_offset = lhs_offset;
     }
   }
 
