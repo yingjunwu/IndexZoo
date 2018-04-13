@@ -6,7 +6,7 @@ CMAKE_POLICY (SET CMP0042 NEW)
 
 PROJECT (IndexZoo)
 # SET (CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra" CACHE INTERNAL "compiler options" FORCE)
-SET (CMAKE_CXX_FLAGS "-std=c++11 -mcx16  -Wno-invalid-offsetof -Wno-deprecated-register -Wno-null-dereference" CACHE INTERNAL "compiler options" FORCE)
+SET (CMAKE_CXX_FLAGS "-std=c++11 -msse2 -mcx16 -Wno-invalid-offsetof -Wno-deprecated-register -Wno-null-dereference" CACHE INTERNAL "compiler options" FORCE)
 SET (CMAKE_CXX_FLAGS_DEBUG "-O0 -g" CACHE INTERNAL "compiler options" FORCE)
 SET (CMAKE_CXX_FLAGS_RELEASE "-O3" CACHE INTERNAL "compiler options" FORCE)
 IF (NOT CMAKE_BUILD_TYPE)

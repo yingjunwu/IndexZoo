@@ -16,56 +16,27 @@ class FastIndex : public BaseStaticIndex<KeyT, ValueT> {
   const size_t CACHELINE_SIZE = 64; // unit: byte
   const size_t PAGE_SIZE = 4096; // unit: byte (4 KB)
 
+  const size_t KEY_SIZE = 4; // FAST only support 4-byte keys.
+  const size_t SIMD_KEY_CAPACITY = 3; 
+  const size_t CACHELINE_KEY_CAPACITY = 15;
+  const size_t CACHELINE_DEPTH = 4;
+
+
 public:
-  FastIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_layers): BaseStaticIndex<KeyT, ValueT>(table_ptr), num_layers_(num_layers) {
+  FastIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_layers)
+    : BaseStaticIndex<KeyT, ValueT>(table_ptr)
+    , num_layers_(num_layers) {
 
-    ASSERT(sizeof(KeyT) == 4, "only support 4-byte keys");
-
-    // compute size for simd block
-    // max simd block key capacity
-    simd_key_capacity_ = SIMD_SIZE / sizeof(KeyT);
-    // max simd block depth, depth < log2(capacity + 1)
-    simd_depth_ = std::log(simd_key_capacity_ + 1) / std::log(2);
-    // update simd block key capacity
-    simd_key_capacity_ = std::pow(2.0, simd_depth_) - 1;
-
-    // compute size for cacheline block
-    // max cacheline block key capacity
-    cacheline_key_capacity_ = CACHELINE_SIZE / sizeof(KeyT);
-    // max cacheline block depth, depth < log2(capacity + 1)
-    cacheline_depth_ = std::log(cacheline_key_capacity_ + 1) / std::log(2);
-    // update cacheline block depth and key capacity
-    // cacheline_depth % simd_depth must be 0.
-    if (cacheline_depth_ % simd_depth_ != 0) {
-      cacheline_depth_ = (cacheline_depth_ / simd_depth_) * simd_depth_;
-    } 
-    cacheline_key_capacity_ = std::pow(2.0, cacheline_depth_) - 1;
-
-    ASSERT(cacheline_key_capacity_ % simd_key_capacity_ == 0, "mismatch: " << cacheline_key_capacity_ << " " << simd_key_capacity_);
-    cacheline_capacity_ = cacheline_key_capacity_ / simd_key_capacity_;
-
-    // compute size for page block
-    // max page block key capacity
-    page_key_capacity_ = PAGE_SIZE / sizeof(KeyT);
-    // max page block depth, depth < log2(capacity + 1)
-    page_depth_ = std::log(page_key_capacity_ + 1) / std::log(2);
-    // update page block depth and key capacity
-    // page_depth % cacheline_depth must be 0.
-    if (page_depth_ % cacheline_depth_ != 0) {
-      page_depth_ = (page_depth_ / cacheline_depth_) * cacheline_depth_;
-      page_key_capacity_ = std::pow(2.0, page_depth_) - 1;
-    }
-    ASSERT(page_key_capacity_ % cacheline_key_capacity_ == 0, "mismatch: " << page_key_capacity_ << " " << cacheline_key_capacity_);
-    page_capacity_ = page_key_capacity_ / simd_key_capacity_;
-
-    ASSERT(num_layers_ % cacheline_depth_ == 0, 
-      "do not support number of layers = " << num_layers_ << " " << cacheline_depth_);
+    ASSERT(sizeof(KeyT) == KEY_SIZE, "only support 4-byte keys");
   }
 
   virtual ~FastIndex() {
     if (num_layers_ != 0) {
       delete[] inner_nodes_;
       inner_nodes_ = nullptr;
+
+      delete num_cachelines_;
+      num_cachelines_ = nullptr;
     }
   }
 
@@ -146,23 +117,31 @@ public:
 
     ASSERT(inner_node_size < this->size_, "exceed maximum layers");
 
+    cacheline_levels_ = num_layers_ / CACHELINE_DEPTH;
+    num_cachelines_ = new size_t[cacheline_levels_ + 1];
+    for (size_t i = 0; i < cacheline_levels_ + 1; ++i) {
+      num_cachelines_[i] = std::pow(16, i);
+    }
+    
+    lhs_offset_ = 0;
+    rhs_offset_ = this->size_ - 1 - this->size_ % (num_cachelines_[cacheline_levels_] * 16);
+
+    last_level_step_ = (rhs_offset_ - lhs_offset_ + 1) / num_cachelines_[cacheline_levels_];
+
     key_min_ = this->container_[0].key_;
     key_max_ = this->container_[this->size_ - 1].key_;
 
     if (num_layers_ != 0) {
 
-      size_t num_cachelines = inner_node_size / cacheline_key_capacity_;
+      size_t num_cachelines = inner_node_size / CACHELINE_KEY_CAPACITY;
       inner_size_ = num_cachelines * CACHELINE_SIZE / sizeof(KeyT);
       inner_nodes_ = new KeyT[inner_size_];
       memset(inner_nodes_, 0, sizeof(KeyT) * inner_size_);
 
       construct_inner_layers();
     } else {
-
       inner_nodes_ = nullptr;
     }
-
-    // print();
   }
 
   virtual void print() const final {
@@ -181,30 +160,20 @@ private:
   void construct_inner_layers() {
     ASSERT(num_layers_ != 0, "number of layers cannot be 0");
 
-    size_t cacheline_levels = num_layers_ / cacheline_depth_;
-    size_t num_last_level_cachelines = std::pow(16, cacheline_levels - 1);
-    size_t max_partitions = num_last_level_cachelines * 16;
-
-    size_t lhs_offset = 0;
-    size_t rhs_offset = this->size_ - 1 - this->size_ % max_partitions;
-    // size_t end_offset = this->size_ - 1;
-
     // cacheline level 0
     size_t current_pos = 0;
-    construct_cacheline_block(current_pos, lhs_offset, rhs_offset);
+    construct_cacheline_block(current_pos, lhs_offset_, rhs_offset_);
     current_pos += 16; // cacheline size
 
     // cacheline level i
-    for (size_t i = 1; i < cacheline_levels; ++i) {
+    for (size_t i = 1; i < cacheline_levels_; ++i) {
       size_t num_cachelines = std::pow(16, i);
-      size_t step = (rhs_offset - lhs_offset + 1) / num_cachelines;
+      size_t step = (rhs_offset_ - lhs_offset_ + 1) / num_cachelines;
 
       for (size_t j = 0; j < num_cachelines; ++j) {
         construct_cacheline_block(current_pos, step * j, step * (j + 1) - 1);
         current_pos += 16;
       }
-      // construct_cacheline_block(current_pos, step * (num_cachelines - 1), step * num_cachelines - 1);
-      // current_pos += 16;
     }
   }
  
@@ -225,8 +194,6 @@ private:
   // we only support the case for simd key capacity = 3.
   void construct_simd_block(const size_t current_pos, const size_t lhs_offset, const size_t rhs_offset) {
 
-    ASSERT(simd_key_capacity_ == 3, "SIMD block key capacity not equal to 3: " << simd_key_capacity_);
-
     size_t step = (rhs_offset - lhs_offset + 1) / 4;
 
     inner_nodes_[current_pos + 0] = this->container_[lhs_offset + 2 * step - 1].key_;
@@ -240,10 +207,6 @@ private:
 
     if (num_layers_ == 0) { return std::pair<int, int>(0, this->size_ - 1); }
 
-    size_t cacheline_levels = num_layers_ / cacheline_depth_;
-    size_t num_last_level_cachelines = std::pow(16, cacheline_levels - 1);
-    size_t max_partitions = num_last_level_cachelines * 16;
-
     // cacheline level 0
     size_t current_pos = 0;
     size_t branch_id = lookup_cacheline_block(key, current_pos);
@@ -251,7 +214,7 @@ private:
     
     size_t num_cachelines = std::pow(16, 1); // number of cachelines in next level
     
-    for (size_t i = 1; i < cacheline_levels; ++i) {
+    for (size_t i = 1; i < cacheline_levels_; ++i) {
       
       size_t new_branch_id = lookup_cacheline_block(key, current_pos + branch_id * 16);
       
@@ -259,17 +222,12 @@ private:
       current_pos += 16 * num_cachelines; // beginning position in next level
 
       num_cachelines = std::pow(16, (i + 1)); // number of cachelines in next level
-
     }
     
-    size_t lhs_offset = 0;
-    size_t rhs_offset = this->size_ - 1 - this->size_ % max_partitions;
-    size_t step = (rhs_offset - lhs_offset + 1) / num_cachelines; // step in next level
-
     if (branch_id < num_cachelines - 1) {
-      return std::pair<int, int>(branch_id * step, (branch_id + 1) * step - 1);
+      return std::pair<int, int>(branch_id * last_level_step_, (branch_id + 1) * last_level_step_ - 1);
     } else {
-      return std::pair<int, int>(branch_id * step, this->size_ - 1);
+      return std::pair<int, int>(branch_id * last_level_step_, this->size_ - 1);
     }
     
   }
@@ -328,16 +286,12 @@ private:
   KeyT *inner_nodes_;
   size_t inner_size_;
 
-  size_t simd_key_capacity_;
-  size_t simd_depth_;
+  size_t lhs_offset_;
+  size_t rhs_offset_;
+  size_t last_level_step_;
+  size_t cacheline_levels_;
+  size_t *num_cachelines_;
 
-  size_t cacheline_key_capacity_;
-  size_t cacheline_depth_;
-  size_t cacheline_capacity_;
-
-  size_t page_key_capacity_;
-  size_t page_depth_;
-  size_t page_capacity_;
 
 };
 

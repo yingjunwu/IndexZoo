@@ -21,7 +21,7 @@ void test_static_index_unique_key(const IndexType index_type) {
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get(), 8, 5));
+    create_index<KeyT, ValueT>(index_type, data_table.get(), 4, 5));
 
   std::unordered_map<KeyT, std::pair<Uint64, ValueT>> validation_set;
   
@@ -67,7 +67,6 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
   //   IndexType::S_Interpolation,
   //   IndexType::S_Binary,
   //   IndexType::S_KAry,
-  //   // IndexType::S_Fast,
   // };
   // for (auto index_type : index_types) {
   //   // key type is set to uint16_t
