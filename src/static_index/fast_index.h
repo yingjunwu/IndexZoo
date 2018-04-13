@@ -194,7 +194,7 @@ private:
     for (size_t i = 1; i < levels; ++i) {
       std::cout << "construct levels = " << i << std::endl;
       size_t num_cachelines = std::pow(16, i);
-      size_t step = (this->size_ - 1) / 16;
+      size_t step = (this->size_ - 1) / num_cachelines;
 
       for (size_t j = 0; j < num_cachelines - 1; ++j) {
         construct_cacheline_block(current_pos, step * j, step * (j + 1) - 1);
@@ -237,6 +237,87 @@ private:
 
   }
 
+  // find in inner nodes
+  std::pair<int, int> find_inner_layers(const KeyT &key) {
+
+    if (num_layers_ == 0) { return std::pair<int, int>(0, this->size_ - 1); }
+
+    size_t base_pos = 0;
+    size_t branch_id = lookup_cacheline_block(key, base_pos);
+
+    base_pos += 16 * (branch_id + 1);
+
+    size_t levels = num_layers_ / cacheline_depth_;
+
+    if (levels == 1) {
+      size_t step = (this->size_ - 1) / 16;
+      if (branch_id < 15) {
+        std::cout << "output: " << key << " " << branch_id << " " << step * branch_id << " " << step * (branch_id + 1) << std::endl;
+        return std::pair<int, int>(step * branch_id, step * (branch_id + 1) - 1);
+      } else {
+        std::cout << "output: " << key << " " << branch_id << " " << step * branch_id << " " << step * this->size_ - 1 << std::endl;
+        return std::pair<int, int>(step * branch_id, this->size_ - 1);
+
+      }
+    }
+    return std::pair<int, int>(0, this->size_ - 1);
+
+    // for (size_t i = 1; i < levels; ++i) {
+
+    //   size_t num_cachelines = std::pow(16, i);
+    //   size_t step = (this->size_ - 1) / num_cachelines;
+
+    //   base_pos += num_cachelines * 16;
+    // }
+
+    // return std::pair<int, int>(lhs_offset, rhs_offset);
+  }
+
+  // search in cacheline block
+  size_t lookup_cacheline_block(const KeyT &key, const size_t current_pos) {
+
+    size_t branch_id = lookup_simd_block(key, current_pos);
+    size_t new_pos = current_pos + 3 * (branch_id + 1);
+
+    size_t new_branch_id = lookup_simd_block(key, new_pos);
+
+    std::cout << "branch: " << branch_id << " " << new_branch_id << " " << branch_id * 4 + new_branch_id << std::endl;
+    return branch_id * 4 + new_branch_id;
+  }
+
+  // search in simd block
+  size_t lookup_simd_block(const KeyT &key, const size_t current_pos/*, size_t &lhs_offset, size_t &rhs_offset*/) {
+
+    // size_t step = (rhs_offset - lhs_offset) / 4;
+
+    if (key >= inner_nodes_[current_pos + 2]) {
+      // current_pos = current_pos + 3 * 4;
+      return 3;
+      // rhs_offset = rhs_offset;
+      // lhs_offset = lhs_offset + 3 * step;
+    }
+    else if (key >= inner_nodes_[current_pos + 0]) {
+      // current_pos = current_pos + 3 * 3;
+      return 2;
+      // rhs_offset = lhs_offset + 3 * step - 1;
+      // lhs_offset = lhs_offset + 2 * step;
+    } 
+    else if (key >= inner_nodes_[current_pos + 1]) { 
+      // current_pos = current_pos + 3 * 2;
+      return 1;
+      // rhs_offset = lhs_offset + 2 * step - 1;
+      // lhs_offset = lhs_offset + 1 * step;
+    } 
+    else {
+      // current_pos = current_pos + 3 * 1;
+      return 0;
+      // rhs_offset = lhs_offset + 1 * step - 1;
+      // lhs_offset = lhs_offset;
+    }
+  }
+
+
+  // last step
   // find in leaf nodes, simple binary search [incl., incl.]
   size_t find_internal(const KeyT &key, const int offset_begin, const int offset_end) {
     if (offset_begin > offset_end) {
@@ -252,53 +333,6 @@ private:
     } else {
       return find_internal(key, offset_begin, offset_lookup - 1);
     }
-  }
-
-
-  // search in simd block
-  void lookup_simd_block(const KeyT &key, size_t &current_pos, size_t &lhs_offset, size_t &rhs_offset) {
-
-    size_t step = (rhs_offset - lhs_offset) / 4;
-
-    if (key >= inner_nodes_[current_pos + 2]) { 
-      current_pos = current_pos + 3 * 4;
-      rhs_offset = rhs_offset;
-      lhs_offset = lhs_offset + 3 * step;
-    }
-    else if (key >= inner_nodes_[current_pos + 0]) { 
-      current_pos = current_pos + 3 * 3;
-      rhs_offset = lhs_offset + 3 * step - 1;
-      lhs_offset = lhs_offset + 2 * step;
-    } 
-    else if (key >= inner_nodes_[current_pos + 1]) { 
-      current_pos = current_pos + 3 * 2;
-      rhs_offset = lhs_offset + 2 * step - 1;
-      lhs_offset = lhs_offset + 1 * step;
-    } 
-    else {
-      current_pos = current_pos + 3 * 1;
-      rhs_offset = lhs_offset + 1 * step - 1;
-      lhs_offset = lhs_offset;
-    }
-  }
-
-  // find in inner nodes
-  std::pair<int, int> find_inner_layers(const KeyT &key) {
-
-    if (num_layers_ == 0) { return std::pair<int, int>(0, this->size_ - 1); }
-
-    size_t current_pos = 0;
-    size_t lhs_offset = 0;
-    size_t rhs_offset = this->size_ - 1;
-    
-    lookup_simd_block(key, current_pos, lhs_offset, rhs_offset);
-    
-    lookup_simd_block(key, current_pos, lhs_offset, rhs_offset);
-    // lookup_simd_block(key, current_pos, lhs_offset, rhs_offset);
-    // lookup_simd_block(key, current_pos, lhs_offset, rhs_offset);
-    // std::cout << "key = " << key << " " << lhs_offset << " " << rhs_offset << std::endl;
-
-    return std::pair<int, int>(lhs_offset, rhs_offset);
   }
 
 private:
