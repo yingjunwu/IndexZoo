@@ -16,12 +16,6 @@ class FastIndex : public BaseStaticIndex<KeyT, ValueT> {
   const size_t CACHELINE_SIZE = 64; // unit: byte
   const size_t PAGE_SIZE = 4096; // unit: byte (4 KB)
 
-struct BlockLookupInfo {
-  size_t current_pos_;
-  size_t lhs_offset_;
-  size_t rhs_offset_;
-};
-
 public:
   FastIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t num_layers): BaseStaticIndex<KeyT, ValueT>(table_ptr), num_layers_(num_layers) {
 
@@ -159,7 +153,6 @@ public:
 
       size_t num_cachelines = inner_node_size / cacheline_key_capacity_;
       inner_size_ = num_cachelines * CACHELINE_SIZE / sizeof(KeyT);
-      std::cout << "num cachelines = " << num_cachelines << ", inner size = " << inner_size_ << std::endl;
       inner_nodes_ = new KeyT[inner_size_];
       memset(inner_nodes_, 0, sizeof(KeyT) * inner_size_);
 
@@ -169,7 +162,7 @@ public:
       inner_nodes_ = nullptr;
     }
 
-    print();
+    // print();
   }
 
   virtual void print() const final {
@@ -181,32 +174,37 @@ public:
     }
   }
 
-  virtual void print_stats() const final {
-
-  }
+  virtual void print_stats() const final {}
 
 private:
 
   void construct_inner_layers() {
     ASSERT(num_layers_ != 0, "number of layers cannot be 0");
 
-    // level 0
-    construct_cacheline_block(0, 0, this->size_ - 1);
-    size_t current_pos = 16; // cacheline size
+    size_t cacheline_levels = num_layers_ / cacheline_depth_;
+    size_t num_last_level_cachelines = std::pow(16, cacheline_levels - 1);
+    size_t max_partitions = num_last_level_cachelines * 16;
 
-    size_t levels = num_layers_ / cacheline_depth_;
+    size_t lhs_offset = 0;
+    size_t rhs_offset = this->size_ - 1 - this->size_ % max_partitions;
+    // size_t end_offset = this->size_ - 1;
 
-    for (size_t i = 1; i < levels; ++i) {
-      // std::cout << "construct levels = " << i << std::endl;
+    // cacheline level 0
+    size_t current_pos = 0;
+    construct_cacheline_block(current_pos, lhs_offset, rhs_offset);
+    current_pos += 16; // cacheline size
+
+    // cacheline level i
+    for (size_t i = 1; i < cacheline_levels; ++i) {
       size_t num_cachelines = std::pow(16, i);
-      size_t step = this->size_ / num_cachelines;
+      size_t step = (rhs_offset - lhs_offset + 1) / num_cachelines;
 
-      for (size_t j = 0; j < num_cachelines - 1; ++j) {
+      for (size_t j = 0; j < num_cachelines; ++j) {
         construct_cacheline_block(current_pos, step * j, step * (j + 1) - 1);
         current_pos += 16;
       }
-      construct_cacheline_block(current_pos, step * (num_cachelines - 1), this->size_ - 1);
-      current_pos += 16;
+      // construct_cacheline_block(current_pos, step * (num_cachelines - 1), step * num_cachelines - 1);
+      // current_pos += 16;
     }
   }
  
@@ -214,19 +212,14 @@ private:
   // in this case, the number of simd blocks in each cacheline block is 5.
   void construct_cacheline_block(const size_t current_pos, const size_t lhs_offset, const size_t rhs_offset) {
 
-    // level 0
+    // simd level 0
     construct_simd_block(current_pos, lhs_offset, rhs_offset);
 
+    // simd level 1
     size_t step = (rhs_offset - lhs_offset + 1) / 4;
-
-    // level 1
-    for (size_t i = 0; i < 3; ++i) {
+    for (size_t i = 0; i < 4; ++i) {
       construct_simd_block(current_pos + 3 * (i + 1), lhs_offset + step * i, lhs_offset + step * (i + 1) - 1);
     }
-
-    construct_simd_block(current_pos + 3 * 4, lhs_offset + step * 3, rhs_offset);
-    
-    // CPU fetches data in cacheline size.
   }
 
   // we only support the case for simd key capacity = 3.
@@ -236,9 +229,9 @@ private:
 
     size_t step = (rhs_offset - lhs_offset + 1) / 4;
 
-    inner_nodes_[current_pos + 0] = this->container_[lhs_offset + 2 * step].key_;
-    inner_nodes_[current_pos + 1] = this->container_[lhs_offset + 1 * step].key_;
-    inner_nodes_[current_pos + 2] = this->container_[lhs_offset + 3 * step].key_;
+    inner_nodes_[current_pos + 0] = this->container_[lhs_offset + 2 * step - 1].key_;
+    inner_nodes_[current_pos + 1] = this->container_[lhs_offset + 1 * step - 1].key_;
+    inner_nodes_[current_pos + 2] = this->container_[lhs_offset + 3 * step - 1].key_;
 
   }
 
@@ -247,85 +240,64 @@ private:
 
     if (num_layers_ == 0) { return std::pair<int, int>(0, this->size_ - 1); }
 
-    BlockLookupInfo info;
+    size_t cacheline_levels = num_layers_ / cacheline_depth_;
+    size_t num_last_level_cachelines = std::pow(16, cacheline_levels - 1);
+    size_t max_partitions = num_last_level_cachelines * 16;
+
     // cacheline level 0
-    size_t branch_id = lookup_cacheline_block(key, 0, 0, this->size_ - 1, info);
-    // return std::pair<int, int>(info.lhs_offset_, info.rhs_offset_);
-
-    size_t levels = num_layers_ / cacheline_depth_;
-
-    if (levels == 2) {
-
-      size_t step = this->size_ / 16;
-
-      size_t new_pos = CACHELINE_SIZE / sizeof(KeyT) * (1 + branch_id);
-
-      // cacheline level 1
-      size_t new_branch_id;
-      if (branch_id < 15) {
-
-        new_branch_id = lookup_cacheline_block(key, new_pos, branch_id * step, (branch_id + 1) * step - 1, info);
-        // std::cout << "offset: " << branch_id * step << " " << (branch_id + 1) * step - 1 << std::endl;
-      } else {
-        new_branch_id = lookup_cacheline_block(key, new_pos, branch_id * step, this->size_ - 1, info);
-        // std::cout << "offset: " << branch_id * step << " " << this->size_ - 1 << std::endl;
-      }
-      // std::cout << "output: " << key << " " << step << " " << new_pos << " " << branch_id << " " << new_branch_id << " " << info.lhs_offset_ << " " << info.rhs_offset_ << std::endl;
+    size_t current_pos = 0;
+    size_t branch_id = lookup_cacheline_block(key, current_pos);
+    current_pos += 16; // beginning position in next level
+    
+    size_t num_cachelines = std::pow(16, 1); // number of cachelines in next level
+    
+    for (size_t i = 1; i < cacheline_levels; ++i) {
       
+      size_t new_branch_id = lookup_cacheline_block(key, current_pos + branch_id * 16);
+      
+      branch_id = branch_id * 16 + new_branch_id;
+      current_pos += 16 * num_cachelines; // beginning position in next level
+
+      num_cachelines = std::pow(16, (i + 1)); // number of cachelines in next level
+
     }
-    return std::pair<int, int>(info.lhs_offset_, info.rhs_offset_);
+    
+    size_t lhs_offset = 0;
+    size_t rhs_offset = this->size_ - 1 - this->size_ % max_partitions;
+    size_t step = (rhs_offset - lhs_offset + 1) / num_cachelines; // step in next level
+
+    if (branch_id < num_cachelines - 1) {
+      return std::pair<int, int>(branch_id * step, (branch_id + 1) * step - 1);
+    } else {
+      return std::pair<int, int>(branch_id * step, this->size_ - 1);
+    }
+    
   }
 
   // search in cacheline block
-  size_t lookup_cacheline_block(const KeyT &key, const size_t current_pos, const size_t lhs_offset, const size_t rhs_offset, BlockLookupInfo &info) {
+  size_t lookup_cacheline_block(const KeyT &key, const size_t current_pos) {
 
-    size_t branch_id = lookup_simd_block(key, current_pos, lhs_offset, rhs_offset, info);
+    size_t branch_id = lookup_simd_block(key, current_pos);
     
     size_t new_pos = current_pos + 3 * (branch_id + 1);
 
-    size_t step = (rhs_offset - lhs_offset + 1) / 4;
-
-    size_t new_branch_id;
-    if (branch_id < 3) {
-
-      new_branch_id = lookup_simd_block(key, new_pos, lhs_offset + step * branch_id, lhs_offset + step * (branch_id + 1) - 1, info); 
-    } else {
-      new_branch_id = lookup_simd_block(key, new_pos, lhs_offset + step * branch_id, rhs_offset, info);       
-    }
+    size_t new_branch_id = lookup_simd_block(key, new_pos); 
 
     return branch_id * 4 + new_branch_id;
   }
 
   // search in simd block
-  size_t lookup_simd_block(const KeyT &key, const size_t current_pos, const size_t lhs_offset, const size_t rhs_offset, BlockLookupInfo &info) {
-    // std::cout << "key = " << key << ", lookup simd: " << lhs_offset << " " << rhs_offset << std::endl;
+  size_t lookup_simd_block(const KeyT &key, const size_t current_pos) {
 
-    size_t step = (rhs_offset - lhs_offset + 1) / 4;
+    __m128i xmm_key_q =_mm_set1_epi32(key);
+    __m128i xmm_tree = _mm_loadu_si128((__m128i*)(inner_nodes_ + current_pos));
+    __m128i xmm_mask = _mm_cmpgt_epi32(xmm_key_q, xmm_tree);
+    unsigned index = _mm_movemask_ps(_mm_castsi128_ps(xmm_mask));
 
-    if (key >= inner_nodes_[current_pos + 2]) {
-      info.current_pos_ = current_pos + 3 * 4;
-      info.lhs_offset_ = lhs_offset + 3 * step;
-      info.rhs_offset_ = rhs_offset;
-      return 3;
-    }
-    else if (key >= inner_nodes_[current_pos + 0]) {
-      info.current_pos_ = current_pos + 3 * 3;
-      info.lhs_offset_ = lhs_offset + 2 * step;
-      info.rhs_offset_ = lhs_offset + 3 * step - 1;
-      return 2;
-    } 
-    else if (key >= inner_nodes_[current_pos + 1]) { 
-      info.current_pos_ = current_pos + 3 * 2;
-      info.lhs_offset_ = lhs_offset + 1 * step;
-      info.rhs_offset_ = lhs_offset + 2 * step - 1;
-      return 1;
-    } 
-    else {
-      info.current_pos_ = current_pos + 3 * 1;
-      info.lhs_offset_ = lhs_offset;
-      info.rhs_offset_ = lhs_offset + 1 * step - 1;
-      return 0;
-    }
+    static unsigned table[8] = {0, 9, 1, 2, 9, 9, 9, 3}; // 9 stands for impossible
+    size_t branch_id = table[(index&7)];
+
+    return branch_id;
   }
 
 
