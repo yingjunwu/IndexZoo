@@ -170,7 +170,7 @@ TEST_F(StaticIndexTest, NonUniqueKeyTest) {
 
   index_type = IndexType::S_Fast;
   for (size_t layers = 0; layers <= 12; layers += 4) {
-    test_static_index_unique_key<uint32_t, uint64_t>(index_type, layers, INVALID_INDEX_PARAM);
+    test_static_index_non_unique_key<uint32_t, uint64_t>(index_type, layers, INVALID_INDEX_PARAM);
   }
 
 }
