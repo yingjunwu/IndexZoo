@@ -66,7 +66,7 @@ public:
     }
     // move right
     int offset_find_rhs = offset_find + 1;
-    while (offset_find_rhs < this->size_ - 1) {
+    while (offset_find_rhs <= this->size_ - 1) {
 
       if (this->container_[offset_find_rhs].key_ == key) {
         values.push_back(this->container_[offset_find_rhs].value_);

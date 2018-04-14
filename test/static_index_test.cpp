@@ -94,7 +94,7 @@ TEST_F(StaticIndexTest, UniqueKeyTest) {
 
 
 template<typename KeyT, typename ValueT>
-void test_static_index_non_unique_key(const IndexType index_type) {
+void test_static_index_non_unique_key(const IndexType index_type, const size_t index_param_1, const size_t index_param_2) {
 
   size_t n = 10000;
   size_t m = 1000;
@@ -104,7 +104,7 @@ void test_static_index_non_unique_key(const IndexType index_type) {
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get(), 1, 2));
+    create_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
 
   std::unordered_map<KeyT, std::unordered_map<Uint64, ValueT>> validation_set;
 
@@ -145,25 +145,32 @@ void test_static_index_non_unique_key(const IndexType index_type) {
 
 TEST_F(StaticIndexTest, NonUniqueKeyTest) {
 
-  std::vector<IndexType> index_types {
+  IndexType index_type = IndexType::S_Interpolation;
+  for (size_t segments = 1; segments <= 10; ++segments) {
+    test_static_index_non_unique_key<uint16_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+    test_static_index_non_unique_key<uint32_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+    test_static_index_non_unique_key<uint64_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+  }
 
-    IndexType::S_Interpolation,
-    // IndexType::S_Binary,
-    // IndexType::S_KAry,
-    // IndexType::S_Fast,
-  };
+  index_type = IndexType::S_Binary;
+  for (size_t layers = 0; layers < 8; ++layers) {
+    test_static_index_non_unique_key<uint16_t, uint64_t>(index_type, layers, INVALID_INDEX_PARAM);
+    test_static_index_non_unique_key<uint32_t, uint64_t>(index_type, layers, INVALID_INDEX_PARAM);
+    test_static_index_non_unique_key<uint64_t, uint64_t>(index_type, layers, INVALID_INDEX_PARAM);
+  }
 
-  for (auto index_type : index_types) {
+  index_type = IndexType::S_KAry;
+  for (size_t layers = 0; layers < 4; ++layers) {
+    for (size_t k = 2; k < 5; ++k) {
+      test_static_index_non_unique_key<uint16_t, uint64_t>(index_type, layers, k);
+      test_static_index_non_unique_key<uint32_t, uint64_t>(index_type, layers, k);
+      test_static_index_non_unique_key<uint64_t, uint64_t>(index_type, layers, k);
+    }
+  }
 
-    // key type is set to uint16_t
-    test_static_index_non_unique_key<uint16_t, uint64_t>(index_type);
-
-    // key type is set to uint32_t
-    test_static_index_non_unique_key<uint32_t, uint64_t>(index_type);
-
-    // key type is set to uint64_t
-    test_static_index_non_unique_key<uint64_t, uint64_t>(index_type);
-
+  index_type = IndexType::S_Fast;
+  for (size_t layers = 0; layers <= 12; layers += 4) {
+    test_static_index_unique_key<uint32_t, uint64_t>(index_type, layers, INVALID_INDEX_PARAM);
   }
 
 }

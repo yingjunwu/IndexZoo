@@ -151,7 +151,7 @@ public:
       }
       // move right
       int guess_rhs = guess + 1;
-      while (guess_rhs < this->size_ - 1) {
+      while (guess_rhs <= this->size_ - 1) {
 
         if (this->container_[guess_rhs].key_ == key) {
           values.push_back(this->container_[guess_rhs].value_);
