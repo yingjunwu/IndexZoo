@@ -124,7 +124,7 @@ public:
     }
     
     lhs_offset_ = 0;
-    rhs_offset_ = this->size_ - 1 - this->size_ % (num_cachelines_[cacheline_levels_] * 16);
+    rhs_offset_ = this->size_ - 1 - this->size_ % num_cachelines_[cacheline_levels_];
 
     last_level_step_ = (rhs_offset_ - lhs_offset_ + 1) / num_cachelines_[cacheline_levels_];
 
@@ -225,8 +225,10 @@ private:
     }
     
     if (branch_id < num_cachelines - 1) {
+
       return std::pair<int, int>(branch_id * last_level_step_, (branch_id + 1) * last_level_step_ - 1);
     } else {
+
       return std::pair<int, int>(branch_id * last_level_step_, this->size_ - 1);
     }
     
