@@ -11,7 +11,7 @@
 #include "dynamic_index/singlethread/stx_btree_index.h"
 #include "dynamic_index/singlethread/art_tree_index.h"
 #include "dynamic_index/singlethread/skiplist_index.h"
-#include "dynamic_index/singlethread/btree_index.h"
+#include "dynamic_index/singlethread/csbtree_index.h"
 
 #include "dynamic_index/multithread/libcuckoo_index.h"
 #include "dynamic_index/multithread/art_tree_index.h"
@@ -31,7 +31,7 @@ enum class IndexType {
   D_ST_StxBtree = 10,
   D_ST_ArtTree,
   D_ST_Skiplist,
-  D_ST_Btree,
+  D_ST_CSBtree,
   
   // dynamic indexes - multithread
   D_MT_Libcuckoo = 20,
