@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-O2 -std=c++11
+CFLAGS=-O2 -std=c++11 -mavx -msse2
 TARGET=$(patsubst %.cpp, %, $(wildcard *.cpp))
 
 all: $(TARGET)
