@@ -208,6 +208,7 @@ inline int scan_search_simd(const uint16_t *data, const size_t size, const uint1
     __m128i xmm_mask = _mm_cmpgt_epi16(key_vec, data_vec);
     
     unsigned index = _mm_movemask_ps(_mm_castsi128_ps(xmm_mask));
+    std::cout << "index = " << index << std::endl;
     if ((index & SIMD_UINT16_MASK) == SIMD_UINT16_MASK) {
       // key is larger than the data in comparison
       continue;
@@ -292,14 +293,16 @@ inline int scan_search_simd(const uint64_t *data, const size_t size, const uint6
   if (key < data[0] || key > data[size - 1]) {
     return -1;
   }
-
+  size_t count = 0;
   size_t i = 0;
-  for (; i + MAX_SIMD_UINT64_COUNT - 1 < size; ++i) {
+  for (; i + MAX_SIMD_UINT64_COUNT - 1 < size; i += MAX_SIMD_UINT64_COUNT) {
+    count++;
     __m128i key_vec =_mm_set1_epi64((__m64)key);
     __m128i data_vec = _mm_loadu_si128((__m128i*)(data + i));
     __m128i xmm_mask = _mm_cmpgt_epi64(key_vec, data_vec);
     
     unsigned index = _mm_movemask_ps(_mm_castsi128_ps(xmm_mask));
+    // std::cout << "index = " << index << std::endl;
     if ((index & SIMD_UINT64_MASK) == SIMD_UINT64_MASK) {
       // key is larger than the data in comparison
       continue;
@@ -320,7 +323,6 @@ inline int scan_search_simd(const uint64_t *data, const size_t size, const uint6
       return -1;
     }
   }
-
   for (; i < size; ++i) {
     if (data[i] == key) {
       return i;
@@ -342,7 +344,8 @@ template<typename T>
 void prepare_data(T *data, const size_t size) {
   FastRandom rand;
   for (size_t i = 0; i < size; ++i) {
-    data[i] = rand.next<T>() % size;
+    // data[i] = rand.next<T>() % size;
+    data[i] = i;
   }
   std::sort(data, data + size, compare_func<T>);
 }

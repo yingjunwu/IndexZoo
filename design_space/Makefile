@@ -4,7 +4,7 @@ TARGET=$(patsubst %.cpp, %, $(wildcard *.cpp))
 
 all: $(TARGET)
 
-$(TARGET): % : %.cpp
+$(TARGET): % : %.cpp *.h
 	$(CC) $(CFLAGS) $< -o $@
 
 clean:

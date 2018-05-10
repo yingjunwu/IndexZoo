@@ -1,13 +1,13 @@
 #include "experiments.h"
 
-template<typename T>
-void measure(std::function<int(const T*, const size_t, const T&)> search_func, const size_t size, const size_t loop) {
+template<typename KeyT>
+void measure(std::function<int(const KeyT*, const size_t, const KeyT&)> search_func, const size_t size, const size_t loop) {
   FastRandom rand;
   
-  T *data = new T[size];
+  KeyT *data = new KeyT[size];
 
-  prepare_data<T>(data, size);
-  // print_data<T>(data, size);
+  prepare_data<KeyT>(data, size);
+  // print_data<KeyT>(data, size);
 
   TimeMeasurer timer;
   long long total_time = 0;
@@ -16,7 +16,7 @@ void measure(std::function<int(const T*, const size_t, const T&)> search_func, c
   timer.tic();
   volatile int pos;
   for (size_t i = 0; i < loop; ++i) {
-    T key = rand.next<T>() % size;
+    KeyT key = rand.next<KeyT>() % size;
     pos = search_func(data, size, key);
   }
   timer.toc();
