@@ -11,10 +11,17 @@
 
 const size_t SIMD_SIZE = 128 / 8;
 const size_t MAX_SIMD_UINT64_COUNT = SIMD_SIZE / sizeof(uint64_t);
-const size_t SIMD_UINT64_MASK = 1 << MAX_SIMD_UINT64_COUNT - 1;
+const size_t SIMD_UINT64_MASK = (1 << MAX_SIMD_UINT64_COUNT) - 1;
 
 const size_t MAX_SIMD_UINT32_COUNT = SIMD_SIZE / sizeof(uint32_t);
-const size_t SIMD_UINT32_MASK = 1 << MAX_SIMD_UINT32_COUNT - 1;
+const size_t SIMD_UINT32_MASK = (1 << MAX_SIMD_UINT32_COUNT) - 1;
+
+const size_t MAX_SIMD_UINT16_COUNT = SIMD_SIZE / sizeof(uint16_t);
+const size_t SIMD_UINT16_MASK = (1 << MAX_SIMD_UINT16_COUNT) - 1;
+
+const size_t MAX_SIMD_UINT8_COUNT = SIMD_SIZE / sizeof(uint8_t);
+const size_t SIMD_UINT8_MASK = (1 << MAX_SIMD_UINT8_COUNT) - 1;
+
 
 template<typename T>
 inline int binary_search_helper(const T *data, const size_t size, const T &key, const int begin_offset, const int end_offset) {
@@ -137,6 +144,97 @@ template<typename T>
 inline int scan_search_simd(const T *data, const size_t size, const T &key);
 
 template<>
+inline int scan_search_simd(const uint8_t *data, const size_t size, const uint8_t &key) {
+  if (key < data[0] || key > data[size - 1]) {
+    return -1;
+  }
+
+  size_t i = 0;
+  for (; i + MAX_SIMD_UINT8_COUNT - 1 < size; ++i) {
+    __m128i key_vec =_mm_set1_epi8(key);
+    __m128i data_vec = _mm_loadu_si128((__m128i*)(data + i));
+    __m128i xmm_mask = _mm_cmpgt_epi8(key_vec, data_vec);
+    
+    unsigned index = _mm_movemask_ps(_mm_castsi128_ps(xmm_mask));
+    if ((index & SIMD_UINT8_MASK) == SIMD_UINT8_MASK) {
+      // key is larger than the data in comparison
+      continue;
+    } else {
+      if (i == 0) {
+        for (size_t j = i; j < i + MAX_SIMD_UINT8_COUNT; ++j) {
+          if (data[j] == key) {
+            return j;
+          }
+        }
+      } else {
+        for (size_t j = i - 1; j < i + MAX_SIMD_UINT8_COUNT; ++j) {
+          if (data[j] == key) {
+            return j;
+          }
+        } 
+      }
+      return -1;
+    }
+  }
+
+  for (; i < size; ++i) {
+    if (data[i] == key) {
+      return i;
+    } 
+    if (data[i] > key) {
+      return -1;
+    }
+  }
+  return -1;
+}
+
+template<>
+inline int scan_search_simd(const uint16_t *data, const size_t size, const uint16_t &key) {
+  if (key < data[0] || key > data[size - 1]) {
+    return -1;
+  }
+
+  size_t i = 0;
+  for (; i + MAX_SIMD_UINT16_COUNT - 1 < size; ++i) {
+    __m128i key_vec =_mm_set1_epi16(key);
+    __m128i data_vec = _mm_loadu_si128((__m128i*)(data + i));
+    __m128i xmm_mask = _mm_cmpgt_epi16(key_vec, data_vec);
+    
+    unsigned index = _mm_movemask_ps(_mm_castsi128_ps(xmm_mask));
+    if ((index & SIMD_UINT16_MASK) == SIMD_UINT16_MASK) {
+      // key is larger than the data in comparison
+      continue;
+    } else {
+      if (i == 0) {
+        for (size_t j = i; j < i + MAX_SIMD_UINT16_COUNT; ++j) {
+          if (data[j] == key) {
+            return j;
+          }
+        }
+      } else {
+        for (size_t j = i - 1; j < i + MAX_SIMD_UINT16_COUNT; ++j) {
+          if (data[j] == key) {
+            return j;
+          }
+        } 
+      }
+      return -1;
+    }
+  }
+
+  for (; i < size; ++i) {
+    if (data[i] == key) {
+      return i;
+    } 
+    if (data[i] > key) {
+      return -1;
+    }
+  }
+  return -1;
+}
+
+
+template<>
 inline int scan_search_simd(const uint32_t *data, const size_t size, const uint32_t &key) {
   if (key < data[0] || key > data[size - 1]) {
     return -1;
@@ -178,7 +276,7 @@ inline int scan_search_simd(const uint32_t *data, const size_t size, const uint3
       return -1;
     }
   }
-
+  return -1;
 }
 
 
@@ -224,7 +322,7 @@ inline int scan_search_simd(const uint64_t *data, const size_t size, const uint6
       return -1;
     }
   }
-
+  return -1;
 }
 
 
@@ -278,7 +376,6 @@ void measure_performance(std::function<int(const T*, const size_t, const T&)> se
 
 }
 
-typedef uint32_t KeyT;
 
 enum class SearchType {
   Binary = 0,
@@ -288,16 +385,9 @@ enum class SearchType {
   ScanSIMD,
 };
 
-int main(int argc, char *argv[]) {
-  if (argc != 4) {
-    std::cerr << "usage: " << argv[0] << " search_type size loop" << std::endl;
-    return -1;
-  }
-  SearchType search_type = (SearchType)atoi(argv[1]);
-  size_t size = atoi(argv[2]);
-  size_t loop = atoi(argv[3]);
-
-  if (search_type == SearchType::Binary) {
+template<typename KeyT>
+void measure_performance(const SearchType search_type, const size_t size, const size_t loop) {
+    if (search_type == SearchType::Binary) {
     measure_performance<KeyT>(binary_search<KeyT>, size, loop);
   } else if (search_type == SearchType::Interpolation) {
     measure_performance<KeyT>(interpolation_search<KeyT>, size, loop);
@@ -311,3 +401,28 @@ int main(int argc, char *argv[]) {
     std::cerr << "incorrect search type!" << std::endl;
   }
 }
+
+int main(int argc, char *argv[]) {
+  if (argc != 5) {
+    std::cerr << "usage: " << argv[0] << " search_type key_size size loop" << std::endl;
+    return -1;
+  }
+  SearchType search_type = (SearchType)atoi(argv[1]);
+  size_t key_size = atoi(argv[2]);
+  size_t size = atoi(argv[3]);
+  size_t loop = atoi(argv[4]);
+
+  if (key_size == 8) {
+    measure_performance<uint8_t>(search_type, size, loop);
+  } else if (key_size == 16) {
+    measure_performance<uint16_t>(search_type, size, loop);
+  } else if (key_size == 32) {
+    measure_performance<uint32_t>(search_type, size, loop);
+  } else if (key_size == 64) {
+    measure_performance<uint64_t>(search_type, size, loop);
+  } else {
+    std::cerr << "incorrect key size!" << std::endl;
+  }
+}
+
+
