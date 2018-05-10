@@ -57,8 +57,6 @@ class FastRandom {
   uint64_t seed_;
 };
 
-
-
 template<>
 inline uint64_t FastRandom::next<uint64_t>() { return ((uint64_t)next(32) << 32) + next(32); }
 
@@ -67,3 +65,10 @@ inline uint32_t FastRandom::next<uint32_t>() { return next(32); }
 
 template<>
 inline uint16_t FastRandom::next<uint16_t>() { return (uint16_t)next(16); }
+
+template<>
+inline uint8_t FastRandom::next<uint8_t>() { return (uint8_t)next(8); }
+
+
+
+
