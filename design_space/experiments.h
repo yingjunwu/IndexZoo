@@ -195,22 +195,36 @@ inline int scan_search_simd(const uint8_t *data, const size_t size, const uint8_
   return -1;
 }
 
+void print128_num(__m128i var)
+{
+    uint16_t *val = (uint16_t*) &var;
+    printf("Numerical: %i %i %i %i %i %i %i %i \n", 
+           val[0], val[1], val[2], val[3], val[4], val[5], 
+           val[6], val[7]);
+}
+
 template<>
 inline int scan_search_simd(const uint16_t *data, const size_t size, const uint16_t &key) {
   if (key < data[0] || key > data[size - 1]) {
     return -1;
   }
-
+  // std::cout << "key = " << key << std::endl;
   size_t i = 0;
-  for (; i + MAX_SIMD_UINT16_COUNT - 1 < size; ++i) {
+  for (; i + MAX_SIMD_UINT16_COUNT - 1 < size; i += MAX_SIMD_UINT16_COUNT) {
+    // std::cout << "i = " << i << std::endl;
     __m128i key_vec =_mm_set1_epi16(key);
     __m128i data_vec = _mm_loadu_si128((__m128i*)(data + i));
     __m128i xmm_mask = _mm_cmpgt_epi16(key_vec, data_vec);
-    
-    unsigned index = _mm_movemask_ps(_mm_castsi128_ps(xmm_mask));
-    std::cout << "index = " << index << std::endl;
+
+    unsigned index = _mm_movemask_epi8(xmm_mask);
+    print128_num(key_vec);
+    print128_num(data_vec);
+    print128_num(xmm_mask);
+    std::cout << "index = " << index << ", SIMD_UINT16_MASK = " << SIMD_UINT16_MASK << std::endl;
     if ((index & SIMD_UINT16_MASK) == SIMD_UINT16_MASK) {
+
       // key is larger than the data in comparison
+      // std::cout << "here??? " << std::endl;
       continue;
     } else {
       if (i == 0) {
@@ -229,7 +243,10 @@ inline int scan_search_simd(const uint16_t *data, const size_t size, const uint1
       return -1;
     }
   }
+  i -= MAX_SIMD_UINT16_COUNT;
+  // std::cout << "here????" << std::endl;
 
+  // handling the remaining data
   for (; i < size; ++i) {
     if (data[i] == key) {
       return i;
@@ -249,13 +266,20 @@ inline int scan_search_simd(const uint32_t *data, const size_t size, const uint3
   }
 
   size_t i = 0;
-  for (; i + MAX_SIMD_UINT32_COUNT - 1 < size; ++i) {
+  for (; i + MAX_SIMD_UINT32_COUNT - 1 < size; i += MAX_SIMD_UINT32_COUNT) {
+
     __m128i key_vec =_mm_set1_epi32(key);
     __m128i data_vec = _mm_loadu_si128((__m128i*)(data + i));
     __m128i xmm_mask = _mm_cmpgt_epi32(key_vec, data_vec);
     
     unsigned index = _mm_movemask_ps(_mm_castsi128_ps(xmm_mask));
+    print128_num(data_vec);
+    print128_num(xmm_mask);
+    print128_num((__m128i)_mm_castsi128_ps(xmm_mask));
+    std::cout << "index = " << index << ", SIMD_UINT32_MASK = " << SIMD_UINT32_MASK << std::endl;
+
     if ((index & SIMD_UINT32_MASK) == SIMD_UINT32_MASK) {
+      
       // key is larger than the data in comparison
       continue;
     } else {
@@ -275,7 +299,9 @@ inline int scan_search_simd(const uint32_t *data, const size_t size, const uint3
       return -1;
     }
   }
+  i -= MAX_SIMD_UINT32_COUNT;
 
+  // handling the remaining data
   for (; i < size; ++i) {
     if (data[i] == key) {
       return i;
@@ -290,20 +316,26 @@ inline int scan_search_simd(const uint32_t *data, const size_t size, const uint3
 
 template<>
 inline int scan_search_simd(const uint64_t *data, const size_t size, const uint64_t &key) {
+  // std::cout << "======== search for key = " << key << std::endl;
   if (key < data[0] || key > data[size - 1]) {
     return -1;
   }
-  size_t count = 0;
+  
   size_t i = 0;
   for (; i + MAX_SIMD_UINT64_COUNT - 1 < size; i += MAX_SIMD_UINT64_COUNT) {
-    count++;
-    __m128i key_vec =_mm_set1_epi64((__m64)key);
+
+    __m128i key_vec = _mm_set1_epi64((__m64)key);
     __m128i data_vec = _mm_loadu_si128((__m128i*)(data + i));
     __m128i xmm_mask = _mm_cmpgt_epi64(key_vec, data_vec);
     
-    unsigned index = _mm_movemask_ps(_mm_castsi128_ps(xmm_mask));
-    // std::cout << "index = " << index << std::endl;
+    unsigned index = _mm_movemask_pd(_mm_castsi128_pd(xmm_mask));
+    // print128_num(key_vec);
+    // print128_num(data_vec);
+    // print128_num(xmm_mask);
+    // std::cout << "index = " << index << ", SIMD_UINT64_MASK = " << SIMD_UINT64_MASK << std::endl;
+    
     if ((index & SIMD_UINT64_MASK) == SIMD_UINT64_MASK) {
+
       // key is larger than the data in comparison
       continue;
     } else {
@@ -314,8 +346,10 @@ inline int scan_search_simd(const uint64_t *data, const size_t size, const uint6
           }
         }
       } else {
+        // can be optimized
         for (size_t j = i - 1; j < i + MAX_SIMD_UINT64_COUNT; ++j) {
           if (data[j] == key) {
+            // std::cout << "go this way..." << std::endl;
             return j;
           }
         } 
@@ -323,6 +357,9 @@ inline int scan_search_simd(const uint64_t *data, const size_t size, const uint6
       return -1;
     }
   }
+  i -= MAX_SIMD_UINT64_COUNT;
+
+  // handling the remaining data
   for (; i < size; ++i) {
     if (data[i] == key) {
       return i;
