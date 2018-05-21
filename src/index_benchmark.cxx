@@ -30,7 +30,7 @@ void usage(FILE *out) {
           "                              --  (3) static  - fast index \n"
           "                              -- (10) dynamic - singlethread - stx-btree index \n"
           "                              -- (11) dynamic - singlethread - art-tree index \n"
-          "                              -- (12) dynamic - singlethread - skiplist index \n"
+          "                              -- (12) dynamic - singlethread - skiplist index (unsupported) \n"
           "                              -- (13) dynamic - singlethread - btree index (unsupported) \n"
           "                              -- (20) dynamic - multithread  - libcuckoo index \n"
           "                              -- (21) dynamic - multithread  - art-tree index \n"
@@ -158,7 +158,8 @@ void parse_args(int argc, char* argv[], Config &config) {
         break;
       }
       case 'u': {
-        config.key_upper_bound_ = (uint64_t)atoi(optarg);
+        // uint64_t
+        config.key_upper_bound_ = (uint64_t)strtoull(optarg, nullptr, 10);
         break;
       }
       case 'P': {
