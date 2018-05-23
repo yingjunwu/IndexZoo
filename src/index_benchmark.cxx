@@ -23,6 +23,7 @@ void usage(FILE *out) {
   fprintf(out,
           "Command line options : olap_benchmark <options> \n"
           "   -h --help              :  print help message \n"
+          // index structure
           "   -i --index             :  index type: \n"
           "                              --  (0) static  - interpolation index (default) \n"
           "                              --  (1) static  - binary index \n"
@@ -39,41 +40,50 @@ void usage(FILE *out) {
           "   -k --key_size          :  index key size (default: 8 bytes) \n"
           "   -S --index_param_1     :  1st index parameter \n"
           "   -T --index_param_2     :  2nd index parameter \n"
+          // configuration
           "   -y --read_type         :  read type: \n"
           "                              -- (0) index lookup (default) \n"
           "                              -- (1) index scan \n"
           "                              -- (2) index reverse scan \n"
           "   -t --time_duration     :  time duration (default: 10) \n"
-          "   -m --key_count         :  key count (default: 1ull<<20) \n"
           "   -r --reader_count      :  reader count (default: 1) \n"
           "   -s --inserter_count    :  inserter count (default: 0) \n"
-          "   -d --distribution      :  data distribution: \n"
+          "   -y --hybrid_count      :  hybrid count (default: 0) \n"
+          // data distribution
+          "   -m --key_count         :  key count (default: 1ull<<20) \n"
+          "   -d --distribution      :  numerical data distribution: \n"
           "                              -- (0) sequence (default) \n"
           "                              -- (1) uniform distribution \n"
           "                              -- (2) normal distribution \n"
           "                              -- (3) log-normal distribution \n"
-          "   -u --key_upper_bound   :  key upper bound \n"
-          "   -P --dist_param_1      :  1st distribution parameter \n"
-          "   -Q --dist_param_2      :  2nd distribution parameter \n"
-          "   -p --persist           :  persist all keys \n"
+          "   -P --key_bound         :  key upper bound \n"
+          "   -Q --key_stddev        :  key standard deviation \n"
+          // " string type \n"
+          // // workload configuration
+          // "   skewness \n"
+          // "   for read, percentage of failed lookup \n"
+          "   -p --record           :  record all keys \n"
   );
 }
 
 static struct option opts[] = {
+    // index structure
     { "index",             optional_argument, NULL, 'i' },
     { "key_size",          optional_argument, NULL, 'k' },
-    { "read_type",         optional_argument, NULL, 'y' },
     { "index_param_1",     optional_argument, NULL, 'S' },
     { "index_param_2",     optional_argument, NULL, 'T' },
+    // configuration
+    { "read_type",         optional_argument, NULL, 'y' },
     { "time_duration",     optional_argument, NULL, 't' },
-    { "key_count",         optional_argument, NULL, 'm' },
     { "reader_count",      optional_argument, NULL, 'r' },
     { "inserter_count",    optional_argument, NULL, 's' },
+    { "hybrid_count",      optional_argument, NULL, 'y' },
+    // data distribution
+    { "key_count",         optional_argument, NULL, 'm' },
     { "distribution",      optional_argument, NULL, 'd' },
-    { "key_upper_bound",   optional_argument, NULL, 'u' },
-    { "dist_param_1",      optional_argument, NULL, 'P' },
-    { "dist_param_2",      optional_argument, NULL, 'Q' },
-    { "persist",           optional_argument, NULL, 'p' },
+    { "key_bound",         optional_argument, NULL, 'P' },
+    { "key_stddev",        optional_argument, NULL, 'Q' },
+    { "record",            optional_argument, NULL, 'p' },
     { NULL, 0, NULL, 0 }
 };
 
@@ -84,22 +94,24 @@ enum class ReadType {
 };
 
 struct Config {
+  // index structure
   IndexType index_type_ = IndexType::S_Interpolation;
-  ReadType index_read_type_ = ReadType::IndexLookupType;
-  DistributionType distribution_type_ = DistributionType::SequenceType;
   size_t key_size_ = 8; // unit: bytes
   size_t index_param_1_ = INVALID_INDEX_PARAM;
   size_t index_param_2_ = INVALID_INDEX_PARAM;
-  uint64_t key_upper_bound_ = INVALID_KEY_BOUND;
-  double dist_param_1_ = INVALID_DIST_PARAM;
-  double dist_param_2_ = INVALID_DIST_PARAM;
+  // configuration
+  ReadType index_read_type_ = ReadType::IndexLookupType;
   uint64_t time_duration_ = 10;
-  double profile_duration_ = 0.5;
-  uint64_t key_count_ = 1ull << 20;
+  const double profile_duration_ = 0.5; // fixed
   uint64_t reader_count_ = 1;
   uint64_t inserter_count_ = 0;
-  uint64_t thread_count_ = 1;
-  bool persist_ = false;
+  uint64_t thread_count_ = 1; // reader_count + inserter_count
+  // data distribution
+  uint64_t key_count_ = 1ull << 20;
+  DistributionType distribution_type_ = DistributionType::SequenceType;
+  uint64_t key_bound_ = DEFAULT_KEY_BOUND;
+  double key_stddev_ = INVALID_KEY_STDDEV;
+  bool record_ = false;
 };
 
 void validate_key_generator_params(const Config &config);
@@ -114,7 +126,7 @@ void parse_args(int argc, char* argv[], Config &config) {
 
     switch (c) {
       case 'p': {
-        config.persist_ = true;
+        config.record_ = true;
         break;
       }
       case 'i': {
@@ -157,17 +169,13 @@ void parse_args(int argc, char* argv[], Config &config) {
         config.inserter_count_ = (uint64_t)atoi(optarg);
         break;
       }
-      case 'u': {
-        // uint64_t
-        config.key_upper_bound_ = (uint64_t)strtoull(optarg, nullptr, 10);
-        break;
-      }
       case 'P': {
-        config.dist_param_1_ = (double)atof(optarg);
+        // uint64_t
+        config.key_bound_ = (uint64_t)strtoull(optarg, nullptr, 10);
         break;
       }
       case 'Q': {
-        config.dist_param_2_ = (double)atof(optarg);
+        config.key_stddev_ = (double)atof(optarg);
         break;
       }
       case 'h': {
@@ -184,17 +192,14 @@ void parse_args(int argc, char* argv[], Config &config) {
     }
   }
 
-  if (config.persist_ == true) {
-    config.index_type_ = IndexType::S_Persister;
-  }
-
   validate_index_params(config.index_type_, config.index_param_1_, config.index_param_2_);
 
-  validate_key_generator_params(config.distribution_type_, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_);
+  validate_key_generator_params(config.distribution_type_, config.key_bound_, config.key_stddev_);
 
   config.thread_count_ = config.inserter_count_ + config.reader_count_;
   std::cout << "number of inserter threads: " << config.inserter_count_ << std::endl;
   std::cout << "number of reader threads: " << config.reader_count_ << std::endl;
+  std::cout << "number of init keys: " << config.key_count_ << std::endl;
   std::cout << ">>>>>>>>>>>>>>>" << std::endl;
 
 }
@@ -204,13 +209,13 @@ uint64_t *operation_counts = nullptr;
 
 
 template<typename KeyT, typename ValueT>
-void run_inserter_thread(const uint64_t &thread_id, const Config &config, DataTable<KeyT, ValueT> *data_table, BaseIndex<KeyT, ValueT> *data_index) {
+void run_inserter_thread(const uint64_t &thread_id, const Config &config, const std::vector<KeyT> &init_keys, DataTable<KeyT, ValueT> *data_table, BaseIndex<KeyT, ValueT> *data_index) {
 
   pin_to_core(thread_id);
 
   data_index->register_thread(thread_id);
 
-  std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, thread_id, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_));
+  std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, thread_id, config.key_bound_, config.key_stddev_));
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
@@ -235,16 +240,20 @@ void run_inserter_thread(const uint64_t &thread_id, const Config &config, DataTa
 }
 
 template<typename KeyT, typename ValueT>
-void run_reader_thread(const uint64_t &thread_id, const Config &config, DataTable<KeyT, ValueT> *data_table, BaseIndex<KeyT, ValueT> *data_index) {
+void run_reader_thread(const uint64_t &thread_id, const Config &config, const std::vector<KeyT> &init_keys, DataTable<KeyT, ValueT> *data_table, BaseIndex<KeyT, ValueT> *data_index) {
 
   pin_to_core(thread_id);
 
   data_index->register_thread(thread_id);
 
-  std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, thread_id, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_));
+  std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, thread_id, config.key_bound_, config.key_stddev_));
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
+
+
+  FastRandom rand_gen(thread_id);
+  size_t init_keys_count = init_keys.size();
 
   if (config.index_read_type_ == ReadType::IndexLookupType) {
 
@@ -253,12 +262,18 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config, DataTabl
         break;
       }
 
-      KeyT key = key_generator->get_read_key();
-      
+      // KeyT key = key_generator->get_read_key();
+      // KeyT key = rand_gen.next<KeyT>() % init_keys_count;
+      KeyT key = init_keys.at(operation_count % init_keys_count);
+      // rand_gen.next<KeyT>();
+      // KeyT key = init_keys.at(operation_count % init_keys_count);
+
       std::vector<Uint64> values;
 
       // retrieve tuple locations
       data_index->find(key, values);
+
+      ASSERT(values.size() != 0, "cannot be 0!");
       
       ++operation_count;
     }
@@ -270,7 +285,8 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config, DataTabl
         break;
       }
 
-      KeyT key = key_generator->get_read_key();
+      // KeyT key = key_generator->get_read_key();
+      KeyT key = init_keys.at(rand_gen.next<KeyT>() % init_keys_count);
       
       std::vector<Uint64> values;
 
@@ -288,7 +304,8 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config, DataTabl
         break;
       }
 
-      KeyT key = key_generator->get_read_key();
+      // KeyT key = key_generator->get_read_key();
+      KeyT key = init_keys.at(rand_gen.next<KeyT>() % init_keys_count);
       
       std::vector<Uint64> values;
 
@@ -315,7 +332,9 @@ void run_workload(const Config &config) {
   data_index->prepare_threads(config.thread_count_);
   data_index->register_thread(0);
 
-  std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, 0, config.key_upper_bound_, config.dist_param_1_, config.dist_param_2_));
+  std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, 0, config.key_bound_, config.key_stddev_));
+
+  std::vector<KeyT> init_keys; // store all init keys
 
   for (size_t i = 0; i < config.key_count_; ++i) {
 
@@ -325,14 +344,36 @@ void run_workload(const Config &config) {
     OffsetT offset = data_table->insert_tuple(key, value);
 
     data_index->insert(key, offset.raw_data());
+
+    // record init input keys
+    init_keys.push_back(key);
   }
 
   data_index->reorganize();
 
-  if (config.persist_ == true) {
-    dynamic_cast<static_index::PersisterIndex<KeyT, ValueT>*>(data_index.get())->persist_keys("data.txt");
+  // write all init keys to output file
+  if (config.record_ == true) {
+
+    std::ofstream record_file;
+    record_file.open("data.txt");
+    
+    for (auto key : init_keys) {
+      record_file << key << std::endl;
+    }
+    record_file.close();
+
     return;
   }
+
+
+  FastRandom rand_gen(0);
+
+  std::vector<KeyT> query_keys;
+  size_t size = init_keys.size();
+  for (size_t i = 0; i < init_keys.size() * 2; ++i) {
+    query_keys.push_back(rand_gen.next<KeyT>() % size);
+  }
+
 
   operation_counts = new uint64_t[config.thread_count_];
   uint64_t profile_round = (uint64_t)(config.time_duration_ / config.profile_duration_);
@@ -361,11 +402,11 @@ void run_workload(const Config &config) {
   uint64_t thread_count = 0;
   // inserter threads
   for (; thread_count < config.inserter_count_; ++thread_count) {
-    worker_threads.push_back(std::move(std::thread(run_inserter_thread<KeyT, ValueT>, thread_count, config, data_table.get(), data_index.get())));
+    worker_threads.push_back(std::move(std::thread(run_inserter_thread<KeyT, ValueT>, thread_count, std::ref(config), std::ref(init_keys), data_table.get(), data_index.get())));
   }
   // reader threads
   for (; thread_count < config.thread_count_; ++thread_count) {
-    worker_threads.push_back(std::move(std::thread(run_reader_thread<KeyT, ValueT>, thread_count, config, data_table.get(), data_index.get())));
+    worker_threads.push_back(std::move(std::thread(run_reader_thread<KeyT, ValueT>, thread_count, std::ref(config), std::ref(query_keys), data_table.get(), data_index.get())));
   }
 
   std::cout << "        TIME         INSERT      READ       RAM (act.)   RAM (est.)" << std::endl;
