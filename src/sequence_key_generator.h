@@ -11,13 +11,12 @@ public:
 
   SequenceKeyGenerator(const uint64_t thread_id) : 
     local_curr_key_(0), 
-    local_max_key_(0),
-    rand_gen_(thread_id) {}
+    local_max_key_(0) {}
 
   virtual ~SequenceKeyGenerator() {}
   
-  virtual KeyT get_insert_key() final {
-    if (local_curr_key_ == local_max_key_){
+  virtual KeyT get_next_key() final {
+    if (local_curr_key_ == local_max_key_) {
       KeyT key = global_curr_key_.fetch_add(batch_key_count_, std::memory_order_relaxed);
       local_curr_key_ = key;
       local_max_key_ = key + batch_key_count_;
@@ -29,15 +28,9 @@ public:
 
   }
 
-  virtual KeyT get_read_key() final {
-    return rand_gen_.next<KeyT>() % global_curr_key_;
-  }
-
 private:
   KeyT local_curr_key_;
   KeyT local_max_key_;
-
-  FastRandom rand_gen_;
 
   const KeyT batch_key_count_ = 1ull << 10;
 

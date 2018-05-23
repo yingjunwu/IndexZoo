@@ -15,16 +15,12 @@ public:
 
   virtual ~UniformKeyGenerator() {}
   
-  virtual KeyT get_insert_key() final {
-    return rand_gen_.next<KeyT>() % upper_bound_;
-  }
-
-  virtual KeyT get_read_key() final {
+  virtual KeyT get_next_key() final {
     return rand_gen_.next<KeyT>() % upper_bound_;
   }
 
 private:
+  
   KeyT upper_bound_;
-
   FastRandom rand_gen_;
 };
