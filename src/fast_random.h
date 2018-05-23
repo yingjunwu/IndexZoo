@@ -40,6 +40,18 @@ class FastRandom {
     }
   }
 
+  inline void next_chars(const size_t len, char *s) {
+    for (size_t i = 0; i < len; i++) {
+      s[i] = next_char();
+    }
+  }
+
+  inline void next_readable_chars(const size_t len, char *s) {
+    for (size_t i = 0; i < len; i++) {
+      s[i] = next_readable_char();
+    }
+  }
+
   inline uint64_t get_seed() { return seed_; }
 
   inline void set_seed(const uint64_t seed) { seed_ = seed; }

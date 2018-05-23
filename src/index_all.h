@@ -116,7 +116,8 @@ static void validate_index_params(const IndexType index_type, const int index_pa
 }
 
 template<typename KeyT, typename ValueT>
-static BaseIndex<KeyT, ValueT>* create_index(const IndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const size_t index_param_1 = INVALID_INDEX_PARAM, const size_t index_param_2 = INVALID_INDEX_PARAM) {
+static BaseIndex<KeyT, ValueT>* create_index(const IndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const int index_param_1 = INVALID_INDEX_PARAM, const int index_param_2 = INVALID_INDEX_PARAM) {
+
   if (index_type == IndexType::S_Interpolation) {
 
     return new static_index::InterpolationIndex<KeyT, ValueT>(table_ptr, index_param_1);

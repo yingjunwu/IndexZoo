@@ -112,13 +112,13 @@ struct Config {
   const uint64_t generated_read_key_count_ = 100 * 1000 * 1000; // 100 millions
 
   void print() {
-    std::cout << "===== INDEX STRUCTURE =====" << std::endl;
+    std::cout << "=====     INDEX STRUCTURE    =====" << std::endl;
     std::cout << "key size: " << key_size_ << std::endl;
     std::cout << "index param " << index_param_1_ << ", " << index_param_2_ << std::endl;
     std::cout << "===== WORKLOAD CONFIGURATION =====" << std::endl;
     std::cout << "read ratio: " << read_ratio_ << std::endl;
     std::cout << "thread count: " << thread_count_ << std::endl;
-    std::cout << "===== DATA DISTRIBUTION =====" << std::endl;
+    std::cout << "=====    DATA DISTRIBUTION   =====" << std::endl;
     std::cout << "key count: " << key_count_ << std::endl;
     std::cout << "key bound: " << key_bound_ << std::endl;
     std::cout << "key stddev: " << key_stddev_ << std::endl;

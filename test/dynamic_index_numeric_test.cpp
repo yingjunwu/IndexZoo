@@ -12,10 +12,10 @@
 #include "index_all.h"
 
 
-class DynamicIndexTest : public IndexZooTest {};
+class DynamicIndexNumericTest : public IndexZooTest {};
 
 template<typename KeyT, typename ValueT>
-void test_dynamic_index_unique_key(const IndexType index_type) {
+void test_dynamic_index_numeric_unique_key(const IndexType index_type) {
 
   size_t n = 10000;
 
@@ -62,7 +62,7 @@ void test_dynamic_index_unique_key(const IndexType index_type) {
   }
 }
 
-TEST_F(DynamicIndexTest, UniqueKeyTest) {
+TEST_F(DynamicIndexNumericTest, UniqueKeyTest) {
 
   std::vector<IndexType> index_types {
 
@@ -80,20 +80,20 @@ TEST_F(DynamicIndexTest, UniqueKeyTest) {
 
   for (auto index_type : index_types) {
     // key type is set to uint16_t
-    test_dynamic_index_unique_key<uint16_t, uint64_t>(index_type);
+    test_dynamic_index_numeric_unique_key<uint16_t, uint64_t>(index_type);
     
     // key type is set to uint32_t
-    test_dynamic_index_unique_key<uint32_t, uint64_t>(index_type);
+    test_dynamic_index_numeric_unique_key<uint32_t, uint64_t>(index_type);
     
     // key type is set to uint64_t
-    test_dynamic_index_unique_key<uint64_t, uint64_t>(index_type);
+    test_dynamic_index_numeric_unique_key<uint64_t, uint64_t>(index_type);
   }
 
 }
 
 
 template<typename KeyT, typename ValueT>
-void test_dynamic_index_non_unique_key(const IndexType index_type) {
+void test_dynamic_index_numeric_non_unique_key(const IndexType index_type) {
 
   size_t n = 10000;
   size_t m = 1000;
@@ -144,7 +144,7 @@ void test_dynamic_index_non_unique_key(const IndexType index_type) {
 }
 
 
-TEST_F(DynamicIndexTest, NonUniqueKeyTest) {
+TEST_F(DynamicIndexNumericTest, NonUniqueKeyTest) {
 
   std::vector<IndexType> index_types {
 
@@ -163,17 +163,17 @@ TEST_F(DynamicIndexTest, NonUniqueKeyTest) {
   for (auto index_type : index_types) {
 
     // key type is set to uint16_t
-    test_dynamic_index_non_unique_key<uint16_t, uint64_t>(index_type);
+    test_dynamic_index_numeric_non_unique_key<uint16_t, uint64_t>(index_type);
 
     // key type is set to uint32_t
-    test_dynamic_index_non_unique_key<uint32_t, uint64_t>(index_type);
+    test_dynamic_index_numeric_non_unique_key<uint32_t, uint64_t>(index_type);
 
     // key type is set to uint64_t
-    test_dynamic_index_non_unique_key<uint64_t, uint64_t>(index_type);
+    test_dynamic_index_numeric_non_unique_key<uint64_t, uint64_t>(index_type);
   }
 }
 
-// TEST_F(DynamicIndexTest, RangeFindTest) {
+// TEST_F(DynamicIndexNumericTest, RangeFindTest) {
 
   // std::vector<IndexType> index_types {
 

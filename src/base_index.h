@@ -7,6 +7,7 @@
 
 #include "data_table.h"
 #include "offset.h"
+#include "string_key.h"
 
 template<typename KeyT, typename ValueT>
 class BaseIndex {
