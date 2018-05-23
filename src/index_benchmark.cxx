@@ -94,22 +94,36 @@ enum class ReadType {
 struct Config {
   // index structure
   IndexType index_type_ = IndexType::S_Interpolation;
-  size_t key_size_ = 8; // unit: bytes
-  size_t index_param_1_ = INVALID_INDEX_PARAM;
-  size_t index_param_2_ = INVALID_INDEX_PARAM;
+  int key_size_ = 8; // unit: bytes
+  int index_param_1_ = INVALID_INDEX_PARAM;
+  int index_param_2_ = INVALID_INDEX_PARAM;
   // configuration
   const double profile_duration_ = 0.5; // fixed
-  uint64_t time_duration_ = 10;
+  int time_duration_ = 10;
   ReadType index_read_type_ = ReadType::IndexLookupType;
   double read_ratio_ = 1.0;
-  uint64_t thread_count_ = 1;
+  int thread_count_ = 1;
   // data distribution
   uint64_t key_count_ = 1ull << 20;
   DistributionType distribution_type_ = DistributionType::SequenceType;
   uint64_t key_bound_ = DEFAULT_KEY_BOUND;
   double key_stddev_ = INVALID_KEY_STDDEV;
   bool record_ = false;
-  const uint64_t generated_query_key_count_ = 100 * (1ull << 20);
+  const uint64_t generated_read_key_count_ = 100 * 1000 * 1000; // 100 millions
+
+  void print() {
+    std::cout << "===== INDEX STRUCTURE =====" << std::endl;
+    std::cout << "key size: " << key_size_ << std::endl;
+    std::cout << "index param " << index_param_1_ << ", " << index_param_2_ << std::endl;
+    std::cout << "===== WORKLOAD CONFIGURATION =====" << std::endl;
+    std::cout << "read ratio: " << read_ratio_ << std::endl;
+    std::cout << "thread count: " << thread_count_ << std::endl;
+    std::cout << "===== DATA DISTRIBUTION =====" << std::endl;
+    std::cout << "key count: " << key_count_ << std::endl;
+    std::cout << "key bound: " << key_bound_ << std::endl;
+    std::cout << "key stddev: " << key_stddev_ << std::endl;
+    std::cout << ">>>>>>>>>>>>>>>>>>>>>>" << std::endl;
+  }
 };
 
 void validate_key_generator_params(const Config &config);
@@ -123,10 +137,6 @@ void parse_args(int argc, char* argv[], Config &config) {
     if (c == -1) break;
 
     switch (c) {
-      case 'c': {
-        config.record_ = true;
-        break;
-      }
       case 'i': {
         config.index_type_ = (IndexType)atoi(optarg);
         break;
@@ -144,7 +154,7 @@ void parse_args(int argc, char* argv[], Config &config) {
         break;
       }
       case 't': {
-        config.time_duration_ = (uint64_t)atoi(optarg);
+        config.time_duration_ = atoi(optarg);
         break;
       }
       case 'y': {
@@ -156,11 +166,11 @@ void parse_args(int argc, char* argv[], Config &config) {
         break;
       }
       case 's': {
-        config.thread_count_ = (uint64_t)atoi(optarg);
+        config.thread_count_ = atoi(optarg);
         break;
       }
       case 'm': {
-        config.key_count_ = (uint64_t)atoi(optarg);
+        config.key_count_ = (uint64_t)strtoull(optarg, nullptr, 10); // uint64_t
         break;
       }
       case 'd': {
@@ -168,12 +178,15 @@ void parse_args(int argc, char* argv[], Config &config) {
         break;
       }
       case 'P': {
-        // uint64_t
-        config.key_bound_ = (uint64_t)strtoull(optarg, nullptr, 10);
+        config.key_bound_ = (uint64_t)strtoull(optarg, nullptr, 10); // uint64_t
         break;
       }
       case 'Q': {
         config.key_stddev_ = (double)atof(optarg);
+        break;
+      }
+      case 'c': {
+        config.record_ = true;
         break;
       }
       case 'h': {
@@ -194,20 +207,15 @@ void parse_args(int argc, char* argv[], Config &config) {
 
   validate_key_generator_params(config.distribution_type_, config.key_bound_, config.key_stddev_);
 
-  config.thread_count_ = config.inserter_count_ + config.reader_count_;
-  std::cout << "read ratio: " << config.read_ratio_ << std::endl;
-  std::cout << "thread count: " << config.thread_count_ << std::endl;
-  std::cout << "key count: " << config.key_count_ << std::endl;
-  std::cout << ">>>>>>>>>>>>>>>" << std::endl;
+  config.print();
 
 }
 
 bool is_running = false;
 uint64_t *operation_counts = nullptr;
 
-
 template<typename KeyT, typename ValueT>
-void run_inserter_thread(const uint64_t &thread_id, const Config &config, const std::vector<KeyT> &init_keys, DataTable<KeyT, ValueT> *data_table, BaseIndex<KeyT, ValueT> *data_index) {
+void run_thread(const size_t &thread_id, const Config &config, const KeyT *read_keys, DataTable<KeyT, ValueT> *data_table, BaseIndex<KeyT, ValueT> *data_index) {
 
   pin_to_core(thread_id);
 
@@ -217,54 +225,18 @@ void run_inserter_thread(const uint64_t &thread_id, const Config &config, const 
 
   uint64_t &operation_count = operation_counts[thread_id];
   operation_count = 0;
+
+  FastRandom rand_gen(thread_id);
 
   while (true) {
     if (is_running == false) {
       break;
     }
 
-    // insert
-    KeyT key = key_generator->get_insert_key();
+    double next_rand = rand_gen.next_uniform();
 
-    ValueT value = 100;
-    
-    OffsetT offset = data_table->insert_tuple(key, value);
-
-    // insert tuple locations into index
-    data_index->insert(key, offset.raw_data());
-    
-    ++operation_count;
-  }
-}
-
-template<typename KeyT, typename ValueT>
-void run_reader_thread(const uint64_t &thread_id, const Config &config, const std::vector<KeyT> &query_keys, DataTable<KeyT, ValueT> *data_table, BaseIndex<KeyT, ValueT> *data_index) {
-
-  pin_to_core(thread_id);
-
-  data_index->register_thread(thread_id);
-
-  std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, thread_id, config.key_bound_, config.key_stddev_));
-
-  uint64_t &operation_count = operation_counts[thread_id];
-  operation_count = 0;
-
-
-  FastRandom rand_gen(thread_id);
-  size_t init_keys_count = init_keys.size();
-
-  if (config.index_read_type_ == ReadType::IndexLookupType) {
-
-    while (true) {
-      if (is_running == false) {
-        break;
-      }
-
-      // KeyT key = key_generator->get_read_key();
-      // KeyT key = rand_gen.next<KeyT>() % init_keys_count;
-      KeyT key = init_keys.at(operation_count % init_keys_count);
-      // rand_gen.next<KeyT>();
-      // KeyT key = init_keys.at(operation_count % init_keys_count);
+    if (next_rand < config.read_ratio_) {
+      KeyT key = read_keys[operation_count % config.generated_read_key_count_];
 
       std::vector<Uint64> values;
 
@@ -272,47 +244,19 @@ void run_reader_thread(const uint64_t &thread_id, const Config &config, const st
       data_index->find(key, values);
 
       ASSERT(values.size() != 0, "cannot be 0!");
+    } else {
+      // insert
+      KeyT key = key_generator->get_next_key();
+
+      ValueT value = 100;
       
-      ++operation_count;
+      OffsetT offset = data_table->insert_tuple(key, value);
+
+      // insert tuple locations into index
+      data_index->insert(key, offset.raw_data());
     }
 
-  } else if (config.index_read_type_ == ReadType::IndexScanType) {
-
-    while (true) {
-      if (is_running == false) {
-        break;
-      }
-
-      // KeyT key = key_generator->get_read_key();
-      KeyT key = init_keys.at(rand_gen.next<KeyT>() % init_keys_count);
-      
-      std::vector<Uint64> values;
-
-      // retrieve tuple locations
-      data_index->scan(key, values);
-      
-      ++operation_count;
-    }
-
-  } else {
-    ASSERT(config.index_read_type_ == ReadType::IndexScanReverseType, "invalid index read type");
-
-    while (true) {
-      if (is_running == false) {
-        break;
-      }
-
-      // KeyT key = key_generator->get_read_key();
-      KeyT key = init_keys.at(rand_gen.next<KeyT>() % init_keys_count);
-      
-      std::vector<Uint64> values;
-
-      // retrieve tuple locations
-      data_index->scan_reverse(key, values);
-      
-      ++operation_count;
-    }
-
+    ++operation_count;
   }
 }
 
@@ -336,11 +280,11 @@ void run_workload(const Config &config) {
   //=================================
   std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, 0, config.key_bound_, config.key_stddev_));
 
-  std::vector<KeyT> init_keys; // store all init keys
+  KeyT *init_keys = new KeyT[config.key_count_]; // store all init keys
 
   for (size_t i = 0; i < config.key_count_; ++i) {
 
-    KeyT key = key_generator->get_insert_key();
+    KeyT key = key_generator->get_next_key();
     ValueT value = 100;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -348,7 +292,7 @@ void run_workload(const Config &config) {
     data_index->insert(key, offset.raw_data());
 
     // record init input keys
-    init_keys.push_back(key);
+    init_keys[i] = key;
   }
   data_index->reorganize();
   //=================================
@@ -361,8 +305,8 @@ void run_workload(const Config &config) {
     std::ofstream record_file;
     record_file.open("data.txt");
     
-    for (auto key : init_keys) {
-      record_file << key << std::endl;
+    for (size_t i = 0; i < config.key_count_; ++i) {
+      record_file << init_keys[i] << std::endl;
     }
     record_file.close();
 
@@ -373,17 +317,25 @@ void run_workload(const Config &config) {
   //=================================
   // prepare query keys
   //=================================
-  std::vector<std::vector<KeyT>> query_keys(config.thread_count_);
-  size_t init_keys_count = init_keys.size();
+  KeyT** read_keys = new KeyT*[config.thread_count_];
+
   if (config.read_ratio_ != 0) {
     // generate keys for each thread
     for (size_t i = 0; i < config.thread_count_; ++i) {
+
+      read_keys[i] = new KeyT[config.generated_read_key_count_];
+
       FastRandom rand_gen(i);
-      for (size_t j = 0; j < config.generated_query_key_count_; ++j) {
-        query_keys[i].push_back(rand_gen.next<KeyT>() % init_keys_count);
+      
+      for (size_t j = 0; j < config.generated_read_key_count_; ++j) {
+        read_keys[i][j] = rand_gen.next<KeyT>() % config.key_count_;
       }
     }
   }
+
+  double query_key_size_mb = (config.key_count_ + config.generated_read_key_count_) * sizeof(KeyT) / 1024 / 1024;
+  std::cout << "query key size = " << query_key_size_mb << std::endl;
+
   //=================================
 
   operation_counts = new uint64_t[config.thread_count_];
@@ -399,7 +351,7 @@ void run_workload(const Config &config) {
 
   //std::vector<uint64_t> insert_counts; // number of insert operations performed.
   //std::vector<uint64_t> read_counts; // number of read operations performed.
-  std::vector<uint64_t> operation_counts; // number of operations performed.
+  std::vector<uint64_t> total_operation_counts; // number of total operations performed.
 
   double init_mem_size = get_memory_mb();
   std::cout << "init memory size: " << init_mem_size << " MB" << std::endl;
@@ -411,59 +363,36 @@ void run_workload(const Config &config) {
   // PAPIProfiler::init_papi();
   // PAPIProfiler::start_measure_cache_miss_rate();
   
-  // uint64_t thread_count = 0;
-  // inserter threads
-  // for (; thread_count < config.inserter_count_; ++thread_count) {
-  //   worker_threads.push_back(std::move(std::thread(run_inserter_thread<KeyT, ValueT>, thread_count, std::ref(config), std::ref(init_keys), data_table.get(), data_index.get())));
-  // }
-  // reader threads
   for (uint64_t thread_id = 0; thread_id < config.thread_count_; ++thread_id) {
-    worker_threads.push_back(std::move(std::thread(run_thread<KeyT, ValueT>, thread_id, std::ref(config), std::ref(query_keys[thread_id]), data_table.get(), data_index.get())));
+    worker_threads.push_back(std::move(std::thread(run_thread<KeyT, ValueT>, thread_id, std::ref(config), read_keys[thread_id], data_table.get(), data_index.get())));
   }
 
-  std::cout << "        TIME         INSERT      READ       RAM (act.)   RAM (est.)" << std::endl;
+  std::cout << "        TIME         INSERT      RAM (idx.)   RAM (tab.)" << std::endl;
 
   for (uint64_t round_id = 0; round_id < profile_round; ++round_id) {
     std::this_thread::sleep_for(std::chrono::milliseconds(int(config.profile_duration_ * 1000)));
     
     memcpy(operation_counts_profiles[round_id], operation_counts, sizeof(uint64_t) * config.thread_count_);
 
-    act_size_profiles.push_back(get_memory_mb());
+    size_t table_size_approx = data_table->size_approx();
     approx_size_profiles.push_back(data_table->size_approx());
+    act_size_profiles.push_back(get_memory_mb() - query_key_size_mb);
 
     if (round_id == 0) {
       // first round
-      uint64_t insert_count = 0;
-      uint64_t read_count = 0;
-
-      uint64_t thread_count = 0;
-      // count inserts
-      for (; thread_count < config.inserter_count_; ++thread_count) {
-        insert_count += operation_counts_profiles[0][thread_count];
+      uint64_t operation_count = 0;
+      for (size_t thread_id = 0; thread_id < config.thread_count_; ++thread_id) {
+        operation_count += operation_counts_profiles[0][thread_id];
       }
-      // count reads
-      for (; thread_count < config.thread_count_; ++thread_count) {
-        read_count += operation_counts_profiles[0][thread_count];
-      }
-      insert_counts.push_back(insert_count);
-      read_counts.push_back(read_count);
+      total_operation_counts.push_back(operation_count);
 
     } else {
       // remaining rounds
-      uint64_t insert_count = 0;
-      uint64_t read_count = 0;
-
-      uint64_t thread_count = 0;
-      // count inserts
-      for (; thread_count < config.inserter_count_; ++thread_count) {
-        insert_count += operation_counts_profiles[round_id][thread_count] - operation_counts_profiles[round_id - 1][thread_count];
+      uint64_t operation_count = 0;
+      for (size_t thread_id = 0; thread_id < config.thread_count_; ++thread_id) {
+        operation_count += operation_counts_profiles[round_id][thread_id] - operation_counts_profiles[round_id - 1][thread_id];
       }
-      // count reads
-      for (; thread_count < config.thread_count_; ++thread_count) {
-        read_count += operation_counts_profiles[round_id][thread_count] - operation_counts_profiles[round_id - 1][thread_count];
-      }
-      insert_counts.push_back(insert_count);
-      read_counts.push_back(read_count);
+      total_operation_counts.push_back(operation_count);
     }
 
     // print out
@@ -475,17 +404,17 @@ void run_workload(const Config &config) {
               << config.profile_duration_ * (round_id + 1) 
               << " s]:  ";
     std::cout << std::setw(5)
-              << insert_counts.at(round_id) * 1.0 / 1000 / 1000 
+              << total_operation_counts.at(round_id) * 1.0 / 1000 / 1000 
               << " M  |  ";
-    if (read_counts.at(round_id) * 1.0 / 1000 / 1000 < 0.1) {
-      std::cout << std::setw(5)
-              << read_counts.at(round_id) * 1.0 / 1000 
-              << " K  |  "; 
-    } else {
-      std::cout << std::setw(5)
-              << read_counts.at(round_id) * 1.0 / 1000 / 1000 
-              << " M  |  "; 
-    } 
+    // if (read_counts.at(round_id) * 1.0 / 1000 / 1000 < 0.1) {
+    //   std::cout << std::setw(5)
+    //           << read_counts.at(round_id) * 1.0 / 1000 
+    //           << " K  |  "; 
+    // } else {
+    //   std::cout << std::setw(5)
+    //           << read_counts.at(round_id) * 1.0 / 1000 / 1000 
+    //           << " M  |  "; 
+    // } 
     std::cout << std::setw(5)
               << act_size_profiles.at(round_id) 
               << " MB  |  "
@@ -524,6 +453,9 @@ void run_workload(const Config &config) {
 
   delete[] operation_counts;
   operation_counts = nullptr;
+
+  delete[] init_keys;
+  init_keys = nullptr;
 }
 
 int main(int argc, char* argv[]) {

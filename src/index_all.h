@@ -69,9 +69,9 @@ static std::string get_index_name(const IndexType index_type) {
   }
 }
 
-static const size_t INVALID_INDEX_PARAM = std::numeric_limits<size_t>::max();
+static const int INVALID_INDEX_PARAM = -1;
 
-static void validate_index_params(const IndexType index_type, const size_t index_param_1, const size_t index_param_2) {
+static void validate_index_params(const IndexType index_type, const int index_param_1, const int index_param_2) {
   if (index_type == IndexType::S_Interpolation) {
 
     if (index_param_1 == 0) {
