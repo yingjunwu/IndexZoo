@@ -7,57 +7,40 @@
 #include "fast_random.h"
 #include "time_measurer.h"
 
-#include "data_table.h"
+#include "generic_data_table.h"
 
 #include "index_all.h"
 
 
-class DynamicIndexStringTest : public IndexZooTest {};
+class DynamicIndexGenericTest : public IndexZooTest {};
 
 template<size_t KeySize, typename ValueT>
-void test_dynamic_index_string_unique_key(const IndexType index_type, const size_t index_param_1, const size_t index_param_2) {
+void test_dynamic_index_generic_unique_key(const IndexType index_type) {
 
   size_t n = 10000;
 
-  // std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
-  //   new DataTable<KeyT, ValueT>());
-  // std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-  //   create_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
+  std::unique_ptr<GenericDataTable<KeySize, ValueT>> data_table(
+    new GenericDataTable<KeySize, ValueT>());
 
-  // std::unordered_map<StringKey<KeySize>, std::pair<Uint64, ValueT>> validation_set;
+  // data_index->prepare_threads(1);
+  // data_index->register_thread(0);
+
+  // std::unordered_map<GenericKey<KeySize>, std::pair<Uint64, ValueT>, GenericComparator<KeySize>> validation_set;
   
-  std::map<StringKey<KeySize>, uint64_t, StringComparator<KeySize>> my_map;
-  std::map<std::string, uint64_t> my_map1;
+  // FastRandom fast_rand(0);
 
-
-  FastRandom fast_rand(0);
-  // insert
-  for (size_t i = 0; i < 10; ++i) {
+  // GenericKey<KeySize> key;
+  // // insert
+  // for (size_t i = 0; i < 10; ++i) {
     
-    StringKey<KeySize> s;
-    fast_rand.next_chars(KeySize, s.get_chars());
+  //   fast_rand.next_chars(KeySize, key.raw());
+  //   ValueT value = i + 2048;
+
+  //   OffsetT offset = data_table->insert_tuple(key, value);
     
-    // // fast_rand.next_chars(KeySize - 1, s.data_);
-    
-    // char data[KeySize];
-    // fast_rand.next_chars(KeySize, data);
+  // }
 
-
-
-    // fast_rand.next_chars(KeySize - 1, s.get_chars());
-    // my_map[s] = 100;
-
-    // std::string s;
-    // fast_rand.next_string(KeySize - 1, s);
-
-    my_map[s] = 100;
-  }
-
-  for (auto entry : my_map) {
-    std::cout << my_map.first << " " << my_map.second << std::endl;
-  }
-
-  // stx::btree_multimap<StringKey<KeySize>, Uint64> container;
+  // stx::btree_multimap<GenericKey<KeySize>, Uint64> container;
 
   // // insert
   // for (size_t i = 0; i < n; ++i) {
@@ -95,9 +78,9 @@ void test_dynamic_index_string_unique_key(const IndexType index_type, const size
 }
 
 
-TEST_F(DynamicIndexStringTest, RandomKeyTest) {
+TEST_F(DynamicIndexGenericTest, RandomKeyTest) {
   
-  test_dynamic_index_string_unique_key<32, uint64_t>(IndexType::D_ST_ArtTree, INVALID_INDEX_PARAM, INVALID_INDEX_PARAM);
+  test_dynamic_index_generic_unique_key<32, uint64_t>(IndexType::D_ST_ArtTree);
 
   // for (auto index_type : index_types) {
   //   // key type is set to uint16_t

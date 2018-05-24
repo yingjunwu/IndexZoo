@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include <emmintrin.h>
+
 #include "base_static_index.h"
 
 namespace static_index {

@@ -4,32 +4,33 @@
 #include <vector>
 
 #include "data_block.h"
+#include "generic_key.h"
 
-template<typename KeyT, typename ValueT>
-class DataTableIterator;
+template<size_t KeySize, typename ValueT>
+class GenericDataTableIterator;
 
-template<typename KeyT, typename ValueT>
-class DataTable {
+template<size_t KeySize, typename ValueT>
+class GenericDataTable {
 
-  friend DataTableIterator<KeyT, ValueT>;
+  friend GenericDataTableIterator<KeySize, ValueT>;
 
 public:
-  DataTable(const uint64_t max_block_capacity = MaxBlockCapacity) {
+  GenericDataTable(const uint64_t max_block_capacity = MaxBlockCapacity) {
 
     max_block_capacity_ = max_block_capacity;
 
-    data_blocks_.emplace_back(new DataBlock(0, sizeof(KeyT) + sizeof(ValueT), max_block_capacity_));
+    data_blocks_.emplace_back(new DataBlock(0, KeySize + sizeof(ValueT), max_block_capacity_));
     active_data_block_ = data_blocks_.at(0);
   }
   
-  ~DataTable() {
+  ~GenericDataTable() {
     for (auto entry : data_blocks_) {
       delete entry;
       entry = nullptr;
     }
   }
 
-  OffsetT insert_tuple(const KeyT &key, const ValueT &value) {
+  OffsetT insert_tuple(const char *key, const ValueT &value) {
 
     while (true) {
       DataBlock* tmp_block = active_data_block_;
@@ -42,11 +43,11 @@ public:
 
         // copy data.
         char* data = tmp_block->get_tuple(rel_offset);
-        memcpy(data, &key, sizeof(key));
-        memcpy(data + sizeof(key), &value, sizeof(ValueT));
+        memcpy(data, key, KeySize);
+        memcpy(data + KeySize, &value, sizeof(ValueT));
 
         if (rel_offset == tmp_block->get_max_rel_offset() - 1) {
-          auto new_block = new DataBlock(tmp_block->get_block_id() + 1, sizeof(KeyT) + sizeof(ValueT), max_block_capacity_);
+          auto new_block = new DataBlock(tmp_block->get_block_id() + 1, KeySize + sizeof(ValueT), max_block_capacity_);
           data_blocks_.emplace_back(new_block);
 
           COMPILER_MEMORY_FENCE;
@@ -59,28 +60,28 @@ public:
     }
   }
 
-  KeyT* get_tuple_key(const BlockIDT block_id, const RelOffsetT rel_offset) const {
+  char* get_tuple_key(const BlockIDT block_id, const RelOffsetT rel_offset) const {
 
     char *data = data_blocks_.at(block_id)->get_tuple(rel_offset);
-    return (KeyT*)(data);
+    return data;
   }
 
   ValueT* get_tuple_value(const BlockIDT block_id, const RelOffsetT rel_offset) const {
 
     char *data = data_blocks_.at(block_id)->get_tuple(rel_offset);
-    return (ValueT*)(data + sizeof(KeyT));
+    return (ValueT*)(data + KeySize);
   }
 
-  KeyT* get_tuple_key(const OffsetT offset) const {
+  char* get_tuple_key(const OffsetT offset) const {
 
     char *data = data_blocks_.at(offset.block_id())->get_tuple(offset.rel_offset());
-    return (KeyT*)(data);
+    return data;
   }
 
   ValueT* get_tuple_value(const OffsetT offset) const {
 
     char *data = data_blocks_.at(offset.block_id())->get_tuple(offset.rel_offset());
-    return (ValueT*)(data + sizeof(KeyT));
+    return (ValueT*)(data + KeySize);
   }
 
   size_t size() const {
@@ -105,20 +106,20 @@ private:
 
 };
 
-template<typename KeyT, typename ValueT>
-class DataTableIterator {
+template<size_t KeySize, typename ValueT>
+class GenericDataTableIterator {
 
 public:
   struct IteratorEntry {
-    IteratorEntry(const BlockIDT block_id, const RelOffsetT rel_offset, KeyT *key) : 
+    IteratorEntry(const BlockIDT block_id, const RelOffsetT rel_offset, char *key) : 
       offset_(OffsetT::construct_raw_data(block_id, rel_offset)), key_(key) {}
 
     Uint64 offset_;
-    KeyT* key_;
+    char* key_;
   };
 
 public:
-  DataTableIterator(DataTable<KeyT, ValueT> *table_ptr) : 
+  GenericDataTableIterator(GenericDataTable<KeySize, ValueT> *table_ptr) : 
     table_ptr_(table_ptr), curr_block_id_(0), curr_rel_offset_(0) {
     
     ASSERT(table_ptr_->data_blocks_.size() != 0, "table must contain at least one data block!");
@@ -160,7 +161,7 @@ public:
 
 
 private:
-  DataTable<KeyT, ValueT> *table_ptr_;
+  GenericDataTable<KeySize, ValueT> *table_ptr_;
 
   BlockIDT curr_block_id_;
   RelOffsetT curr_rel_offset_;

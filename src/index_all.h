@@ -14,7 +14,7 @@
 
 #include "dynamic_index/multithread/libcuckoo_index.h"
 #include "dynamic_index/multithread/art_tree_index.h"
-#include "dynamic_index/multithread/bw_tree_index.h"
+//#include "dynamic_index/multithread/bw_tree_index.h"
 #include "dynamic_index/multithread/masstree_index.h"
 
 
@@ -156,7 +156,8 @@ static BaseIndex<KeyT, ValueT>* create_index(const IndexType index_type, DataTab
 
   } else if (index_type == IndexType::D_MT_BwTree) {
 
-    return new dynamic_index::multithread::BwTreeIndex<KeyT, ValueT>(table_ptr);
+    // return new dynamic_index::multithread::BwTreeIndex<KeyT, ValueT>(table_ptr);
+    return nullptr;
 
   } else if (index_type == IndexType::D_MT_Masstree) {
 
