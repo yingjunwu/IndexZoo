@@ -243,7 +243,7 @@ void run_thread(const size_t &thread_id, const Config &config, const KeyT *read_
       // retrieve tuple locations
       data_index->find(key, values);
 
-      ASSERT(values.size() != 0, "cannot be 0!");
+      ASSERT(values.size() == 1, "must be 1!" << key);
     } else {
       // insert
       KeyT key = key_generator->get_next_key();
@@ -310,7 +310,7 @@ void run_workload(const Config &config) {
     }
     record_file.close();
 
-    return;
+    // return;
   }
   //=================================
 
@@ -328,7 +328,7 @@ void run_workload(const Config &config) {
       FastRandom rand_gen(i);
       
       for (size_t j = 0; j < config.generated_read_key_count_; ++j) {
-        read_keys[i][j] = rand_gen.next<KeyT>() % config.key_count_;
+        read_keys[i][j] = init_keys[rand_gen.next<uint64_t>() % config.key_count_];
       }
     }
   }
@@ -349,8 +349,6 @@ void run_workload(const Config &config) {
   std::vector<double> act_size_profiles; // actual allocated size. Unit: MB.
   std::vector<size_t> approx_size_profiles; // approximate data size. Unit: #tuples.
 
-  //std::vector<uint64_t> insert_counts; // number of insert operations performed.
-  //std::vector<uint64_t> read_counts; // number of read operations performed.
   std::vector<uint64_t> total_operation_counts; // number of total operations performed.
 
   double init_mem_size = get_memory_mb();
@@ -367,7 +365,7 @@ void run_workload(const Config &config) {
     worker_threads.push_back(std::move(std::thread(run_thread<KeyT, ValueT>, thread_id, std::ref(config), read_keys[thread_id], data_table.get(), data_index.get())));
   }
 
-  std::cout << "        TIME         INSERT      RAM (idx.)   RAM (tab.)" << std::endl;
+  std::cout << "        TIME       THROUGHPUT   RAM (idx.)   RAM (tab.)" << std::endl;
 
   for (uint64_t round_id = 0; round_id < profile_round; ++round_id) {
     std::this_thread::sleep_for(std::chrono::milliseconds(int(config.profile_duration_ * 1000)));
@@ -403,18 +401,15 @@ void run_workload(const Config &config) {
               << std::setw(5)
               << config.profile_duration_ * (round_id + 1) 
               << " s]:  ";
-    std::cout << std::setw(5)
+    if (total_operation_counts.at(round_id) * 1.0 / 1000 / 1000 < 0.1) {
+      std::cout << std::setw(5)
+              << total_operation_counts.at(round_id) * 1.0 / 1000 
+              << " K  |  "; 
+    } else {
+      std::cout << std::setw(5)
               << total_operation_counts.at(round_id) * 1.0 / 1000 / 1000 
-              << " M  |  ";
-    // if (read_counts.at(round_id) * 1.0 / 1000 / 1000 < 0.1) {
-    //   std::cout << std::setw(5)
-    //           << read_counts.at(round_id) * 1.0 / 1000 
-    //           << " K  |  "; 
-    // } else {
-    //   std::cout << std::setw(5)
-    //           << read_counts.at(round_id) * 1.0 / 1000 / 1000 
-    //           << " M  |  "; 
-    // } 
+              << " M  |  "; 
+    } 
     std::cout << std::setw(5)
               << act_size_profiles.at(round_id) 
               << " MB  |  "

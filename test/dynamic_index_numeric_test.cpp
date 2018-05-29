@@ -28,11 +28,13 @@ void test_dynamic_index_numeric_unique_key(const IndexType index_type) {
   data_index->register_thread(0);
 
   std::unordered_map<KeyT, std::pair<Uint64, ValueT>> validation_set;
-  
+    
+  FastRandom rand;
+
   // insert
   for (size_t i = 0; i < n; ++i) {
 
-    KeyT key = i;
+    KeyT key = rand.next<KeyT>();
     ValueT value = i + 2048;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -45,8 +47,8 @@ void test_dynamic_index_numeric_unique_key(const IndexType index_type) {
   }
 
   // find
-  for (size_t i = 0; i < n; ++i) {
-    KeyT key = i;
+  for (auto entry : validation_set) {
+    KeyT key = entry.first;
 
     std::vector<Uint64> offsets;
 
@@ -56,9 +58,9 @@ void test_dynamic_index_numeric_unique_key(const IndexType index_type) {
 
     ValueT *value = data_table->get_tuple_value(offsets.at(0));
 
-    EXPECT_EQ(offsets.at(0), validation_set.find(key)->second.first);
+    EXPECT_EQ(offsets.at(0), entry.second.first);
 
-    EXPECT_EQ(*value, validation_set.find(key)->second.second);
+    EXPECT_EQ(*value, entry.second.second);
   }
 }
 
@@ -74,13 +76,13 @@ TEST_F(DynamicIndexNumericTest, UniqueKeyTest) {
     // dynamic indexes - multithread
     IndexType::D_MT_Libcuckoo,
     IndexType::D_MT_ArtTree,
-    IndexType::D_MT_BwTree,
+    // IndexType::D_MT_BwTree,
     IndexType::D_MT_Masstree,
   };
 
   for (auto index_type : index_types) {
     // key type is set to uint16_t
-    test_dynamic_index_numeric_unique_key<uint16_t, uint64_t>(index_type);
+    // test_dynamic_index_numeric_unique_key<uint16_t, uint64_t>(index_type);
     
     // key type is set to uint32_t
     test_dynamic_index_numeric_unique_key<uint32_t, uint64_t>(index_type);
@@ -92,86 +94,86 @@ TEST_F(DynamicIndexNumericTest, UniqueKeyTest) {
 }
 
 
-template<typename KeyT, typename ValueT>
-void test_dynamic_index_numeric_non_unique_key(const IndexType index_type) {
+// template<typename KeyT, typename ValueT>
+// void test_dynamic_index_numeric_non_unique_key(const IndexType index_type) {
 
-  size_t n = 10000;
-  size_t m = 1000;
+//   size_t n = 10000;
+//   size_t m = 1000;
   
-  FastRandom rand_gen(0);
+//   FastRandom rand_gen(0);
 
-  std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
-    new DataTable<KeyT, ValueT>());
-  std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get()));
+//   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
+//     new DataTable<KeyT, ValueT>());
+//   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
+//     create_index<KeyT, ValueT>(index_type, data_table.get()));
 
-  data_index->prepare_threads(1);
-  data_index->register_thread(0);
+//   data_index->prepare_threads(1);
+//   data_index->register_thread(0);
 
-  std::unordered_map<KeyT, std::unordered_map<Uint64, ValueT>> validation_set;
+//   std::unordered_map<KeyT, std::unordered_map<Uint64, ValueT>> validation_set;
   
-  // insert
-  for (size_t i = 0; i < n; ++i) {
+//   // insert
+//   for (size_t i = 0; i < n; ++i) {
 
-    KeyT key = rand_gen.next<KeyT>() % m;
-    ValueT value = i + 2048;
+//     KeyT key = rand_gen.next<KeyT>() % m;
+//     ValueT value = i + 2048;
     
-    OffsetT offset = data_table->insert_tuple(key, value);
+//     OffsetT offset = data_table->insert_tuple(key, value);
     
-    validation_set[key][offset.raw_data()] = value;
+//     validation_set[key][offset.raw_data()] = value;
 
-    data_index->insert(key, offset.raw_data());
-  }
+//     data_index->insert(key, offset.raw_data());
+//   }
 
-  // find
-  for (auto entry : validation_set) {
-    KeyT key = entry.first;
+//   // find
+//   for (auto entry : validation_set) {
+//     KeyT key = entry.first;
 
-    std::vector<Uint64> offsets;
+//     std::vector<Uint64> offsets;
 
-    data_index->find(key, offsets);
+//     data_index->find(key, offsets);
 
-    EXPECT_EQ(offsets.size(), entry.second.size());
+//     EXPECT_EQ(offsets.size(), entry.second.size());
 
-    for (auto offset : offsets) {
-      ValueT *value = data_table->get_tuple_value(offset);
+//     for (auto offset : offsets) {
+//       ValueT *value = data_table->get_tuple_value(offset);
 
-      EXPECT_NE(entry.second.end(), entry.second.find(offset));
+//       EXPECT_NE(entry.second.end(), entry.second.find(offset));
 
-      EXPECT_EQ(*value, entry.second.at(offset));
-    }
-  }
-}
+//       EXPECT_EQ(*value, entry.second.at(offset));
+//     }
+//   }
+// }
 
 
-TEST_F(DynamicIndexNumericTest, NonUniqueKeyTest) {
+// TEST_F(DynamicIndexNumericTest, NonUniqueKeyTest) {
 
-  std::vector<IndexType> index_types {
+//   std::vector<IndexType> index_types {
 
-    // dynamic indexes - singlethread
-    IndexType::D_ST_StxBtree,
-    // IndexType::D_ST_ArtTree, // do not support non-unique keys
-    // IndexType::D_ST_Btree,
+//     // dynamic indexes - singlethread
+//     IndexType::D_ST_StxBtree,
+//     // IndexType::D_ST_ArtTree, // do not support non-unique keys
+//     // IndexType::D_ST_Btree,
     
-    // dynamic indexes - multithread
-    IndexType::D_MT_Libcuckoo,
-    IndexType::D_MT_ArtTree,
-    IndexType::D_MT_BwTree,
-    // IndexType::D_MT_Masstree, // do not support non-unique keys
-  };
+//     // dynamic indexes - multithread
+//     IndexType::D_MT_Libcuckoo,
+//     IndexType::D_MT_ArtTree,
+//     IndexType::D_MT_BwTree,
+//     // IndexType::D_MT_Masstree, // do not support non-unique keys
+//   };
 
-  for (auto index_type : index_types) {
+//   for (auto index_type : index_types) {
 
-    // key type is set to uint16_t
-    test_dynamic_index_numeric_non_unique_key<uint16_t, uint64_t>(index_type);
+//     // key type is set to uint16_t
+//     test_dynamic_index_numeric_non_unique_key<uint16_t, uint64_t>(index_type);
 
-    // key type is set to uint32_t
-    test_dynamic_index_numeric_non_unique_key<uint32_t, uint64_t>(index_type);
+//     // key type is set to uint32_t
+//     test_dynamic_index_numeric_non_unique_key<uint32_t, uint64_t>(index_type);
 
-    // key type is set to uint64_t
-    test_dynamic_index_numeric_non_unique_key<uint64_t, uint64_t>(index_type);
-  }
-}
+//     // key type is set to uint64_t
+//     test_dynamic_index_numeric_non_unique_key<uint64_t, uint64_t>(index_type);
+//   }
+// }
 
 // TEST_F(DynamicIndexNumericTest, RangeFindTest) {
 
