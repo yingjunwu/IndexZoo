@@ -40,8 +40,6 @@ public:
 
   virtual void print() const = 0;
 
-  virtual void print_stats() const = 0;
-
 protected:
 
   DataTable<KeyT, ValueT> *table_ptr_;

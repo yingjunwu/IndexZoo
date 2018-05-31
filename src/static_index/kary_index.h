@@ -123,8 +123,6 @@ public:
     }
   }
 
-  virtual void print_stats() const final {}
-
 private:
 
   void construct_inner_layers() {

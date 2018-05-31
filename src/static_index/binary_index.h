@@ -107,11 +107,10 @@ public:
     } else {
       inner_nodes_ = nullptr;
     }
+
   }
 
   virtual void print() const final {}
-
-  virtual void print_stats() const final {}
 
 private: 
 

@@ -321,23 +321,19 @@ void run_workload(const Config &config) {
   //=================================
   KeyT** read_keys = new KeyT*[config.thread_count_];
   
-  // if (config.read_ratio_ != 0) {
-    // generate keys for each thread
-    for (size_t i = 0; i < config.thread_count_; ++i) {
+  // generate keys for each thread
+  for (size_t i = 0; i < config.thread_count_; ++i) {
 
-      read_keys[i] = new KeyT[config.generated_read_key_count_];
+    read_keys[i] = new KeyT[config.generated_read_key_count_];
 
-      FastRandom rand_gen(i);
-      
-      for (size_t j = 0; j < config.generated_read_key_count_; ++j) {
-        read_keys[i][j] = init_keys[rand_gen.next<uint64_t>() % config.key_count_];
-      }
+    FastRandom rand_gen(i);
+    
+    for (size_t j = 0; j < config.generated_read_key_count_; ++j) {
+      read_keys[i][j] = init_keys[rand_gen.next<uint64_t>() % config.key_count_];
     }
-  // }
+  }
 
   double query_key_size_mb = (config.key_count_ + config.generated_read_key_count_) * sizeof(KeyT) / 1024 / 1024;
-
-  // std::cout << "query key size = " << query_key_size_mb << std::endl;
 
   //=================================
 
@@ -440,7 +436,7 @@ void run_workload(const Config &config) {
   std::cout << "average throughput: " << total_count * 1.0 / config.time_duration_ / 1000 / 1000 << " M ops" 
             << std::endl;
 
-  data_index->print_stats();
+  data_index->print();
 
   for (uint64_t round_id = 0; round_id < profile_round; ++round_id) {
     delete[] operation_counts_profiles[round_id];

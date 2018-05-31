@@ -51,8 +51,6 @@ public:
 
   virtual void register_thread(const size_t thread_id) final {}
 
-  virtual void print_stats() const override {}
-
   virtual size_t size() const final { return size_; }
 
 protected:

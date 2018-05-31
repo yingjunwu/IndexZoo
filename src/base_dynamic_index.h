@@ -23,6 +23,4 @@ public:
 
   virtual void print() const override {}
 
-  virtual void print_stats() const override {}
-
 };

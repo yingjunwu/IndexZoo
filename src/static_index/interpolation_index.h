@@ -346,9 +346,7 @@ public:
     for (size_t i = 0; i < this->size_; ++i) {
       std::cout << this->container_[i].key_ << " " << this->container_[i].value_ << std::endl;
     }
-  }
 
-  virtual void print_stats() const final {
     std::cout << "aggregated guess distance = " << stats_.find_op_guess_distance_ << std::endl;
 
     std::cout << "number of profiled find operations = " << stats_.find_op_profile_count_ << std::endl;

@@ -71,12 +71,13 @@ static std::string get_index_name(const IndexType index_type) {
 
 static const int INVALID_INDEX_PARAM = -1;
 
+// make sure that required parameters are set
 static void validate_index_params(const IndexType index_type, const int index_param_1, const int index_param_2) {
   if (index_type == IndexType::S_Interpolation) {
 
-    if (index_param_1 == 0) {
+    if (index_param_1 == INVALID_INDEX_PARAM) {
       std::cerr << "expected index type: static - interpolation index" << std::endl;
-      std::cerr << "error: number of segments cannot be 0!" << std::endl;
+      std::cerr << "error: number of segments is unset!" << std::endl;
       exit(EXIT_FAILURE);
       return;
     }
@@ -86,14 +87,35 @@ static void validate_index_params(const IndexType index_type, const int index_pa
 
   } else if (index_type == IndexType::S_Binary) {
     
+    if (index_param_1 == INVALID_INDEX_PARAM) {
+      std::cerr << "expected index type: static - binary index" << std::endl;
+      std::cerr << "error: number of layers is unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
     std::cout << "index type: static - binary index" << std::endl;
     std::cout << "number of layers: " << index_param_1 << std::endl;
 
   } else if (index_type == IndexType::S_KAry) {
     
+    if (index_param_1 == INVALID_INDEX_PARAM) {
+      std::cerr << "expected index type: static - k-ary index" << std::endl;
+      std::cerr << "error: number of layers is unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+    
+    if (index_param_2 == INVALID_INDEX_PARAM) {
+      std::cerr << "expected index type: static - k-ary index" << std::endl;
+      std::cerr << "error: number of arys is unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
+
     if (index_param_2 < 2) {
       std::cerr << "expected index type: static - k-ary index" << std::endl;
-      std::cerr << "error: k must be larger than or equal to 2!" << std::endl;
+      std::cerr << "error: number of arys must be larger than or equal to 2!" << std::endl;
       exit(EXIT_FAILURE);
       return;
     }
@@ -103,6 +125,13 @@ static void validate_index_params(const IndexType index_type, const int index_pa
     std::cout << "number of arys: " << index_param_2 << std::endl;
 
   } else if (index_type == IndexType::S_Fast) {
+    
+    if (index_param_1 == INVALID_INDEX_PARAM) {
+      std::cerr << "expected index type: static - fast index" << std::endl;
+      std::cerr << "error: number of layers is unset!" << std::endl;
+      exit(EXIT_FAILURE);
+      return;
+    }
     
     std::cout << "index type: static - fast index" << std::endl;
     std::cout << "number of layers: " << index_param_1 << std::endl;
