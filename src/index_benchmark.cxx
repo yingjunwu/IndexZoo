@@ -109,7 +109,7 @@ struct Config {
   uint64_t key_bound_ = DEFAULT_KEY_BOUND;
   double key_stddev_ = INVALID_KEY_STDDEV;
   bool record_ = false;
-  const uint64_t generated_read_key_count_ = 100 * 1000 * 1000; // 100 millions
+  uint64_t generated_read_key_count_ = 100 * 1000 * 1000; // 100 millions
 
   void print() {
     std::cout << "=====     INDEX STRUCTURE    =====" << std::endl;
@@ -207,6 +207,8 @@ void parse_args(int argc, char* argv[], Config &config) {
 
   validate_key_generator_params(config.distribution_type_, config.key_bound_, config.key_stddev_);
 
+  config.generated_read_key_count_ = config.generated_read_key_count_ * config.read_ratio_;
+  
   config.print();
 
 }
@@ -243,7 +245,7 @@ void run_thread(const size_t &thread_id, const Config &config, const KeyT *read_
       // retrieve tuple locations
       data_index->find(key, values);
 
-      ASSERT(values.size() == 1, "must be 1!" << key);
+      // ASSERT(values.size() == 1, "must be 1! " << key);
     } else {
       // insert
       KeyT key = key_generator->get_next_key();
@@ -318,8 +320,8 @@ void run_workload(const Config &config) {
   // prepare query keys
   //=================================
   KeyT** read_keys = new KeyT*[config.thread_count_];
-
-  if (config.read_ratio_ != 0) {
+  
+  // if (config.read_ratio_ != 0) {
     // generate keys for each thread
     for (size_t i = 0; i < config.thread_count_; ++i) {
 
@@ -331,10 +333,11 @@ void run_workload(const Config &config) {
         read_keys[i][j] = init_keys[rand_gen.next<uint64_t>() % config.key_count_];
       }
     }
-  }
+  // }
 
   double query_key_size_mb = (config.key_count_ + config.generated_read_key_count_) * sizeof(KeyT) / 1024 / 1024;
-  std::cout << "query key size = " << query_key_size_mb << std::endl;
+
+  // std::cout << "query key size = " << query_key_size_mb << std::endl;
 
   //=================================
 
@@ -346,13 +349,13 @@ void run_workload(const Config &config) {
     operation_counts_profiles[round_id] = new uint64_t[config.thread_count_];
     memset(operation_counts_profiles[round_id], 0, config.thread_count_ * sizeof(uint64_t));
   }
-  std::vector<double> act_size_profiles; // actual allocated size. Unit: MB.
-  std::vector<size_t> approx_size_profiles; // approximate data size. Unit: #tuples.
+  std::vector<double> act_size_profiles; // actual allocated size. Unit: MB. include both index and table
+  std::vector<double> table_size_profiles; // table data size. Unit: #tuples.
 
   std::vector<uint64_t> total_operation_counts; // number of total operations performed.
 
   double init_mem_size = get_memory_mb();
-  std::cout << "init memory size: " << init_mem_size << " MB" << std::endl;
+  std::cout << "init memory size (index + table): " << (init_mem_size - query_key_size_mb) << " MB" << std::endl;
   
   // launch a group of threads
   is_running = true;
@@ -372,8 +375,9 @@ void run_workload(const Config &config) {
     
     memcpy(operation_counts_profiles[round_id], operation_counts, sizeof(uint64_t) * config.thread_count_);
 
-    size_t table_size_approx = data_table->size_approx();
-    approx_size_profiles.push_back(data_table->size_approx());
+    double table_size_approx = data_table->size_approx() * (sizeof(KeyT) + sizeof(ValueT)) * 1.0 / 1024 / 1024;
+
+    table_size_profiles.push_back(table_size_approx);
     act_size_profiles.push_back(get_memory_mb() - query_key_size_mb);
 
     if (round_id == 0) {
@@ -411,10 +415,10 @@ void run_workload(const Config &config) {
               << " M  |  "; 
     } 
     std::cout << std::setw(5)
-              << act_size_profiles.at(round_id) 
+              << (act_size_profiles.at(round_id) - table_size_profiles.at(round_id))
               << " MB  |  "
               << std::setw(5)
-              << approx_size_profiles.at(round_id) * (sizeof(KeyT) + sizeof(ValueT)) * 1.0 / 1024 / 1024
+              << table_size_profiles.at(round_id)
               << " MB"
               << std::endl;
   }
