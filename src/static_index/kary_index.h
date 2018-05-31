@@ -114,13 +114,13 @@ public:
   }
 
   virtual void print() const final {
-    if (inner_nodes_ != nullptr) {
-      size_t inner_size = std::pow(k_, num_layers_) - 1;
-      for (size_t i = 0; i < inner_size; ++i) {
-        std::cout << inner_nodes_[i] << " ";
-      }
-      std::cout << std::endl;
-    }
+    // if (inner_nodes_ != nullptr) {
+    //   size_t inner_size = std::pow(k_, num_layers_) - 1;
+    //   for (size_t i = 0; i < inner_size; ++i) {
+    //     std::cout << inner_nodes_[i] << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
   }
 
 private:

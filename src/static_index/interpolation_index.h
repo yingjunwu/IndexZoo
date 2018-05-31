@@ -343,9 +343,9 @@ public:
   }
 
   virtual void print() const final {
-    for (size_t i = 0; i < this->size_; ++i) {
-      std::cout << this->container_[i].key_ << " " << this->container_[i].value_ << std::endl;
-    }
+    // for (size_t i = 0; i < this->size_; ++i) {
+    //   std::cout << this->container_[i].key_ << " " << this->container_[i].value_ << std::endl;
+    // }
 
     std::cout << "aggregated guess distance = " << stats_.find_op_guess_distance_ << std::endl;
 
