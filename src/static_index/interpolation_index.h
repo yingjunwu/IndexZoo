@@ -49,7 +49,7 @@ public:
     num_segments_ = num_segments;
     segment_key_boundaries_ = new KeyT[num_segments_ + 1];
 
-    segment_offset_boundaries_ = new KeyT[num_segments_];
+    segment_offset_boundaries_ = new size_t[num_segments_];
 
     segment_sizes_ = new size_t[num_segments_];
 
@@ -76,13 +76,13 @@ public:
       return;
     }
 
-    if (key > segment_key_boundaries_[num_segments_] || key < segment_key_boundaries_[0]) {
+    if (key > key_max_ || key < key_min_) {
       return;
     }
 
     // all keys are equal
-    if (segment_key_boundaries_[0] == segment_key_boundaries_[num_segments_]) {
-      if (segment_key_boundaries_[0] == key) {
+    if (key_min_ == key_max_) {
+      if (key_min_ == key) {
         for (size_t i = 0; i < this->size_; ++i) {
           values.push_back(this->container_[i].value_);
         }
@@ -91,11 +91,16 @@ public:
     }
 
     // find suitable segment
-    size_t segment_id = 0;
-    for (; segment_id < num_segments_ - 1; ++segment_id) {
-      if (key < segment_key_boundaries_[segment_id + 1]) {
-        break;
-      }
+    // size_t segment_id = 0;
+    // for (; segment_id < num_segments_ - 1; ++segment_id) {
+    //   if (key < segment_key_boundaries_[segment_id + 1]) {
+    //     break;
+    //   }
+    // }
+    
+    size_t segment_id = (key - key_min_) / ((key_max_ - key_min_) / num_segments_);
+    if (segment_id > num_segments_ - 1) {
+      segment_id = num_segments_ - 1;
     }
 
     // the key should fall into: 
@@ -217,13 +222,13 @@ public:
       return;
     }
 
-    if (lhs_key > segment_key_boundaries_[num_segments_] || rhs_key < segment_key_boundaries_[0]) {
+    if (lhs_key > key_max_ || rhs_key < key_min_) {
       return;
     }
 
     // all keys are equal
-    if (segment_key_boundaries_[0] == segment_key_boundaries_[num_segments_]) {
-      if (segment_key_boundaries_[0] >= lhs_key && segment_key_boundaries_[0] <= rhs_key) {
+    if (key_min_ == key_max_) {
+      if (key_min_ >= lhs_key && key_min_ <= rhs_key) {
         for (size_t i = 0; i < this->size_; ++i) {
           values.push_back(this->container_[i].value_);
         }
@@ -316,10 +321,13 @@ public:
 
     this->base_reorganize();
 
-    segment_key_boundaries_[0] = this->container_[0].key_; // min value
-    segment_key_boundaries_[num_segments_] = this->container_[this->size_ - 1].key_; // max value
+    key_min_ = this->container_[0].key_; // min value
+    key_max_ = this->container_[this->size_ - 1].key_; // max value
 
-    KeyT key_range = this->container_[this->size_ - 1].key_ - this->container_[0].key_;
+    segment_key_boundaries_[0] = key_min_;
+    segment_key_boundaries_[num_segments_] = key_max_;
+
+    KeyT key_range = key_max_ - key_min_;
     KeyT segment_key_range = key_range / num_segments_;
 
     for (size_t i = 1; i < num_segments_; ++i) {
@@ -331,6 +339,7 @@ public:
     segment_offset_boundaries_[0] = current_offset;
 
     for (size_t i = 0; i < num_segments_ - 1; ++i) {
+      // scan the entire table to find offset boundaries
       while (this->container_[current_offset].key_ < segment_key_boundaries_[i + 1]) {
         ++segment_sizes_[i];
         ++current_offset;
@@ -356,14 +365,19 @@ public:
 
 private:
 
+  size_t num_segments_;
+
+  KeyT key_min_;
+  KeyT key_max_;
+
   // there are num_segments_ + 1 key boundaries in total
   KeyT *segment_key_boundaries_; 
 
   // there are num_segments_ offset boundaries in total
-  KeyT *segment_offset_boundaries_;
+  size_t *segment_offset_boundaries_;
 
+  // there are num_segments_ elements in segment_sizes_
   size_t *segment_sizes_;
-  size_t num_segments_;
 
   Stats stats_;
 };

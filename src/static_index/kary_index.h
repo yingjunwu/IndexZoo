@@ -82,7 +82,7 @@ public:
 
 
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
-    assert(lhs_key < rhs_key);
+    ASSERT(lhs_key < rhs_key, "lhs_key must be smaller than rhs_key: " << lhs_key << " " << rhs_key);
 
     if (this->size_ == 0) {
       return;
