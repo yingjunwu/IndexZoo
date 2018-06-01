@@ -97,30 +97,31 @@ public:
 
     this->base_reorganize();
 
-    size_t inner_node_size = std::pow(num_arys_, num_layers_) - 1;
+    inner_node_count_ = std::pow(num_arys_, num_layers_) - 1;
 
-    ASSERT(inner_node_size < this->size_, "exceed maximum layers");
+    ASSERT(inner_node_count_ < this->size_, "exceed maximum layers");
 
     key_min_ = this->container_[0].key_;
     key_max_ = this->container_[this->size_ - 1].key_;
 
     if (num_layers_ != 0) {
-      size_t inner_size = std::pow(num_arys_, num_layers_) - 1;
-      inner_nodes_ = new KeyT[inner_size];
+
+      inner_nodes_ = new KeyT[inner_node_count_];
       construct_inner_layers();
+
     } else {
       inner_nodes_ = nullptr;
     }
   }
 
   virtual void print() const final {
-    // if (inner_nodes_ != nullptr) {
-    //   size_t inner_size = std::pow(num_arys_, num_layers_) - 1;
-    //   for (size_t i = 0; i < inner_size; ++i) {
-    //     std::cout << inner_nodes_[i] << " ";
-    //   }
-    //   std::cout << std::endl;
-    // }
+    if (inner_nodes_ != nullptr) {
+
+      for (size_t i = 0; i < inner_node_count_; ++i) {
+        std::cout << inner_nodes_[i] << " ";
+      }
+      std::cout << std::endl;
+    }
   }
 
 private:
@@ -133,13 +134,19 @@ private:
 
     size_t step_offset = (end_offset - begin_offset) / num_arys_;
     
+    // construct the first layer (layer 0)
     for (size_t i = 0; i < num_arys_ - 1; ++i) {
+      ASSERT(i < inner_node_count_, 
+        "out of array: " << i << " " << inner_node_count_);
+
       inner_nodes_[i] = this->container_[begin_offset + step_offset * (i + 1)].key_;
     }
     if (num_layers_ == 1) { return; }
 
     size_t base_pos = num_arys_ - 1;
     size_t next_layer = 1;
+
+    // construct (num_arys_ + 1) children
     construct_inner_layers_internal(begin_offset, begin_offset + step_offset - 1, base_pos, 0, next_layer);
     for (size_t i = 1; i < num_arys_ - 1; ++i) {
       construct_inner_layers_internal(begin_offset + step_offset * i + 1, begin_offset + step_offset * (i + 1) - 1, base_pos, i * (num_arys_ - 1), next_layer);
@@ -153,6 +160,9 @@ private:
     size_t step_offset = (end_offset - begin_offset) / num_arys_;
     
     for (size_t i = 0; i < num_arys_ - 1; ++i) {
+      ASSERT(base_pos + dst_pos + i < inner_node_count_, 
+        "out of array: " << (base_pos + dst_pos + i) << " " << inner_node_count_);
+
       inner_nodes_[base_pos + dst_pos + i] = this->container_[begin_offset + step_offset * (i + 1)].key_;
     }
     if (num_layers_ == curr_layer + 1) { return; }
@@ -253,6 +263,7 @@ private:
   KeyT key_min_;
   KeyT key_max_;
   KeyT *inner_nodes_;
+  size_t inner_node_count_;
 
 };
 

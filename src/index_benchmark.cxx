@@ -62,6 +62,7 @@ void usage(FILE *out) {
           // "   skewness \n"
           // "   for read, percentage of failed lookup \n"
           "   -c --record           :  record all keys \n"
+          "   -v --verbose          :  verbose \n"
   );
 }
 
@@ -82,6 +83,7 @@ static struct option opts[] = {
     { "key_bound",         optional_argument, NULL, 'P' },
     { "key_stddev",        optional_argument, NULL, 'Q' },
     { "record",            optional_argument, NULL, 'c' },
+    { "verbose",           optional_argument, NULL, 'v' },
     { NULL, 0, NULL, 0 }
 };
 
@@ -109,6 +111,7 @@ struct Config {
   uint64_t key_bound_ = DEFAULT_KEY_BOUND;
   double key_stddev_ = INVALID_KEY_STDDEV;
   bool record_ = false;
+  bool verbose_ = false;
   uint64_t generated_read_key_count_ = 100 * 1000 * 1000; // 100 millions
 
   void print() {
@@ -132,7 +135,7 @@ void parse_args(int argc, char* argv[], Config &config) {
   
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "hci:k:S:T:t:y:r:s:m:d:P:Q:", opts, &idx);
+    int c = getopt_long(argc, argv, "hcvi:k:S:T:t:y:r:s:m:d:P:Q:", opts, &idx);
 
     if (c == -1) break;
 
@@ -187,6 +190,10 @@ void parse_args(int argc, char* argv[], Config &config) {
       }
       case 'c': {
         config.record_ = true;
+        break;
+      }
+      case 'v': {
+        config.verbose_ = true;
         break;
       }
       case 'h': {
@@ -364,7 +371,7 @@ void run_workload(const Config &config) {
     worker_threads.push_back(std::move(std::thread(run_thread<KeyT, ValueT>, thread_id, std::ref(config), read_keys[thread_id], data_table.get(), data_index.get())));
   }
 
-  std::cout << "        TIME       THROUGHPUT   RAM (idx.)   RAM (tab.)" << std::endl;
+  std::cout << "        TIME       THROUGHPUT   RAM (tot.)   RAM (tab.)" << std::endl;
 
   for (uint64_t round_id = 0; round_id < profile_round; ++round_id) {
     std::this_thread::sleep_for(std::chrono::milliseconds(int(config.profile_duration_ * 1000)));
@@ -411,7 +418,7 @@ void run_workload(const Config &config) {
               << " M  |  "; 
     } 
     std::cout << std::setw(5)
-              << (act_size_profiles.at(round_id) - table_size_profiles.at(round_id))
+              << act_size_profiles.at(round_id)
               << " MB  |  "
               << std::setw(5)
               << table_size_profiles.at(round_id)
@@ -436,7 +443,9 @@ void run_workload(const Config &config) {
   std::cout << "average throughput: " << total_count * 1.0 / config.time_duration_ / 1000 / 1000 << " M ops" 
             << std::endl;
 
-  data_index->print();
+  if (config.verbose_ == true) {
+    data_index->print(); 
+  }
 
   for (uint64_t round_id = 0; round_id < profile_round; ++round_id) {
     delete[] operation_counts_profiles[round_id];

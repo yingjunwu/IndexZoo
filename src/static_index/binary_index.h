@@ -93,24 +93,33 @@ public:
 
     this->base_reorganize();
 
-    size_t inner_node_size = std::pow(2.0, num_layers_) - 1;
+    inner_node_count_ = std::pow(2.0, num_layers_) - 1;
 
-    ASSERT(inner_node_size < this->size_, "exceed maximum layers");
+    ASSERT(inner_node_count_ < this->size_, "exceed maximum layers");
 
     key_min_ = this->container_[0].key_;
     key_max_ = this->container_[this->size_ - 1].key_;
     
     if (num_layers_ != 0) {
-      size_t inner_size = std::pow(2.0, num_layers_) - 1;
-      inner_nodes_ = new KeyT[inner_size];
+
+      inner_nodes_ = new KeyT[inner_node_count_];
       construct_inner_layers();
+
     } else {
       inner_nodes_ = nullptr;
     }
 
   }
 
-  virtual void print() const final {}
+  virtual void print() const final {
+    if (inner_nodes_ != nullptr) {
+
+      for (size_t i = 0; i < inner_node_count_; ++i) {
+        std::cout << inner_nodes_[i] << " ";
+      }
+      std::cout << std::endl;
+    }
+  }
 
 private: 
 
@@ -134,7 +143,10 @@ private:
     if (begin_offset > end_offset) { return; }
 
     size_t mid_offset = (begin_offset + end_offset) / 2;
-    
+  
+    ASSERT(base_pos + dst_pos < inner_node_count_, 
+      "out of array: " << (base_pos + dst_pos) << " " << inner_node_count_);
+
     inner_nodes_[base_pos + dst_pos] = this->container_[mid_offset].key_;
 
     if (num_layers_ == curr_layer + 1) { return; }
@@ -208,6 +220,7 @@ private:
   KeyT key_min_;
   KeyT key_max_;
   KeyT *inner_nodes_;
+  size_t inner_node_count_;
 
 };
 
