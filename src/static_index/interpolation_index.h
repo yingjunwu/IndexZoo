@@ -49,7 +49,7 @@ public:
     num_segments_ = num_segments;
     segment_key_boundaries_ = new KeyT[num_segments_ + 1];
 
-    segment_offset_boundaries_ = new size_t[num_segments_];
+    segment_offset_boundaries_ = new KeyT[num_segments_];
 
     segment_sizes_ = new size_t[num_segments_];
 
@@ -119,17 +119,17 @@ public:
         "beyond boundary: " << key << " " << segment_key_boundaries_[segment_id + 1]);
     }
 
-    int segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];
+    KeyT segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];
     
     // guess where the data lives
-    int guess = int((key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1) + segment_offset_boundaries_[segment_id]);
+    int64_t guess = int64_t((key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1) + segment_offset_boundaries_[segment_id]);
 
     // TODO: workaround!!
     if (guess >= this->size_) {
       guess = this->size_ - 1;
     }
 
-    int origin_guess = guess;
+    int64_t origin_guess = guess;
     
     // if the guess is correct
     if (this->container_[guess].key_ == key) {
@@ -139,7 +139,7 @@ public:
       values.push_back(this->container_[guess].value_);
       
       // move left
-      int guess_lhs = guess - 1;
+      int64_t guess_lhs = guess - 1;
       while (guess_lhs >= 0) {
 
         if (this->container_[guess_lhs].key_ == key) {
@@ -150,7 +150,7 @@ public:
         }
       }
       // move right
-      int guess_rhs = guess + 1;
+      int64_t guess_rhs = guess + 1;
       while (guess_rhs <= this->size_ - 1) {
 
         if (this->container_[guess_rhs].key_ == key) {
@@ -260,17 +260,17 @@ public:
         "beyond boundary: " << lhs_key << " " << segment_key_boundaries_[segment_id + 1]);
     }
 
-    int segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];
+    int64_t segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];
 
     // guess where the data lives
-    int guess = int((lhs_key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1));
+    int64_t guess = int64_t((lhs_key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1));
 
     // if the guess is larger than or equal to lhs_key
     if (this->container_[guess].key_ >= lhs_key) {
       values.push_back(this->container_[guess].value_);
       
       // move left
-      int guess_lhs = guess - 1;
+      int64_t guess_lhs = guess - 1;
       while (guess_lhs >= 0) {
         if (this->container_[guess_lhs].key_ >= lhs_key) {
           values.push_back(this->container_[guess_lhs].value_);
@@ -280,7 +280,7 @@ public:
         }
       }
       // move right
-      int guess_rhs = guess + 1;
+      int64_t guess_rhs = guess + 1;
       while (guess_rhs < this->size_ - 1) {
         if (this->container_[guess_rhs].key_ <= rhs_key) {
           values.push_back(this->container_[guess_rhs].value_);
@@ -319,8 +319,8 @@ public:
     segment_key_boundaries_[0] = this->container_[0].key_; // min value
     segment_key_boundaries_[num_segments_] = this->container_[this->size_ - 1].key_; // max value
 
-    int key_range = this->container_[this->size_ - 1].key_ - this->container_[0].key_;
-    int segment_key_range = key_range / num_segments_;
+    KeyT key_range = this->container_[this->size_ - 1].key_ - this->container_[0].key_;
+    KeyT segment_key_range = key_range / num_segments_;
 
     for (size_t i = 1; i < num_segments_; ++i) {
       segment_key_boundaries_[i] = this->container_[0].key_ + segment_key_range * i;
@@ -360,7 +360,7 @@ private:
   KeyT *segment_key_boundaries_; 
 
   // there are num_segments_ offset boundaries in total
-  size_t *segment_offset_boundaries_;
+  KeyT *segment_offset_boundaries_;
 
   size_t *segment_sizes_;
   size_t num_segments_;
