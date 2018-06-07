@@ -45,14 +45,15 @@ IndexZoo has been tested under the following platforms:
 
 - Ubuntu 16.04
 
-To install, please run the following scripts:
+To use the platform, please run the following scripts:
 ```
 sudo apt-get install libjemalloc-dev
 git clone --recursive https://github.com/yingjunwu/IndexZoo.git
 mkdir build
+cmake ..
 make -j
-make install
-
+cd build
+./src/index_benchmark -h
 ```
 
 ## License
