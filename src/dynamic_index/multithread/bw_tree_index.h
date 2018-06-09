@@ -42,7 +42,17 @@ public:
   }
 
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
-    // assert(false);
+
+    if (lhs_key > rhs_key) { return; }
+
+    if (lhs_key == rhs_key) {
+      find(lhs_key, values);
+      return;
+    }
+    for (auto scan_itr = container_->Begin(lhs_key); (scan_itr.IsEnd() == false) && (container_->KeyCmpLessEqual(scan_itr->first, rhs_key)); scan_itr++) {
+
+      values.push_back(scan_itr->second);
+    }
   }
 
   virtual void erase(const KeyT &key) final {

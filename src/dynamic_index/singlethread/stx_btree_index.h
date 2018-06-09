@@ -31,6 +31,11 @@ public:
     
     if (lhs_key > rhs_key) { return; }
 
+    if (lhs_key == rhs_key) { 
+      find(lhs_key, values);
+      return;
+    }
+
     auto itlow = container_.lower_bound(lhs_key);
     auto itup = container_.upper_bound(rhs_key);
 

@@ -249,7 +249,7 @@ TEST_F(DynamicIndexNumericTest, UniqueKeyFindRangeTest) {
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
     // IndexType::D_MT_ArtTree,
-    // IndexType::D_MT_BwTree,
+    IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree,
   };
 
@@ -269,8 +269,8 @@ TEST_F(DynamicIndexNumericTest, UniqueKeyFindRangeTest) {
 template<typename KeyT, typename ValueT>
 void test_dynamic_index_numeric_non_unique_key_find_range(const IndexType index_type) {
 
-  size_t n = 100;
-  size_t m = 10;
+  size_t n = 10000;
+  size_t m = 1000;
   
   FastRandom rand_gen(0);
 
@@ -301,9 +301,9 @@ void test_dynamic_index_numeric_non_unique_key_find_range(const IndexType index_
 
   // sort vector
   std::sort(keys_vector.begin(), keys_vector.end());
-  
+
   // find
-  for (size_t i = 40; i < n / 2; ++i) {
+  for (size_t i = 0; i < n / 2; ++i) {
     KeyT lower_key = keys_vector.at(i);
     KeyT upper_key = keys_vector.at(keys_vector.size() - 1 - i);
 
@@ -344,7 +344,7 @@ TEST_F(DynamicIndexNumericTest, ScanTest) {
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
     // IndexType::D_MT_ArtTree,
-    // IndexType::D_MT_BwTree,
+    IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree, // do not support non-unique keys
   };
 
