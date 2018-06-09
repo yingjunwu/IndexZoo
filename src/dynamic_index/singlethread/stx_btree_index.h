@@ -20,7 +20,7 @@ public:
     container_.insert(std::pair<KeyT, Uint64>(key, value));
   }
 
-  virtual void find(const KeyT &key, std::vector<Uint64> &values) final {    
+  virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
     auto ret = container_.equal_range(key);
     for (auto iter = ret.first; iter != ret.second; ++iter) {
       values.push_back(iter->second);
@@ -28,10 +28,11 @@ public:
   }
 
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
-    assert(lhs_key < rhs_key);
+    
+    if (lhs_key > rhs_key) { return; }
 
     auto itlow = container_.lower_bound(lhs_key);
-    auto itup = container_.upper_bound(rhs_key + 1);
+    auto itup = container_.upper_bound(rhs_key);
 
     for (auto it = itlow; it != itup; ++it) {
       values.push_back(it->second);
