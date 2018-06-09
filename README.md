@@ -3,8 +3,6 @@
 ## Overview
 The IndexZoo project aims at developing a general platform for performance evaluation of index structures in modern main-memory database systems.
 
-## Assumptions
-
 ## Supported Index Structures
 
 ### Multi-thread Dynamic Index Structures (for OLTP workloads)
@@ -47,9 +45,16 @@ IndexZoo has been tested under the following platforms:
 
 - Ubuntu 16.04
 
-## Scripts
-
-
+To use the platform, please run the following scripts:
+```
+sudo apt-get install libjemalloc-dev
+git clone --recursive https://github.com/yingjunwu/IndexZoo.git
+mkdir build
+cmake ..
+make -j
+cd build
+./src/index_benchmark -h
+```
 
 ## License
 
