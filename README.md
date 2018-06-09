@@ -7,7 +7,7 @@ The IndexZoo project aims at developing a general platform for performance evalu
 
 ### Multi-thread Dynamic Index Structures (for OLTP workloads)
 
-| Index Structure | Description | Author(s) | Note  |
+| Index Structure | Description | Original Implementation | Note  |
 |:---------------:|:------:|:-----------------------:|:-----:|
 | Masstree Index  | [J. Rao, et al.](https://dl.acm.org/citation.cfm?id=2168855) | [kohler](https://github.com/kohler/masstree-beta)                   | |
 | ArtTree Index   | [V. Leis, et al.](https://dl.acm.org/citation.cfm?id=2933349.2933352) | [flode](https://github.com/flode/ARTSynchronized) | |
@@ -17,7 +17,7 @@ The IndexZoo project aims at developing a general platform for performance evalu
 
 ### Single-thread Dynamic Index Structures (for OLTP workloads)
 
-| Index Structure | Description | Author(s) | Note  |
+| Index Structure | Description | Original Implementation | Note  |
 |:---------------:|:------:|:-----------------------:|:-----:|
 | Stx-Btree Index |  | [bingmann](https://github.com/bingmann/stx-btree) | Standard B+-tree index |
 | ArtTree Index   | [V. Leis, et al.](https://db.in.tum.de/~leis/papers/ART.pdf) | [armon](https://github.com/armon/libart) | |
@@ -25,7 +25,7 @@ The IndexZoo project aims at developing a general platform for performance evalu
 
 ### Static Index Structures (for OLAP workloads)
 
-| Index Structure     | Description | Author(s) | Note  |
+| Index Structure     | Description | Original Implementation | Note  |
 |:-------------------:|:------:|:-----------------------:|:-----:|
 | Binary Index        | | [yingjunwu]() | Optimized binary search tree |
 | KAry Index          | [B. Schlegel, et al.](https://dl.acm.org/citation.cfm?id=1565705) | [yingjunwu]() | |
