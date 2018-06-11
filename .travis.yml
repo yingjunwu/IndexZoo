@@ -9,8 +9,8 @@ before_install:
 - sudo apt-get update
 
 install:
-- sudo apt-get install g++-4.8 libjemalloc-dev valgrind
-- export CXX="g++-4.8"
+- sudo apt-get install g++-5 libjemalloc-dev valgrind
+- export CXX="g++-5"
 
 script:
   - mkdir build
