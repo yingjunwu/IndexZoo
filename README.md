@@ -63,4 +63,4 @@ cd build
 
 Copyright (c) 2018 [Yingjun Wu](https://yingjunwu.github.io/)
 
-Licensed Under the MIT License.
+Licensed Under the Apache 2.0 License.
