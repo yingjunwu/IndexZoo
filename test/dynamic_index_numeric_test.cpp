@@ -248,7 +248,7 @@ TEST_F(DynamicIndexNumericTest, UniqueKeyFindRangeTest) {
     
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
-    IndexType::D_MT_ArtTree,
+    // IndexType::D_MT_ArtTree,
     IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree,
   };
@@ -343,7 +343,7 @@ TEST_F(DynamicIndexNumericTest, NonUniqueKeyFindRangeTest) {
     
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
-    IndexType::D_MT_ArtTree,
+    // IndexType::D_MT_ArtTree,
     IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree, // do not support non-unique keys
   };
