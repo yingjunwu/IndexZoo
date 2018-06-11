@@ -10,7 +10,8 @@ before_install:
 
 install:
 - sudo apt-get install g++-5 libjemalloc-dev valgrind
-- export CXX="g++-5"
+- CXX=g++-5
+- CC=gcc-5
 
 script:
   - mkdir build
