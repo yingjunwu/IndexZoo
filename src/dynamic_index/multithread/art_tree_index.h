@@ -53,7 +53,34 @@ public:
   }
 
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
-    // assert(false);
+    
+    art::Key start_key, end_key;
+    load_key(lhs_key, start_key);
+    load_key(rhs_key, end_key);
+
+    // Perform scan
+    const uint32_t batch_size = 1000;
+    std::vector<Uint64> tmp_result;
+
+    art::Key curr_key;
+    curr_key.setFrom(start_key);
+
+    bool has_more = true;
+    while (has_more) {
+      art::Key next_key;
+      has_more = container_.lookupRange(curr_key, end_key, next_key,
+                                        tmp_result, batch_size, ti_);
+
+      // Copy the results to the vector
+      for (const auto &tid : tmp_result) {
+        values.push_back(tid);
+      }
+
+      // Set the next key
+      curr_key.setFrom(next_key);
+    }
+
+
   }
 
   virtual void erase(const KeyT &key) final {
