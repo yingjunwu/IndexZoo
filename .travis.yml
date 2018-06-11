@@ -16,4 +16,4 @@ script:
   - mkdir build
   - cd build
   - cmake -DCMAKE_BUILD_TYPE=Debug .. && make
-  - valgrind --leak-check=yes ./test/test_driver
+  - ./test/test_driver
