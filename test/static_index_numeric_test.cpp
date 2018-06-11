@@ -239,12 +239,12 @@ void test_static_index_numeric_unique_key_find_range(const IndexType index_type,
 
 TEST_F(StaticIndexNumericTest, UniqueKeyFindRangeTest) {
 
-  // IndexType index_type = IndexType::S_Interpolation;
-  // for (size_t segments = 1; segments <= 10; ++segments) {
-  //   test_static_index_numeric_unique_key_find_range<uint16_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
-  //   test_static_index_numeric_unique_key_find_range<uint32_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
-  //   test_static_index_numeric_unique_key_find_range<uint64_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
-  // }
+  IndexType index_type = IndexType::S_Interpolation;
+  for (size_t segments = 1; segments <= 10; ++segments) {
+    test_static_index_numeric_unique_key_find_range<uint16_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+    test_static_index_numeric_unique_key_find_range<uint32_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+    test_static_index_numeric_unique_key_find_range<uint64_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+  }
 
   // index_type = IndexType::S_Binary;
   // for (size_t layers = 0; layers < 8; ++layers) {
@@ -335,12 +335,12 @@ void test_static_index_numeric_non_unique_key_find_range(const IndexType index_t
 
 TEST_F(StaticIndexNumericTest, NonUniqueKeyFindRangeTest) {
 
-  // IndexType index_type = IndexType::S_Interpolation;
-  // for (size_t segments = 1; segments <= 10; ++segments) {
-  //   test_static_index_numeric_non_unique_key_find_range<uint16_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
-  //   test_static_index_numeric_non_unique_key_find_range<uint32_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
-  //   test_static_index_numeric_non_unique_key_find_range<uint64_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
-  // }
+  IndexType index_type = IndexType::S_Interpolation;
+  for (size_t segments = 1; segments <= 10; ++segments) {
+    test_static_index_numeric_non_unique_key_find_range<uint16_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+    test_static_index_numeric_non_unique_key_find_range<uint32_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+    test_static_index_numeric_non_unique_key_find_range<uint64_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+  }
 
   // index_type = IndexType::S_Binary;
   // for (size_t layers = 0; layers < 8; ++layers) {
