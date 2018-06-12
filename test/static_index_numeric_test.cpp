@@ -194,7 +194,8 @@ void test_static_index_numeric_unique_key_find_range(const IndexType index_type,
   // insert
   for (size_t i = 0; i < n; ++i) {
 
-    KeyT key = rand.next<KeyT>();
+    // KeyT key = rand.next<KeyT>();
+    KeyT key = i;
     ValueT value = i + 2048;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -241,8 +242,8 @@ TEST_F(StaticIndexNumericTest, UniqueKeyFindRangeTest) {
 
   IndexType index_type = IndexType::S_Interpolation;
   for (size_t segments = 1; segments <= 10; ++segments) {
-    // test_static_index_numeric_unique_key_find_range<uint16_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
-    // test_static_index_numeric_unique_key_find_range<uint32_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+    test_static_index_numeric_unique_key_find_range<uint16_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+    test_static_index_numeric_unique_key_find_range<uint32_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
     test_static_index_numeric_unique_key_find_range<uint64_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
   }
 
@@ -272,7 +273,7 @@ TEST_F(StaticIndexNumericTest, UniqueKeyFindRangeTest) {
 template<typename KeyT, typename ValueT>
 void test_static_index_numeric_non_unique_key_find_range(const IndexType index_type, const size_t index_param_1, const size_t index_param_2) {
 
-  size_t n = 10000;
+  size_t n = 2000;
   size_t m = 1000;
   
   FastRandom rand_gen(0);
@@ -305,6 +306,7 @@ void test_static_index_numeric_non_unique_key_find_range(const IndexType index_t
 
   // find
   for (size_t i = 0; i < n / 2; ++i) {
+
     KeyT lower_key = keys_vector.at(i);
     KeyT upper_key = keys_vector.at(keys_vector.size() - 1 - i);
 
@@ -335,12 +337,12 @@ void test_static_index_numeric_non_unique_key_find_range(const IndexType index_t
 
 TEST_F(StaticIndexNumericTest, NonUniqueKeyFindRangeTest) {
 
-  // IndexType index_type = IndexType::S_Interpolation;
-  // for (size_t segments = 1; segments <= 10; ++segments) {
-  //   test_static_index_numeric_non_unique_key_find_range<uint16_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
-  //   test_static_index_numeric_non_unique_key_find_range<uint32_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
-  //   test_static_index_numeric_non_unique_key_find_range<uint64_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
-  // }
+  IndexType index_type = IndexType::S_Interpolation;
+  for (size_t segments = 1; segments <= 10; ++segments) {
+    // test_static_index_numeric_non_unique_key_find_range<uint16_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+    test_static_index_numeric_non_unique_key_find_range<uint32_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+    test_static_index_numeric_non_unique_key_find_range<uint64_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+  }
 
   // index_type = IndexType::S_Binary;
   // for (size_t layers = 0; layers < 8; ++layers) {
