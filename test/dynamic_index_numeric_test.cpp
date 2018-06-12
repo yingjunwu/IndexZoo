@@ -212,7 +212,7 @@ void test_dynamic_index_numeric_unique_key_find_range(const IndexType index_type
   std::sort(keys_vector.begin(), keys_vector.end());
   
   // find
-  for (size_t i = 0; i < n / 2; ++i) {
+  for (size_t i = 0; i < n / 2; i += 10) {
     KeyT lower_key = keys_vector.at(i);
     KeyT upper_key = keys_vector.at(keys_vector.size() - 1 - i);
 
@@ -303,7 +303,7 @@ void test_dynamic_index_numeric_non_unique_key_find_range(const IndexType index_
   std::sort(keys_vector.begin(), keys_vector.end());
 
   // find
-  for (size_t i = 0; i < n / 2; ++i) {
+  for (size_t i = 0; i < n / 2; i += 10) {
     KeyT lower_key = keys_vector.at(i);
     KeyT upper_key = keys_vector.at(keys_vector.size() - 1 - i);
 
