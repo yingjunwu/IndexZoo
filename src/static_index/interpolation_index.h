@@ -239,17 +239,7 @@ public:
     }
 
     int64_t lower_bound = find_lower_bound(lhs_key);
-    if (lower_bound == -1) {
-      // all keys are smaller than lower bound. return.
-      return;
-    }
     int64_t upper_bound = find_upper_bound(rhs_key);
-    if (upper_bound == -1) {
-      // all keys are larger than upper bound. return.
-      return;
-    }
-    ASSERT(!(lower_bound == -1 && upper_bound == -1), 
-      "upper and lower bounds cannot be -1 at the same time");
 
     for (size_t i = lower_bound; i <= upper_bound; ++i) {
       values.push_back(this->container_[i].value_);
@@ -306,8 +296,9 @@ public:
 
 private:
 
-  // return -1 if no key is >= lower_key
   int64_t find_lower_bound(const KeyT &lower_key) {
+
+    ASSERT(lower_key <= key_max_, "lower_key must be <= key_max_");
 
     if (lower_key <= key_min_) {
       return 0;
@@ -341,7 +332,7 @@ private:
 
     KeyT segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];
     // guess where the data lives
-    guess = int64_t((lower_key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1) + segment_offset_boundaries_[segment_id]);
+    int64_t guess = int64_t((lower_key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1) + segment_offset_boundaries_[segment_id]);
 
     // TODO: workaround!!
     if (guess >= this->size_) {
@@ -350,8 +341,8 @@ private:
 
     if (this->container_[guess].key_ >= lower_key) {
       // move left
-      while (guess >= 0) {
-        if (this->container_[guess].key_ >= lower_key) {
+      while (guess - 1 >= 0) {
+        if (this->container_[guess - 1].key_ >= lower_key) {
           --guess;
         } else {
           return guess;
@@ -361,6 +352,7 @@ private:
 
     } else {
       // move right
+      ++guess;
       while (guess < this->size_) {
         if (this->container_[guess].key_ < lower_key) {
           ++guess;
@@ -368,17 +360,80 @@ private:
           return guess;
         }
       }
+      ASSERT(false, "shouldn't touch this line of code");
       return guess;
     }
 
   }
   
-  // return -1 if no key is <= upper_key
   int64_t find_upper_bound(const KeyT &upper_key) {
+    
+    ASSERT(upper_key >= key_min_, "upper_key must be >= key_min_");
 
     if (upper_key >= key_max_) {
       return this->size_ - 1;
     }
+
+    size_t segment_id = (upper_key - key_min_) / ((key_max_ - key_min_) / num_segments_);
+    if (segment_id > num_segments_ - 1) {
+      segment_id = num_segments_ - 1;
+    }
+
+    // the upper_key should fall into: 
+    //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ) -- if 0 <= i < num_segments_ - 1
+    //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ] -- if i == num_segments_ - 1
+    if (segment_id < num_segments_ - 1) {
+
+      ASSERT(segment_key_boundaries_[segment_id] <= upper_key, 
+        "beyond boundary: " << segment_key_boundaries_[segment_id] << " " << upper_key);
+      ASSERT(upper_key < segment_key_boundaries_[segment_id + 1], 
+        "beyond boundary: " << upper_key << " " << segment_key_boundaries_[segment_id + 1]);
+
+    } else {
+
+      ASSERT(segment_id == num_segments_ - 1, 
+        "incorrect segment id: " << segment_id << " " << num_segments_ - 1);
+
+      ASSERT(segment_key_boundaries_[segment_id] <= upper_key, 
+        "beyond boundary: " << segment_key_boundaries_[segment_id] << " " << upper_key);
+      ASSERT(upper_key <= segment_key_boundaries_[segment_id + 1], 
+        "beyond boundary: " << upper_key << " " << segment_key_boundaries_[segment_id + 1]);
+    }
+
+    KeyT segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];
+    // guess where the data lives
+    int64_t guess = int64_t((upper_key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1) + segment_offset_boundaries_[segment_id]);
+
+    // TODO: workaround!!
+    if (guess >= this->size_) {
+      guess = this->size_ - 1;
+    }
+
+    if (this->container_[guess].key_ <= upper_key) {
+      // move right
+      while (guess +1 <= this->size_ - 1) {
+        if (this->container_[guess + 1].key_ <= upper_key) {
+          ++guess;
+        } else {
+          return guess;
+        }
+      }
+      return guess;
+
+    } else {
+      // move left
+      --guess;
+      while (guess > 0) {
+        if (this->container_[guess].key_ > upper_key) {
+          --guess;
+        } else {
+          return guess;
+        }
+      }
+      ASSERT(false, "shouldn't touch this line of code");
+      return guess;
+    }
+
 
   }
 
