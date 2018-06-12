@@ -48,10 +48,13 @@ public:
 
     num_segments_ = num_segments;
     segment_key_boundaries_ = new KeyT[num_segments_ + 1];
+    memset(segment_key_boundaries_, 0, sizeof(KeyT) * (num_segments_ + 1));
 
     segment_offset_boundaries_ = new size_t[num_segments_];
+    memset(segment_offset_boundaries_, 0, sizeof(size_t) * num_segments_);
 
     segment_sizes_ = new size_t[num_segments_];
+    memset(segment_sizes_, 0, sizeof(size_t) * num_segments_);
 
   }
 
@@ -91,13 +94,6 @@ public:
     }
 
     // find suitable segment
-    // size_t segment_id = 0;
-    // for (; segment_id < num_segments_ - 1; ++segment_id) {
-    //   if (key < segment_key_boundaries_[segment_id + 1]) {
-    //     break;
-    //   }
-    // }
-    
     size_t segment_id = (key - key_min_) / ((key_max_ - key_min_) / num_segments_);
     if (segment_id > num_segments_ - 1) {
       segment_id = num_segments_ - 1;
@@ -216,7 +212,13 @@ public:
   }
 
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
-    assert(lhs_key < rhs_key);
+
+    if (lhs_key > rhs_key) { return; }
+
+    if (lhs_key == rhs_key) {
+      find(lhs_key, values);
+      return;
+    }
 
     if (this->size_ == 0) {
       return;
@@ -236,14 +238,12 @@ public:
       return;
     }
 
-
-    // find suitable segment
-    size_t segment_id = 0;
-    for (; segment_id < num_segments_; ++segment_id) {
-      if (lhs_key < segment_key_boundaries_[segment_id + 1]) {
-        break;
-      }
+    // find suitable segment for lhs_key
+    size_t segment_id = (lhs_key - key_min_) / ((key_max_ - key_min_) / num_segments_);
+    if (segment_id > num_segments_ - 1) {
+      segment_id = num_segments_ - 1;
     }
+
     // the lhs_key should fall into: 
     //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ) -- if 0 <= i < num_segments_ - 1
     //  [ segment_key_boundaries_[i], segment_key_boundaries_[i + 1] ] -- if i == num_segments_ - 1
@@ -265,13 +265,17 @@ public:
         "beyond boundary: " << lhs_key << " " << segment_key_boundaries_[segment_id + 1]);
     }
 
-    int64_t segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];
-
+    KeyT segment_key_range = segment_key_boundaries_[segment_id + 1] - segment_key_boundaries_[segment_id];
     // guess where the data lives
-    int64_t guess = int64_t((lhs_key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1));
+    int64_t guess = int64_t((lhs_key - segment_key_boundaries_[segment_id]) * 1.0 / segment_key_range * (segment_sizes_[segment_id] - 1) + segment_offset_boundaries_[segment_id]);
 
-    // if the guess is larger than or equal to lhs_key
-    if (this->container_[guess].key_ >= lhs_key) {
+    // TODO: workaround!!
+    if (guess >= this->size_) {
+      guess = this->size_ - 1;
+    }
+
+    // if the guess is in [lhs_key, rhs_key]
+    if (this->container_[guess].key_ >= lhs_key && this->container_[guess].key_ <= rhs_key) {
       values.push_back(this->container_[guess].value_);
       
       // move left
@@ -286,12 +290,26 @@ public:
       }
       // move right
       int64_t guess_rhs = guess + 1;
-      while (guess_rhs < this->size_ - 1) {
+      while (guess_rhs <= this->size_ - 1) {
         if (this->container_[guess_rhs].key_ <= rhs_key) {
           values.push_back(this->container_[guess_rhs].value_);
           guess_rhs += 1;
         } else {
           break;
+        }
+      }
+    }
+    else if (this->container_[guess].key_ > rhs_key) {
+      // move left
+      int64_t guess_lhs = guess - 1;
+      while (guess_lhs >= 0) {
+        if (this->container_[guess_lhs].key_ < lhs_key) {
+          break;
+        } else if (this->container_[guess_lhs].key_ <= rhs_key) {
+          values.push_back(this->container_[guess_lhs].value_);
+          guess_lhs -= 1;
+        } else {
+          guess_lhs -= 1;
         }
       }
     }

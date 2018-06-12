@@ -332,7 +332,7 @@ void test_dynamic_index_numeric_non_unique_key_find_range(const IndexType index_
 }
 
 
-TEST_F(DynamicIndexNumericTest, ScanTest) {
+TEST_F(DynamicIndexNumericTest, NonUniqueKeyFindRangeTest) {
 
   std::vector<IndexType> index_types {
 
