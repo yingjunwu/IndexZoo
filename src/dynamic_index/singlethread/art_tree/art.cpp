@@ -248,7 +248,7 @@ static int leaf_matches(const art_leaf *n, const unsigned char *key, int key_len
     if (n->key_len != (uint32_t)key_len) return 1;
 
     // Compare the keys starting at the depth
-    return memcmp(n->key, key, key_len);
+    return memcmp(n->kvs, key, key_len);
 }
 
 /**
@@ -260,6 +260,7 @@ static int leaf_matches(const art_leaf *n, const unsigned char *key, int key_len
  * the value pointer is returned.
  */
 void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
+    std::cout << "search key = " << uint64_t(*key) << std::endl;
     art_node **child;
     art_node *n = t->root;
     int prefix_len, depth = 0;
@@ -269,7 +270,8 @@ void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
             n = (art_node*)LEAF_RAW(n);
             // Check if the expanded path matches
             if (!leaf_matches((art_leaf*)n, key, key_len, depth)) {
-                return ((art_leaf*)n)->value;
+                std::cout << "here!" << std::endl;
+                return (void*)(((unsigned char*)(((art_leaf*)n)->kvs))+key_len);
             }
             return NULL;
         }
@@ -357,18 +359,32 @@ art_leaf* art_maximum(art_tree *t) {
 }
 
 static art_leaf* make_leaf(const unsigned char *key, int key_len, void *value) {
-    art_leaf *l = (art_leaf*)calloc(1, sizeof(art_leaf)+key_len);
-    l->value = value;
+    art_leaf *l = (art_leaf*)calloc(1, sizeof(art_leaf)+key_len+sizeof(void*));
+    memset(l, 0, sizeof(art_leaf)+key_len+sizeof(void*));
     l->key_len = key_len;
-    memcpy(l->key, key, key_len);
+    l->val_count = 1;
+    l->val_capacity = 1;
+    memcpy(l->kvs, key, key_len);
+    std::cout << "key = " << uint64_t(*key) << std::endl;
+    // int64_t t = 0;
+    // memcpy(l->kvs+key_len, &t, sizeof(void*));
+    // (void*)(l->kvs+key_len) = value;
     return l;
+}
+
+static art_leaf* copy_leaf(art_leaf* leaf) {
+    art_leaf *new_leaf = 
+        (art_leaf*)calloc(1, sizeof(art_leaf)+leaf->key_len+leaf->val_count*2*sizeof(void*));
+    memcpy(new_leaf, leaf, sizeof(art_leaf)+leaf->key_len+leaf->val_count*sizeof(void*));
+    new_leaf->val_capacity=leaf->val_count*2;
+    return new_leaf;
 }
 
 static int longest_common_prefix(art_leaf *l1, art_leaf *l2, int depth) {
     int max_cmp = min(l1->key_len, l2->key_len) - depth;
     int idx;
     for (idx=0; idx < max_cmp; idx++) {
-        if (l1->key[depth+idx] != l2->key[depth+idx])
+        if (l1->kvs[depth+idx] != l2->kvs[depth+idx])
             return idx;
     }
     return idx;
@@ -539,18 +555,19 @@ static int prefix_mismatch(const art_node *n, const unsigned char *key, int key_
         art_leaf *l = minimum(n);
         max_cmp = min(l->key_len, key_len)- depth;
         for (; idx < max_cmp; idx++) {
-            if (l->key[idx+depth] != key[depth+idx])
+            if (l->kvs[idx+depth] != key[depth+idx])
                 return idx;
         }
     }
     return idx;
 }
 
-static void* recursive_insert(art_node *n, art_node **ref, const unsigned char *key, int key_len, void *value, int depth, int *old) {
+static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *key, int key_len, void *value, int depth) {
     // If we are at a NULL node, inject a leaf
     if (!n) {
+        // assert(value != nullptr);
         *ref = (art_node*)SET_LEAF(make_leaf(key, key_len, value));
-        return NULL;
+        return true;
     }
 
     // If we are at a leaf, we need to replace it with a node
@@ -559,10 +576,24 @@ static void* recursive_insert(art_node *n, art_node **ref, const unsigned char *
 
         // Check if we are updating an existing value
         if (!leaf_matches(l, key, key_len, depth)) {
-            *old = 1;
-            void *old_val = l->value;
-            l->value = value;
-            return old_val;
+
+            // if there's still room for storing value in the leaf.
+            if (l->val_capacity > l->val_count) {
+                memcpy(l->kvs+key_len+l->val_count*sizeof(void*), value, sizeof(void*));
+                ++l->val_count;
+            } 
+            // otherwise, create a new leaf with doubled value capacity
+            else {
+                art_leaf *new_l = copy_leaf(l);
+                // set ref to new leaf
+                *ref = (art_node*)new_l;
+                // delete older leaf
+                free(l);
+
+                memcpy(new_l->kvs+key_len+new_l->val_count*sizeof(void*), value, sizeof(void*));
+                ++new_l->val_count;
+            }
+            return false;
         }
 
         // New value, we must split the leaf into a node4
@@ -577,9 +608,9 @@ static void* recursive_insert(art_node *n, art_node **ref, const unsigned char *
         memcpy(new_node->n.partial, key+depth, min(MAX_PREFIX_LEN, longest_prefix));
         // Add the leafs to the new node4
         *ref = (art_node*)new_node;
-        add_child4(new_node, ref, l->key[depth+longest_prefix], SET_LEAF(l));
-        add_child4(new_node, ref, l2->key[depth+longest_prefix], SET_LEAF(l2));
-        return NULL;
+        add_child4(new_node, ref, l->kvs[depth+longest_prefix], SET_LEAF(l));
+        add_child4(new_node, ref, l2->kvs[depth+longest_prefix], SET_LEAF(l2));
+        return true;
     }
 
     // Check if given node has a prefix
@@ -606,15 +637,15 @@ static void* recursive_insert(art_node *n, art_node **ref, const unsigned char *
         } else {
             n->partial_len -= (prefix_diff+1);
             art_leaf *l = minimum(n);
-            add_child4(new_node, ref, l->key[depth+prefix_diff], n);
-            memcpy(n->partial, l->key+depth+prefix_diff+1,
+            add_child4(new_node, ref, l->kvs[depth+prefix_diff], n);
+            memcpy(n->partial, l->kvs+depth+prefix_diff+1,
                     min(MAX_PREFIX_LEN, n->partial_len));
         }
 
         // Insert the new leaf
         art_leaf *l = make_leaf(key, key_len, value);
         add_child4(new_node, ref, key[depth+prefix_diff], SET_LEAF(l));
-        return NULL;
+        return true;
     }
 
 RECURSE_SEARCH:;
@@ -622,13 +653,13 @@ RECURSE_SEARCH:;
     // Find a child to recurse to
     art_node **child = find_child(n, key[depth]);
     if (child) {
-        return recursive_insert(*child, child, key, key_len, value, depth+1, old);
+        return recursive_insert(*child, child, key, key_len, value, depth+1);
     }
 
     // No child, node goes within us
     art_leaf *l = make_leaf(key, key_len, value);
     add_child(n, ref, key[depth], SET_LEAF(l));
-    return NULL;
+    return true;
 }
 
 /**
@@ -637,14 +668,14 @@ RECURSE_SEARCH:;
  * @arg key The key
  * @arg key_len The length of the key
  * @arg value Opaque value.
- * @return NULL if the item was newly inserted, otherwise
- * the old value pointer is returned.
+ * @return True if the item was newly inserted, otherwise return False.
  */
-void* art_insert(art_tree *t, const unsigned char *key, int key_len, void *value) {
-    int old_val = 0;
-    void *old = recursive_insert(t->root, &t->root, key, key_len, value, 0, &old_val);
-    if (!old_val) t->size++;
-    return old;
+bool art_insert(art_tree *t, const unsigned char *key, int key_len, void *value) {
+    bool is_new = recursive_insert(t->root, &t->root, key, key_len, value, 0);
+    if (is_new == true) {
+        t->size++;
+    }
+    return is_new;
 }
 
 static void remove_child256(art_node256 *n, art_node **ref, unsigned char c) {
@@ -806,154 +837,154 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
  * @return NULL if the item was not found, otherwise
  * the value pointer is returned.
  */
-void* art_delete(art_tree *t, const unsigned char *key, int key_len) {
+void art_delete(art_tree *t, const unsigned char *key, int key_len) {
     art_leaf *l = recursive_delete(t->root, &t->root, key, key_len, 0);
     if (l) {
         t->size--;
-        void *old = l->value;
+        // void *old = l->value;
         free(l);
-        return old;
+        // return old;
     }
-    return NULL;
+    // return NULL;
 }
 
-// Recursively iterates over the tree
-static int recursive_iter(art_node *n, art_callback cb, void *data) {
-    // Handle base cases
-    if (!n) return 0;
-    if (IS_LEAF(n)) {
-        art_leaf *l = LEAF_RAW(n);
-        return cb(data, (const unsigned char*)l->key, l->key_len, l->value);
-    }
+// // Recursively iterates over the tree
+// static int recursive_iter(art_node *n, art_callback cb, void *data) {
+//     // Handle base cases
+//     if (!n) return 0;
+//     if (IS_LEAF(n)) {
+//         art_leaf *l = LEAF_RAW(n);
+//         return cb(data, (const unsigned char*)l->key, l->key_len, l->value);
+//     }
 
-    int idx, res;
-    switch (n->type) {
-        case NODE4:
-            for (int i=0; i < n->num_children; i++) {
-                res = recursive_iter(((art_node4*)n)->children[i], cb, data);
-                if (res) return res;
-            }
-            break;
+//     int idx, res;
+//     switch (n->type) {
+//         case NODE4:
+//             for (int i=0; i < n->num_children; i++) {
+//                 res = recursive_iter(((art_node4*)n)->children[i], cb, data);
+//                 if (res) return res;
+//             }
+//             break;
 
-        case NODE16:
-            for (int i=0; i < n->num_children; i++) {
-                res = recursive_iter(((art_node16*)n)->children[i], cb, data);
-                if (res) return res;
-            }
-            break;
+//         case NODE16:
+//             for (int i=0; i < n->num_children; i++) {
+//                 res = recursive_iter(((art_node16*)n)->children[i], cb, data);
+//                 if (res) return res;
+//             }
+//             break;
 
-        case NODE48:
-            for (int i=0; i < 256; i++) {
-                idx = ((art_node48*)n)->keys[i];
-                if (!idx) continue;
+//         case NODE48:
+//             for (int i=0; i < 256; i++) {
+//                 idx = ((art_node48*)n)->keys[i];
+//                 if (!idx) continue;
 
-                res = recursive_iter(((art_node48*)n)->children[idx-1], cb, data);
-                if (res) return res;
-            }
-            break;
+//                 res = recursive_iter(((art_node48*)n)->children[idx-1], cb, data);
+//                 if (res) return res;
+//             }
+//             break;
 
-        case NODE256:
-            for (int i=0; i < 256; i++) {
-                if (!((art_node256*)n)->children[i]) continue;
-                res = recursive_iter(((art_node256*)n)->children[i], cb, data);
-                if (res) return res;
-            }
-            break;
+//         case NODE256:
+//             for (int i=0; i < 256; i++) {
+//                 if (!((art_node256*)n)->children[i]) continue;
+//                 res = recursive_iter(((art_node256*)n)->children[i], cb, data);
+//                 if (res) return res;
+//             }
+//             break;
 
-        default:
-            abort();
-    }
-    return 0;
-}
+//         default:
+//             abort();
+//     }
+//     return 0;
+// }
 
-/**
- * Iterates through the entries pairs in the map,
- * invoking a callback for each. The call back gets a
- * key, value for each and returns an integer stop value.
- * If the callback returns non-zero, then the iteration stops.
- * @arg t The tree to iterate over
- * @arg cb The callback function to invoke
- * @arg data Opaque handle passed to the callback
- * @return 0 on success, or the return of the callback.
- */
-int art_iter(art_tree *t, art_callback cb, void *data) {
-    return recursive_iter(t->root, cb, data);
-}
+// /**
+//  * Iterates through the entries pairs in the map,
+//  * invoking a callback for each. The call back gets a
+//  * key, value for each and returns an integer stop value.
+//  * If the callback returns non-zero, then the iteration stops.
+//  * @arg t The tree to iterate over
+//  * @arg cb The callback function to invoke
+//  * @arg data Opaque handle passed to the callback
+//  * @return 0 on success, or the return of the callback.
+//  */
+// int art_iter(art_tree *t, art_callback cb, void *data) {
+//     return recursive_iter(t->root, cb, data);
+// }
 
-/**
- * Checks if a leaf prefix matches
- * @return 0 on success.
- */
-static int leaf_prefix_matches(const art_leaf *n, const unsigned char *prefix, int prefix_len) {
-    // Fail if the key length is too short
-    if (n->key_len < (uint32_t)prefix_len) return 1;
+// /**
+//  * Checks if a leaf prefix matches
+//  * @return 0 on success.
+//  */
+// static int leaf_prefix_matches(const art_leaf *n, const unsigned char *prefix, int prefix_len) {
+//     // Fail if the key length is too short
+//     if (n->key_len < (uint32_t)prefix_len) return 1;
 
-    // Compare the keys
-    return memcmp(n->key, prefix, prefix_len);
-}
+//     // Compare the keys
+//     return memcmp(n->key, prefix, prefix_len);
+// }
 
-/**
- * Iterates through the entries pairs in the map,
- * invoking a callback for each that matches a given prefix.
- * The call back gets a key, value for each and returns an integer stop value.
- * If the callback returns non-zero, then the iteration stops.
- * @arg t The tree to iterate over
- * @arg prefix The prefix of keys to read
- * @arg prefix_len The length of the prefix
- * @arg cb The callback function to invoke
- * @arg data Opaque handle passed to the callback
- * @return 0 on success, or the return of the callback.
- */
-int art_iter_prefix(art_tree *t, const unsigned char *key, int key_len, art_callback cb, void *data) {
-    art_node **child;
-    art_node *n = t->root;
-    int prefix_len, depth = 0;
-    while (n) {
-        // Might be a leaf
-        if (IS_LEAF(n)) {
-            n = (art_node*)LEAF_RAW(n);
-            // Check if the expanded path matches
-            if (!leaf_prefix_matches((art_leaf*)n, key, key_len)) {
-                art_leaf *l = (art_leaf*)n;
-                return cb(data, (const unsigned char*)l->key, l->key_len, l->value);
-            }
-            return 0;
-        }
+// *
+//  * Iterates through the entries pairs in the map,
+//  * invoking a callback for each that matches a given prefix.
+//  * The call back gets a key, value for each and returns an integer stop value.
+//  * If the callback returns non-zero, then the iteration stops.
+//  * @arg t The tree to iterate over
+//  * @arg prefix The prefix of keys to read
+//  * @arg prefix_len The length of the prefix
+//  * @arg cb The callback function to invoke
+//  * @arg data Opaque handle passed to the callback
+//  * @return 0 on success, or the return of the callback.
+ 
+// int art_iter_prefix(art_tree *t, const unsigned char *key, int key_len, art_callback cb, void *data) {
+//     art_node **child;
+//     art_node *n = t->root;
+//     int prefix_len, depth = 0;
+//     while (n) {
+//         // Might be a leaf
+//         if (IS_LEAF(n)) {
+//             n = (art_node*)LEAF_RAW(n);
+//             // Check if the expanded path matches
+//             if (!leaf_prefix_matches((art_leaf*)n, key, key_len)) {
+//                 art_leaf *l = (art_leaf*)n;
+//                 return cb(data, (const unsigned char*)l->key, l->key_len, l->value);
+//             }
+//             return 0;
+//         }
 
-        // If the depth matches the prefix, we need to handle this node
-        if (depth == key_len) {
-            art_leaf *l = minimum(n);
-            if (!leaf_prefix_matches(l, key, key_len))
-               return recursive_iter(n, cb, data);
-            return 0;
-        }
+//         // If the depth matches the prefix, we need to handle this node
+//         if (depth == key_len) {
+//             art_leaf *l = minimum(n);
+//             if (!leaf_prefix_matches(l, key, key_len))
+//                return recursive_iter(n, cb, data);
+//             return 0;
+//         }
 
-        // Bail if the prefix does not match
-        if (n->partial_len) {
-            prefix_len = prefix_mismatch(n, key, key_len, depth);
+//         // Bail if the prefix does not match
+//         if (n->partial_len) {
+//             prefix_len = prefix_mismatch(n, key, key_len, depth);
 
-            // Guard if the mis-match is longer than the MAX_PREFIX_LEN
-            if ((uint32_t)prefix_len > n->partial_len) {
-                prefix_len = n->partial_len;
-            }
+//             // Guard if the mis-match is longer than the MAX_PREFIX_LEN
+//             if ((uint32_t)prefix_len > n->partial_len) {
+//                 prefix_len = n->partial_len;
+//             }
 
-            // If there is no match, search is terminated
-            if (!prefix_len) {
-                return 0;
+//             // If there is no match, search is terminated
+//             if (!prefix_len) {
+//                 return 0;
 
-            // If we've matched the prefix, iterate on this node
-            } else if (depth + prefix_len == key_len) {
-                return recursive_iter(n, cb, data);
-            }
+//             // If we've matched the prefix, iterate on this node
+//             } else if (depth + prefix_len == key_len) {
+//                 return recursive_iter(n, cb, data);
+//             }
 
-            // if there is a full match, go deeper
-            depth = depth + n->partial_len;
-        }
+//             // if there is a full match, go deeper
+//             depth = depth + n->partial_len;
+//         }
 
-        // Recursively search
-        child = find_child(n, key[depth]);
-        n = (child) ? *child : NULL;
-        depth++;
-    }
-    return 0;
-}
+//         // Recursively search
+//         child = find_child(n, key[depth]);
+//         n = (child) ? *child : NULL;
+//         depth++;
+//     }
+//     return 0;
+// }

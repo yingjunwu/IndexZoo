@@ -1,5 +1,8 @@
 #pragma once
 
+#include <iostream>
+#include <cstring>
+#include <string>
 #include <stdint.h>
 #ifndef ART_H
 #define ART_H
@@ -80,9 +83,11 @@ typedef struct {
  * of arbitrary size, as they include the key.
  */
 typedef struct {
-    void *value;
+    // void *value;
     uint32_t key_len;
-    unsigned char key[];
+    uint32_t val_count;
+    uint32_t val_capacity;
+    unsigned char kvs[];
 } art_leaf;
 
 /**
@@ -139,7 +144,7 @@ inline uint64_t art_size(const art_tree *t) {
  * @return NULL if the item was newly inserted, otherwise
  * the old value pointer is returned.
  */
-void* art_insert(art_tree *t, const unsigned char *key, int key_len, void *value);
+bool art_insert(art_tree *t, const unsigned char *key, int key_len, void *value);
 
 /**
  * Deletes a value from the ART tree
@@ -149,7 +154,7 @@ void* art_insert(art_tree *t, const unsigned char *key, int key_len, void *value
  * @return NULL if the item was not found, otherwise
  * the value pointer is returned.
  */
-void* art_delete(art_tree *t, const unsigned char *key, int key_len);
+void art_delete(art_tree *t, const unsigned char *key, int key_len);
 
 /**
  * Searches for a value in the ART tree

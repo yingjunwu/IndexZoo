@@ -36,7 +36,7 @@ class DataBlock {
     }
 
     char* get_tuple(const RelOffsetT rel_offset) const {
-      assert(rel_offset < max_rel_offset_);
+      ASSERT(rel_offset < max_rel_offset_, "wrong offset: " << rel_offset << " " << max_rel_offset_);
       return tuples_ + rel_offset * tuple_size_;
     }
 
