@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstring>
 #include <string>
+#include <vector>
 #include <stdint.h>
 #ifndef ART_H
 #define ART_H
@@ -29,7 +30,9 @@ extern "C" {
 # endif
 #endif
 
-typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, void *value);
+typedef uint64_t ValueT;
+
+typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, ValueT value);
 
 /**
  * This struct is included as part
@@ -144,7 +147,7 @@ inline uint64_t art_size(const art_tree *t) {
  * @return NULL if the item was newly inserted, otherwise
  * the old value pointer is returned.
  */
-bool art_insert(art_tree *t, const unsigned char *key, int key_len, void *value);
+bool art_insert(art_tree *t, const unsigned char *key, int key_len, ValueT value);
 
 /**
  * Deletes a value from the ART tree
@@ -164,7 +167,8 @@ void art_delete(art_tree *t, const unsigned char *key, int key_len);
  * @return NULL if the item was not found, otherwise
  * the value pointer is returned.
  */
-void* art_search(const art_tree *t, const unsigned char *key, int key_len);
+// ValueT art_search(const art_tree *t, const unsigned char *key, int key_len);
+void art_search(const art_tree *t, const unsigned char *key, int key_len, std::vector<ValueT> &rets);
 
 /**
  * Returns the minimum valued leaf

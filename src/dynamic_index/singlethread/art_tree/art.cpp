@@ -259,8 +259,10 @@ static int leaf_matches(const art_leaf *n, const unsigned char *key, int key_len
  * @return NULL if the item was not found, otherwise
  * the value pointer is returned.
  */
-void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
-    // std::cout << "search key = " << uint64_t(*key) << std::endl;
+void art_search(const art_tree *t, const unsigned char *key, int key_len, std::vector<ValueT> &rets) {
+
+// }
+// ValueT art_search(const art_tree *t, const unsigned char *key, int key_len) {
     art_node **child;
     art_node *n = t->root;
     int prefix_len, depth = 0;
@@ -268,24 +270,24 @@ void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
         // Might be a leaf
         if (IS_LEAF(n)) {
             n = (art_node*)LEAF_RAW(n);
+            art_leaf *l = (art_leaf*)n;
             // Check if the expanded path matches
-            if (!leaf_matches((art_leaf*)n, key, key_len, depth)) {
-                // printf("found child: %p\n", n);
-                // std::cout << ((art_leaf*)n)->key_len << " " << ((art_leaf*)n)->val_count << " " << ((art_leaf*)n)->val_capacity << std::endl;
-                // std::cout << "here!" << std::endl;
-                void *ret = nullptr;
-                memcpy(&ret, ((art_leaf*)n)->kvs+key_len, sizeof(void*));
-                // return (void*)(*(((art_leaf*)n)->kvs+key_len));
-                return ret;
+            if (!leaf_matches(l, key, key_len, depth)) {
+
+                for (size_t i = 0; i < l->val_count; ++i) {
+                    ValueT ret = *(ValueT*)(l->kvs+key_len+(i*sizeof(ValueT)));
+                    rets.push_back(ret);
+                }
             }
-            return NULL;
+            return;
         }
 
         // Bail if the prefix does not match
         if (n->partial_len) {
             prefix_len = check_prefix(n, key, key_len, depth);
-            if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len))
-                return NULL;
+            if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len)) {
+                return;
+            }
             depth = depth + n->partial_len;
         }
 
@@ -294,7 +296,7 @@ void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
         n = (child) ? *child : NULL;
         depth++;
     }
-    return NULL;
+    return;
 }
 
 // Find the minimum leaf under a node
@@ -363,25 +365,22 @@ art_leaf* art_maximum(art_tree *t) {
     return maximum((art_node*)t->root);
 }
 
-static art_leaf* make_leaf(const unsigned char *key, int key_len, void *value) {
-    art_leaf *l = (art_leaf*)calloc(1, sizeof(art_leaf)+key_len+sizeof(void*));
-    memset(l, 0, sizeof(art_leaf)+key_len+sizeof(void*));
+static art_leaf* make_leaf(const unsigned char *key, int key_len, ValueT value) {
+    art_leaf *l = (art_leaf*)calloc(1, sizeof(art_leaf)+key_len+sizeof(ValueT));
+    memset(l, 0, sizeof(art_leaf)+key_len+sizeof(ValueT));
     l->key_len = key_len;
     l->val_count = 1;
     l->val_capacity = 1;
     memcpy(l->kvs, key, key_len);
-    // std::cout << "key = " << uint64_t(*key) << std::endl;
-    // int64_t t = 0;
-    memcpy(l->kvs+key_len, &value, sizeof(void*));
-    // std::cout << "insert..." << (int64_t)(*(l->kvs+key_len)) << std::endl;
-    // (void*)(l->kvs+key_len) = value;
+    memcpy(l->kvs+key_len, &value, sizeof(ValueT));
+
     return l;
 }
 
 static art_leaf* copy_leaf(art_leaf* leaf) {
     art_leaf *new_leaf = 
-        (art_leaf*)calloc(1, sizeof(art_leaf)+leaf->key_len+leaf->val_count*2*sizeof(void*));
-    memcpy(new_leaf, leaf, sizeof(art_leaf)+leaf->key_len+leaf->val_count*sizeof(void*));
+        (art_leaf*)calloc(1, sizeof(art_leaf)+leaf->key_len+leaf->val_count*2*sizeof(ValueT));
+    memcpy(new_leaf, leaf, sizeof(art_leaf)+leaf->key_len+leaf->val_count*sizeof(ValueT));
     new_leaf->val_capacity=leaf->val_count*2;
     return new_leaf;
 }
@@ -568,18 +567,13 @@ static int prefix_mismatch(const art_node *n, const unsigned char *key, int key_
     return idx;
 }
 
-static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *key, int key_len, void *value, int depth) {
+static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *key, int key_len, ValueT value, int depth) {
     // If we are at a NULL node, inject a leaf
     if (!n) {
-        // assert(value != nullptr);
         *ref = (art_node*)SET_LEAF(make_leaf(key, key_len, value));
         n = (art_node*)LEAF_RAW(*ref);
-        // printf("insert node: %p\n", n);
-        // std::cout << ((art_leaf*)n)->key_len << " " << ((art_leaf*)n)->val_count << " " << ((art_leaf*)n)->val_capacity << std::endl;
-        // std::cout << "here!" << std::endl;
         return true;
     }
-
     // If we are at a leaf, we need to replace it with a node
     if (IS_LEAF(n)) {
         art_leaf *l = LEAF_RAW(n);
@@ -589,23 +583,22 @@ static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *k
 
             // if there's still room for storing value in the leaf.
             if (l->val_capacity > l->val_count) {
-                memcpy(l->kvs+key_len+l->val_count*sizeof(void*), value, sizeof(void*));
+                memcpy(l->kvs+key_len+l->val_count*sizeof(ValueT), &value, sizeof(ValueT));
                 ++l->val_count;
             } 
             // otherwise, create a new leaf with doubled value capacity
             else {
                 art_leaf *new_l = copy_leaf(l);
                 // set ref to new leaf
-                *ref = (art_node*)new_l;
+                *ref = (art_node*)SET_LEAF(new_l);
                 // delete older leaf
                 free(l);
 
-                memcpy(new_l->kvs+key_len+new_l->val_count*sizeof(void*), value, sizeof(void*));
+                memcpy(new_l->kvs+key_len+new_l->val_count*sizeof(ValueT), &value, sizeof(ValueT));
                 ++new_l->val_count;
             }
             return false;
         }
-
         // New value, we must split the leaf into a node4
         art_node4 *new_node = (art_node4*)alloc_node(NODE4);
 
@@ -622,7 +615,6 @@ static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *k
         add_child4(new_node, ref, l2->kvs[depth+longest_prefix], SET_LEAF(l2));
         return true;
     }
-
     // Check if given node has a prefix
     if (n->partial_len) {
         // Determine if the prefixes differ, since we need to split
@@ -631,13 +623,11 @@ static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *k
             depth += n->partial_len;
             goto RECURSE_SEARCH;
         }
-
         // Create a new node
         art_node4 *new_node = (art_node4*)alloc_node(NODE4);
         *ref = (art_node*)new_node;
         new_node->n.partial_len = prefix_diff;
         memcpy(new_node->n.partial, n->partial, min(MAX_PREFIX_LEN, prefix_diff));
-
         // Adjust the prefix of the old node
         if (n->partial_len <= MAX_PREFIX_LEN) {
             add_child4(new_node, ref, n->partial[prefix_diff], n);
@@ -651,7 +641,6 @@ static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *k
             memcpy(n->partial, l->kvs+depth+prefix_diff+1,
                     min(MAX_PREFIX_LEN, n->partial_len));
         }
-
         // Insert the new leaf
         art_leaf *l = make_leaf(key, key_len, value);
         add_child4(new_node, ref, key[depth+prefix_diff], SET_LEAF(l));
@@ -659,7 +648,6 @@ static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *k
     }
 
 RECURSE_SEARCH:;
-
     // Find a child to recurse to
     art_node **child = find_child(n, key[depth]);
     if (child) {
@@ -680,7 +668,7 @@ RECURSE_SEARCH:;
  * @arg value Opaque value.
  * @return True if the item was newly inserted, otherwise return False.
  */
-bool art_insert(art_tree *t, const unsigned char *key, int key_len, void *value) {
+bool art_insert(art_tree *t, const unsigned char *key, int key_len, ValueT value) {
     bool is_new = recursive_insert(t->root, &t->root, key, key_len, value, 0);
     if (is_new == true) {
         t->size++;
@@ -851,11 +839,8 @@ void art_delete(art_tree *t, const unsigned char *key, int key_len) {
     art_leaf *l = recursive_delete(t->root, &t->root, key, key_len, 0);
     if (l) {
         t->size--;
-        // void *old = l->value;
         free(l);
-        // return old;
     }
-    // return NULL;
 }
 
 // // Recursively iterates over the tree

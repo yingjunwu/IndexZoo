@@ -20,12 +20,11 @@ public:
   }
 
   virtual void insert(const KeyT &key, const Uint64 &value) final {
-    art_insert(&container_, (unsigned char*)(&key), sizeof(KeyT), (void*)((std::uintptr_t)value));
+    art_insert(&container_, (unsigned char*)(&key), sizeof(KeyT), value);
   }
 
   virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
-    Uint64 data = (std::uintptr_t)art_search(&container_, (unsigned char*)(&key), sizeof(KeyT));
-    values.push_back(data);
+    art_search(&container_, (unsigned char*)(&key), sizeof(KeyT), values);
   }
 
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
