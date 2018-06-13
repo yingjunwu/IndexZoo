@@ -4,14 +4,15 @@
 
 #include "base_dynamic_index.h"
 #include "data_table.h"
+#include "utils.h"
 
 
 namespace dynamic_index {
 namespace multithread {
 
+
 template<typename KeyT, typename ValueT>
 class ArtTreeIndex : public BaseDynamicIndex<KeyT, ValueT> {
-
 
 static void load_key_internal(void *ctx, TID tid, art::Key &tree_key) {
 
@@ -24,7 +25,7 @@ static void load_key_internal(void *ctx, TID tid, art::Key &tree_key) {
   uint8_t *tree_key_data = &(tree_key[0]);
   memcpy(tree_key_data, key_ptr, sizeof(KeyT));
 
-  // reinterpret_cast<uint64_t *>(&tree_key[0])[0] = __builtin_bswap64(*key_ptr);
+  reinterpret_cast<KeyT*>(&tree_key[0])[0] = byte_swap<KeyT>(*key_ptr);
 }
 
 public:
@@ -53,7 +54,6 @@ public:
   }
 
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
-    
     art::Key start_key, end_key;
     load_key(lhs_key, start_key);
     load_key(rhs_key, end_key);
@@ -80,7 +80,6 @@ public:
       curr_key.setFrom(next_key);
     }
 
-
   }
 
   virtual void erase(const KeyT &key) final {
@@ -100,7 +99,7 @@ private:
     uint8_t *tree_key_data = &(tree_key[0]);
     memcpy(tree_key_data, &key, sizeof(KeyT));
 
-    // reinterpret_cast<uint64_t *>(&tree_key[0])[0] = __builtin_bswap64(key);
+    reinterpret_cast<KeyT*>(&tree_key[0])[0] = byte_swap<KeyT>(key);
 
   }
 

@@ -58,6 +58,16 @@ static void pin_to_core(const size_t core) {
   #endif
 }
 
+template<typename KeyT>
+static KeyT byte_swap(KeyT x);
+
+template<>
+uint64_t byte_swap(uint64_t x) { return __builtin_bswap64(x); }
+
+template<>
+uint32_t byte_swap(uint32_t x) { return __builtin_bswap32(x); }
+
+
 #define ASSERT(condition, string) \
   if ((!(condition))) { \
     std::cerr << "ASSERT @L" << __LINE__ << "/" << __FILE__ << ": " << string << std::endl; \
