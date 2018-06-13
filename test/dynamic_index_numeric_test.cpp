@@ -17,7 +17,7 @@ class DynamicIndexNumericTest : public IndexZooTest {};
 template<typename KeyT, typename ValueT>
 void test_dynamic_index_numeric_unique_key_find(const IndexType index_type) {
 
-  size_t n = 1;
+  size_t n = 10000;
 
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
@@ -34,8 +34,8 @@ void test_dynamic_index_numeric_unique_key_find(const IndexType index_type) {
   // insert
   for (size_t i = 0; i < n; ++i) {
 
-    // KeyT key = rand.next<KeyT>();
-    KeyT key = i;
+    KeyT key = rand.next<KeyT>();
+    // KeyT key = i;
     ValueT value = i + 2048;
     
     OffsetT offset = data_table->insert_tuple(key, value);

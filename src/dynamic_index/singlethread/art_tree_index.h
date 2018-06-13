@@ -25,7 +25,6 @@ public:
 
   virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
     Uint64 data = (std::uintptr_t)art_search(&container_, (unsigned char*)(&key), sizeof(KeyT));
-    std::cout << "find data: " << OffsetT(data) << std::endl;
     values.push_back(data);
   }
 

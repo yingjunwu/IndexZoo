@@ -260,7 +260,7 @@ static int leaf_matches(const art_leaf *n, const unsigned char *key, int key_len
  * the value pointer is returned.
  */
 void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
-    std::cout << "search key = " << uint64_t(*key) << std::endl;
+    // std::cout << "search key = " << uint64_t(*key) << std::endl;
     art_node **child;
     art_node *n = t->root;
     int prefix_len, depth = 0;
@@ -270,8 +270,13 @@ void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
             n = (art_node*)LEAF_RAW(n);
             // Check if the expanded path matches
             if (!leaf_matches((art_leaf*)n, key, key_len, depth)) {
-                std::cout << "here!" << std::endl;
-                return (void*)(((unsigned char*)(((art_leaf*)n)->kvs))+key_len);
+                // printf("found child: %p\n", n);
+                // std::cout << ((art_leaf*)n)->key_len << " " << ((art_leaf*)n)->val_count << " " << ((art_leaf*)n)->val_capacity << std::endl;
+                // std::cout << "here!" << std::endl;
+                void *ret = nullptr;
+                memcpy(&ret, ((art_leaf*)n)->kvs+key_len, sizeof(void*));
+                // return (void*)(*(((art_leaf*)n)->kvs+key_len));
+                return ret;
             }
             return NULL;
         }
@@ -365,9 +370,10 @@ static art_leaf* make_leaf(const unsigned char *key, int key_len, void *value) {
     l->val_count = 1;
     l->val_capacity = 1;
     memcpy(l->kvs, key, key_len);
-    std::cout << "key = " << uint64_t(*key) << std::endl;
+    // std::cout << "key = " << uint64_t(*key) << std::endl;
     // int64_t t = 0;
-    // memcpy(l->kvs+key_len, &t, sizeof(void*));
+    memcpy(l->kvs+key_len, &value, sizeof(void*));
+    // std::cout << "insert..." << (int64_t)(*(l->kvs+key_len)) << std::endl;
     // (void*)(l->kvs+key_len) = value;
     return l;
 }
@@ -567,6 +573,10 @@ static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *k
     if (!n) {
         // assert(value != nullptr);
         *ref = (art_node*)SET_LEAF(make_leaf(key, key_len, value));
+        n = (art_node*)LEAF_RAW(*ref);
+        // printf("insert node: %p\n", n);
+        // std::cout << ((art_leaf*)n)->key_len << " " << ((art_leaf*)n)->val_count << " " << ((art_leaf*)n)->val_capacity << std::endl;
+        // std::cout << "here!" << std::endl;
         return true;
     }
 
