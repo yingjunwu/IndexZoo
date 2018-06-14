@@ -228,7 +228,7 @@ static inline int min(int a, int b) {
  * Returns the number of prefix characters shared between
  * the key and node.
  */
-static int check_prefix(const art_node *n, const unsigned char *key, int key_len, int depth) {
+static int node_prefix_matches(const art_node *n, const unsigned char *key, int key_len, int depth) {
     int max_cmp = min(min(n->partial_len, MAX_PREFIX_LEN), key_len - depth);
     int idx;
     for (idx=0; idx < max_cmp; idx++) {
@@ -242,8 +242,8 @@ static int check_prefix(const art_node *n, const unsigned char *key, int key_len
  * Checks if a leaf matches
  * @return 0 on success.
  */
-static int leaf_matches(const art_leaf *n, const unsigned char *key, int key_len, int depth) {
-    (void)depth;
+static int leaf_matches(const art_leaf *n, const unsigned char *key, int key_len) {
+    // (void)depth;
     // Fail if the key lengths are different
     if (n->key_len != (uint32_t)key_len) return 1;
 
@@ -268,28 +268,36 @@ void art_search(const art_tree *t, const unsigned char *key, int key_len, std::v
             n = (art_node*)LEAF_RAW(n);
             art_leaf *l = (art_leaf*)n;
             // Check if the expanded path matches
-            if (!leaf_matches(l, key, key_len, depth)) {
+            if (!leaf_matches(l, key, key_len)) {
 
                 for (size_t i = 0; i < l->val_count; ++i) {
                     ValueT ret = *(ValueT*)(l->kvs+key_len+(i*sizeof(ValueT)));
                     rets.push_back(ret);
                 }
+            } else {
+                std::cout << "key_len = " << key_len << " " << depth << std::endl;
+                std::cout << "line 278" << std::endl;
             }
             return;
         }
 
         // Bail if the prefix does not match
         if (n->partial_len) {
-            prefix_len = check_prefix(n, key, key_len, depth);
+            prefix_len = node_prefix_matches(n, key, key_len, depth);
             std::cout << "prefix length = " << prefix_len << std::endl;
             if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len)) {
+                std::cout << "return..." << std::endl;
                 return;
             }
+            std::cout << "before: depth = " << depth << std::endl;
+            std::cout << "partial len = " << n->partial_len << std::endl;
             depth = depth + n->partial_len;
+            std::cout << "after: depth = " << depth << std::endl;
         }
 
         // Recursively search
         child = find_child(n, key[depth]);
+        std::cout << "key[depth]= " << key[depth] << std::endl;
         n = (child) ? *child : NULL;
         depth++;
     }
@@ -544,7 +552,7 @@ static void add_child(art_node *n, art_node **ref, unsigned char c, void *child)
 /**
  * Calculates the index at which the prefixes mismatch
  */
-static int prefix_mismatch(const art_node *n, const unsigned char *key, int key_len, int depth) {
+static int node_matches(const art_node *n, const unsigned char *key, int key_len, int depth) {
     int max_cmp = min(min(MAX_PREFIX_LEN, n->partial_len), key_len - depth);
     int idx;
     for (idx=0; idx < max_cmp; idx++) {
@@ -577,7 +585,7 @@ static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *k
         art_leaf *l = LEAF_RAW(n);
 
         // Check if we are updating an existing value
-        if (!leaf_matches(l, key, key_len, depth)) {
+        if (!leaf_matches(l, key, key_len)) {
 
             // if there's still room for storing value in the leaf.
             if (l->val_capacity > l->val_count) {
@@ -606,6 +614,7 @@ static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *k
         // Determine longest prefix
         int longest_prefix = longest_common_prefix(l, l2, depth);
         new_node->n.partial_len = longest_prefix;
+        std::cout << "partial len = " << new_node->n.partial_len << std::endl;
         memcpy(new_node->n.partial, key+depth, min(MAX_PREFIX_LEN, longest_prefix));
         // Add the leafs to the new node4
         *ref = (art_node*)new_node;
@@ -616,7 +625,7 @@ static bool recursive_insert(art_node *n, art_node **ref, const unsigned char *k
     // Check if given node has a prefix
     if (n->partial_len) {
         // Determine if the prefixes differ, since we need to split
-        int prefix_diff = prefix_mismatch(n, key, key_len, depth);
+        int prefix_diff = node_matches(n, key, key_len, depth);
         if ((uint32_t)prefix_diff >= n->partial_len) {
             depth += n->partial_len;
             goto RECURSE_SEARCH;
@@ -790,7 +799,7 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
     // Handle hitting a leaf node
     if (IS_LEAF(n)) {
         art_leaf *l = LEAF_RAW(n);
-        if (!leaf_matches(l, key, key_len, depth)) {
+        if (!leaf_matches(l, key, key_len)) {
             *ref = NULL;
             return l;
         }
@@ -799,7 +808,7 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
 
     // Bail if the prefix does not match
     if (n->partial_len) {
-        int prefix_len = check_prefix(n, key, key_len, depth);
+        int prefix_len = node_prefix_matches(n, key, key_len, depth);
         if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len)) {
             return NULL;
         }
@@ -813,7 +822,7 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
     // If the child is leaf, delete from this node
     if (IS_LEAF(*child)) {
         art_leaf *l = LEAF_RAW(*child);
-        if (!leaf_matches(l, key, key_len, depth)) {
+        if (!leaf_matches(l, key, key_len)) {
             remove_child(n, ref, key[depth], child);
             return l;
         }
@@ -841,18 +850,6 @@ void art_delete(art_tree *t, const unsigned char *key, int key_len) {
     }
 }
 
-/**
- * Checks if a leaf prefix matches
- * @return 0 on success.
- */
-static int leaf_prefix_matches(const art_leaf *n, const unsigned char *prefix, int prefix_len) {
-    // Fail if the key length is too short
-    if (n->key_len < (uint32_t)prefix_len) return 1;
-
-    // Compare the keys
-    return memcmp(n->kvs, prefix, prefix_len);
-}
-
 // Retrieve all the leaves given a node
 static void recursive_scan(art_node *n, std::vector<ValueT> &rets) {
     // Handle base cases
@@ -865,7 +862,6 @@ static void recursive_scan(art_node *n, std::vector<ValueT> &rets) {
             rets.push_back(ret);
         }
         return;
-        // return cb(data, (const unsigned char*)l->kvs, l->key_len, *(ValueT*)(l->kvs+l->key_len));
     }
 
     int idx, res;
@@ -873,14 +869,12 @@ static void recursive_scan(art_node *n, std::vector<ValueT> &rets) {
         case NODE4:
             for (int i=0; i < n->num_children; i++) {
                 recursive_scan(((art_node4*)n)->children[i], rets);
-                // if (res) return res;
             }
             break;
 
         case NODE16:
             for (int i=0; i < n->num_children; i++) {
                 recursive_scan(((art_node16*)n)->children[i], rets);
-                // if (res) return res;
             }
             break;
 
@@ -890,7 +884,6 @@ static void recursive_scan(art_node *n, std::vector<ValueT> &rets) {
                 if (!idx) continue;
 
                 recursive_scan(((art_node48*)n)->children[idx-1], rets);
-                // if (res) return res;
             }
             break;
 
@@ -899,7 +892,6 @@ static void recursive_scan(art_node *n, std::vector<ValueT> &rets) {
                 if (!((art_node256*)n)->children[i]) continue;
 
                 recursive_scan(((art_node256*)n)->children[i], rets);
-                // if (res) return res;
             }
             break;
 
@@ -929,49 +921,73 @@ void art_scan(art_tree *t, std::vector<ValueT> &rets) {
  */
 void art_range_scan(const art_tree *t, const unsigned char *lhs_key, int lhs_key_len, const unsigned char *rhs_key, int rhs_key_len, std::vector<ValueT> &rets) {
 
-    int prefix_len = 0;
-    for (; prefix_len < std::min(lhs_key_len, rhs_key_len); ++prefix_len) {
-        if (lhs_key[prefix_len] > rhs_key[prefix_len]) {
+    // compute common prefix between lhs_key and rhs_key
+    int prefix_key_len = 0;
+    for (; prefix_key_len < std::min(lhs_key_len, rhs_key_len); ++prefix_key_len) {
+        if (lhs_key[prefix_key_len] > rhs_key[prefix_key_len]) {
             return;
-        } else if (lhs_key[prefix_len] < rhs_key[prefix_len]) {
+        } else if (lhs_key[prefix_key_len] < rhs_key[prefix_key_len]) {
             break;
         }
     }
 
-    // art_node **child;
-    // art_node *n = t->root;
-    // int depth = 0;
-    // while (n) {
-    //     // if it is a leaf
-    //     if (IS_LEAF(n)) {
-    //         n = (art_node*)LEAF_RAW(n);
-    //         art_leaf *l = (art_leaf*)n;
-    //         // check if the expanded path matches
-    //         if (!leaf_prefix_matches(l, lhs_key, prefix_len)) {
-    //             // if matches the prefix, then include this leaf only
-    //             // if prefix_len == lhs_key_len == rhs_key_len
-    //             if (prefix_len == lhs_key_len && prefix_len == rhs_key_len) {
+    art_node *n = t->root;
+    int depth = 0;
+    while (n) {
+        // if it is a leaf
+        if (IS_LEAF(n)) {
+            n = (art_node*)LEAF_RAW(n);
+            art_leaf *l = (art_leaf*)n;
+            // check if the expanded path matches
+            if (!leaf_matches(l, lhs_key, prefix_key_len)) {
+                // if matches the prefix, 
+                // then include this leaf only if prefix_len is equal to lhs_key_len or rhs_key_len
+                if (prefix_key_len == lhs_key_len || prefix_key_len == rhs_key_len) {
 
-    //                 for (size_t i = 0 i < l->val_count; ++i) {
-    //                     ValueT ret = *(ValueT*)(l->kvs+key_len+(i*sizeof(ValueT)));
-    //                     rets.push_back(ret);
-    //                 }
-    //             }
-    //             return;
-    //         }
-    //     }
+                    for (size_t i = 0; i < l->val_count; ++i) {
+                        ValueT ret = *(ValueT*)(l->kvs+l->key_len+(i*sizeof(ValueT)));
+                        rets.push_back(ret);
+                    }
+                }
+                return;
+            }
+        }
 
-    //     if (n->partial_len) {
+        // if nothing to match, then break.
+        if (depth == prefix_key_len) {
+            break;
+        }
 
-    //     }
+        // if the node has prefix
+        if (n->partial_len) {
+            int prefix_len = node_matches(n, lhs_key, prefix_key_len, depth);
+            // shorten the prefix_len in case partial_len is larger than MAX_PREFIX_LEN
+            if (prefix_len > n->partial_len) {
+                prefix_len = n->partial_len;
+            }
 
-    //     // recursive search
-    //     child = find_child(n, key[depth]);
+            if (prefix_len + depth == prefix_key_len) {
+                break;
+            } else if (prefix_len == n->partial_len) {
+                depth = depth + n->partial_len;
+            } else {
+                return;
+            }
+        }
 
+        // recursive search
+        art_node **child = find_child(n, lhs_key[depth]);
+        
+        if (child == nullptr) {
+            break;
+        }
+        n = *child;
+        depth++;
+    }
 
-    // }
+    if (n == nullptr) { return; }
 
-    // return;
+    recursive_scan(n, rets);
 }
 
 
@@ -1060,7 +1076,7 @@ int art_iter_prefix(art_tree *t, const unsigned char *key, int key_len, art_call
         if (IS_LEAF(n)) {
             n = (art_node*)LEAF_RAW(n);
             // Check if the expanded path matches
-            if (!leaf_prefix_matches((art_leaf*)n, key, key_len)) {
+            if (!leaf_matches((art_leaf*)n, key, key_len)) {
                 art_leaf *l = (art_leaf*)n;
                 return cb(data, (const unsigned char*)l->kvs, l->key_len, *(ValueT*)(l->kvs+l->key_len));
             }
@@ -1070,14 +1086,14 @@ int art_iter_prefix(art_tree *t, const unsigned char *key, int key_len, art_call
         // If the depth matches the prefix, we need to handle this node
         if (depth == key_len) {
             art_leaf *l = minimum(n);
-            if (!leaf_prefix_matches(l, key, key_len))
+            if (!leaf_matches(l, key, key_len))
                return recursive_iter(n, cb, data);
             return 0;
         }
 
         // Bail if the prefix does not match
         if (n->partial_len) {
-            prefix_len = prefix_mismatch(n, key, key_len, depth);
+            prefix_len = node_matches(n, key, key_len, depth);
 
             // Guard if the mis-match is longer than the MAX_PREFIX_LEN
             if ((uint32_t)prefix_len > n->partial_len) {
