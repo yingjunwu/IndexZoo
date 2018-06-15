@@ -195,6 +195,7 @@ void test_dynamic_index_numeric_unique_key_find_range(const IndexType index_type
   for (size_t i = 0; i < n; ++i) {
 
     KeyT key = rand.next<KeyT>();
+    // KeyT key = i;
     ValueT value = i + 2048;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -247,7 +248,7 @@ TEST_F(DynamicIndexNumericTest, UniqueKeyFindRangeTest) {
     // IndexType::D_MT_Libcuckoo, // do not support range queries
     // IndexType::D_MT_ArtTree,
     IndexType::D_MT_BwTree,
-    // IndexType::D_MT_Masstree,
+    // IndexType::D_MT_Masstree, // do not support range queries
   };
 
   for (auto index_type : index_types) {
@@ -339,7 +340,7 @@ TEST_F(DynamicIndexNumericTest, NonUniqueKeyFindRangeTest) {
     
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
-    // IndexType::D_MT_ArtTree,
+    IndexType::D_MT_ArtTree,
     IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree, // do not support non-unique keys
   };

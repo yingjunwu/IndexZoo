@@ -174,7 +174,7 @@ void art_search(const art_tree *t, const unsigned char *key, int key_len, std::v
  * @arg rhs_key_len The length of the right-hand-side key
  * @arg rets The vector of matched results
  */
-void art_range_search(const art_tree *t, const unsigned char *lhs_key, int lhs_key_len, const unsigned char *rhs_key, int rhs_key_len, std::vector<ValueT> &rets);
+void art_range_scan(const art_tree *t, const unsigned char *lhs_key, int lhs_key_len, const unsigned char *rhs_key, int rhs_key_len, std::vector<ValueT> &rets);
 
 /**
  * Returns the minimum valued leaf

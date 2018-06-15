@@ -30,9 +30,9 @@ extern "C" {
 # endif
 #endif
 
-typedef uint64_t ValueT;
+typedef uint64_t ValT;
 
-typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, ValueT value);
+typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, ValT value);
 
 /**
  * This struct is included as part
@@ -144,18 +144,15 @@ inline uint64_t art_size(const art_tree *t) {
  * @arg key The key
  * @arg key_len The length of the key
  * @arg value Opaque value.
- * @return NULL if the item was newly inserted, otherwise
- * the old value pointer is returned.
+ * @return True if the item was newly inserted, otherwise return False.
  */
-bool art_insert(art_tree *t, const unsigned char *key, int key_len, ValueT value);
+bool art_insert(art_tree *t, const unsigned char *key, int key_len, ValT value);
 
 /**
  * Deletes a value from the ART tree
  * @arg t The tree
  * @arg key The key
  * @arg key_len The length of the key
- * @return NULL if the item was not found, otherwise
- * the value pointer is returned.
  */
 void art_delete(art_tree *t, const unsigned char *key, int key_len);
 
@@ -164,11 +161,20 @@ void art_delete(art_tree *t, const unsigned char *key, int key_len);
  * @arg t The tree
  * @arg key The key
  * @arg key_len The length of the key
- * @return NULL if the item was not found, otherwise
- * the value pointer is returned.
+ * @arg rets The vector of matched results
  */
-// ValueT art_search(const art_tree *t, const unsigned char *key, int key_len);
-void art_search(const art_tree *t, const unsigned char *key, int key_len, std::vector<ValueT> &rets);
+void art_search(const art_tree *t, const unsigned char *key, int key_len, std::vector<ValT> &rets);
+
+/**
+ * Searches for a value in the ART tree
+ * @arg t The tree
+ * @arg lhs_key The left-hand-side key
+ * @arg lhs_key_len The length of the left-hand-side key
+ * @arg rhs_key The right-hand-side key
+ * @arg rhs_key_len The length of the right-hand-side key
+ * @arg rets The vector of matched results
+ */
+void art_range_scan(const art_tree *t, const unsigned char *lhs_key, int lhs_key_len, const unsigned char *rhs_key, int rhs_key_len, std::vector<ValT> &rets);
 
 /**
  * Returns the minimum valued leaf
@@ -181,6 +187,13 @@ art_leaf* art_minimum(art_tree *t);
  * @return The maximum leaf or NULL
  */
 art_leaf* art_maximum(art_tree *t);
+
+/**
+ * Iterates through the entire tree.
+ * @arg t The tree to iterate over
+ * @arg rets The vector that holds all the results
+ */
+void art_scan(art_tree *t, std::vector<ValT> &rets);
 
 /**
  * Iterates through the entries pairs in the map,

@@ -281,7 +281,6 @@ void art_search(const art_tree *t, const unsigned char *key, int key_len, std::v
         // Bail if the prefix does not match
         if (n->partial_len) {
             prefix_len = check_prefix(n, key, key_len, depth);
-            std::cout << "prefix length = " << prefix_len << std::endl;
             if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len)) {
                 return;
             }
