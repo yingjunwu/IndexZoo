@@ -30,9 +30,9 @@ extern "C" {
 # endif
 #endif
 
-typedef uint64_t ValT;
+typedef uint64_t ValueT;
 
-typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, ValT value);
+typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, ValueT value);
 
 /**
  * This struct is included as part
@@ -146,7 +146,7 @@ inline uint64_t art_size(const art_tree *t) {
  * @arg value Opaque value.
  * @return True if the item was newly inserted, otherwise return False.
  */
-bool art_insert(art_tree *t, const unsigned char *key, int key_len, ValT value);
+bool art_insert(art_tree *t, const unsigned char *key, int key_len, ValueT value);
 
 /**
  * Deletes a value from the ART tree
@@ -163,7 +163,7 @@ void art_delete(art_tree *t, const unsigned char *key, int key_len);
  * @arg key_len The length of the key
  * @arg rets The vector of matched results
  */
-void art_search(const art_tree *t, const unsigned char *key, int key_len, std::vector<ValT> &rets);
+void art_search(const art_tree *t, const unsigned char *key, int key_len, std::vector<ValueT> &rets);
 
 /**
  * Searches for a value in the ART tree
@@ -174,7 +174,7 @@ void art_search(const art_tree *t, const unsigned char *key, int key_len, std::v
  * @arg rhs_key_len The length of the right-hand-side key
  * @arg rets The vector of matched results
  */
-void art_range_scan(const art_tree *t, const unsigned char *lhs_key, int lhs_key_len, const unsigned char *rhs_key, int rhs_key_len, std::vector<ValT> &rets);
+void art_range_scan(const art_tree *t, const unsigned char *lhs_key, int lhs_key_len, const unsigned char *rhs_key, int rhs_key_len, std::vector<ValueT> &rets);
 
 /**
  * Returns the minimum valued leaf
@@ -193,7 +193,7 @@ art_leaf* art_maximum(art_tree *t);
  * @arg t The tree to iterate over
  * @arg rets The vector that holds all the results
  */
-void art_scan(art_tree *t, std::vector<ValT> &rets);
+void art_scan(art_tree *t, std::vector<ValueT> &rets);
 
 /**
  * Iterates through the entries pairs in the map,
