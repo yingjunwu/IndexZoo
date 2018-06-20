@@ -35,6 +35,10 @@ public:
     art_range_scan(&container_, (unsigned char*)(&bs_lhs_key), sizeof(KeyT), (unsigned char*)(&bs_rhs_key), sizeof(KeyT), values);
   }
 
+  virtual void scan_full(std::vector<Uint64> &values, const size_t count) final {
+    art_scan_limit(&container_, values, count);
+  }
+
   virtual void erase(const KeyT &key) final {
     // container_.erase(key);
   }

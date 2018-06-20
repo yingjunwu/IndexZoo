@@ -900,6 +900,74 @@ void art_scan(art_tree *t, std::vector<ValueT> &rets) {
     recursive_scan(t->root, rets);
 }
 
+// Retrieve all the leaves given a node
+static void recursive_scan_limit(art_node *n, std::vector<ValueT> &rets, const size_t count) {
+    // Handle base cases
+    if (!n) return;
+    if (IS_LEAF(n)) {
+        art_leaf *l = LEAF_RAW(n);
+
+        for (size_t i = 0; i < l->val_count; ++i) {
+            ValueT ret = *(ValueT*)(l->kvs+l->key_len+(i*sizeof(ValueT)));
+            if (rets.size() < count) {
+                rets.push_back(ret);
+            } else {
+                return;
+            }
+        }
+        return;
+    }
+
+    int idx, res;
+    switch (n->type) {
+        case NODE4:
+            for (int i=0; i < n->num_children; i++) {
+                recursive_scan_limit(((art_node4*)n)->children[i], rets, count);
+                if (rets.size() >= count) { return; }
+            }
+            break;
+
+        case NODE16:
+            for (int i=0; i < n->num_children; i++) {
+                recursive_scan_limit(((art_node16*)n)->children[i], rets, count);
+                if (rets.size() >= count) { return; }
+            }
+            break;
+
+        case NODE48:
+            for (int i=0; i < 256; i++) {
+                idx = ((art_node48*)n)->keys[i];
+                if (!idx) continue;
+
+                recursive_scan_limit(((art_node48*)n)->children[idx-1], rets, count);
+                if (rets.size() >= count) { return; }
+            }
+            break;
+
+        case NODE256:
+            for (int i=0; i < 256; i++) {
+                if (!((art_node256*)n)->children[i]) continue;
+
+                recursive_scan_limit(((art_node256*)n)->children[i], rets, count);
+                if (rets.size() >= count) { return; }
+            }
+            break;
+
+        default:
+            abort();
+    }
+    return;
+}
+
+/**
+ * Scan the entire tree.
+ * @arg t The tree to iterate over
+ * @arg rets The vector that holds all the results
+ */
+void art_scan_limit(art_tree *t, std::vector<ValueT> &rets, const size_t count) {
+    recursive_scan_limit(t->root, rets, count);
+}
+
 /**
  * Searches for a value in the ART tree
  * @arg t The tree

@@ -5,12 +5,12 @@
 #include <string>
 #include <vector>
 #include <stdint.h>
-#ifndef ART_H
-#define ART_H
+// #ifndef ART_H
+// #define ART_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// #ifdef __cplusplus
+// extern "C" {
+// #endif
 
 #define NODE4   1
 #define NODE16  2
@@ -195,6 +195,8 @@ art_leaf* art_maximum(art_tree *t);
  */
 void art_scan(art_tree *t, std::vector<ValueT> &rets);
 
+void art_scan_limit(art_tree *t, std::vector<ValueT> &rets, const size_t count);
+
 /**
  * Iterates through the entries pairs in the map,
  * invoking a callback for each. The call back gets a
@@ -221,8 +223,8 @@ int art_iter(art_tree *t, art_callback cb, void *data);
  */
 int art_iter_prefix(art_tree *t, const unsigned char *prefix, int prefix_len, art_callback cb, void *data);
 
-#ifdef __cplusplus
-}
-#endif
+// #ifdef __cplusplus
+// }
+// #endif
 
-#endif
+// #endif

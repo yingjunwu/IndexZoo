@@ -36,6 +36,9 @@ public:
       if (this->container_[i].key_ == key) {
         values.push_back(this->container_[i].value_);
       }
+      if (this->container_[i].key_ > key) {
+        return;
+      }
     }
   }
 
@@ -44,6 +47,16 @@ public:
       if (this->container_[i].key_ == key) {
         values.push_back(this->container_[i].value_);
       }
+      if (this->container_[i].key_ < key) {
+        return;
+      }
+    }
+  }
+
+  virtual void scan_full(std::vector<Uint64> &values, const size_t count) final {
+    size_t bound = std::min(count, this->size_);
+    for (size_t i = 0; i < bound; ++i) {
+      values.push_back(this->container_[i].value_);
     }
   }
   
