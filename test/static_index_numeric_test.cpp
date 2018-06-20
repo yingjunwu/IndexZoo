@@ -367,6 +367,63 @@ TEST_F(StaticIndexNumericTest, NonUniqueKeyFindRangeTest) {
 }
 
 
+template<typename KeyT, typename ValueT>
+void test_static_index_numeric_scan(const IndexType index_type, const size_t index_param_1, const size_t index_param_2) {
+
+  size_t n = 10000;
+
+  std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
+    new DataTable<KeyT, ValueT>());
+  std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
+    create_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
+
+  std::map<KeyT, std::pair<Uint64, ValueT>> validation_set;
+
+  FastRandom rand;
+  // insert
+  for (size_t i = 0; i < n; ++i) {
+
+    KeyT key = rand.next<KeyT>();
+    // KeyT key = i;
+    ValueT value = i + 2048;
+    
+    OffsetT offset = data_table->insert_tuple(key, value);
+    
+    validation_set.insert(
+      std::pair<KeyT, std::pair<Uint64, ValueT>>(
+        key, std::pair<Uint64, ValueT>(offset.raw_data(), value)));
+  }
+
+  // reorganize data
+  data_index->reorganize();
+  
+  // find
+  for (size_t i = 1; i < n; i += 1000) {
+
+    std::vector<Uint64> offsets;
+    data_index->scan_full(offsets, i);
+
+    EXPECT_EQ(offsets.size(), i);
+
+    // int count = 0;
+    // for (auto iter = validation_set.begin(); iter != validation_set.end(); ++iter) {
+    //   if (count >= offsets.size()) {
+    //     break;
+    //   }
+    //   EXPECT_EQ(offsets.at(count), iter->second.first);
+    //   ++count;
+    // }
+  }
+}
+
+
+TEST_F(StaticIndexNumericTest, ScanTest) {
+
+  IndexType index_type = IndexType::S_Interpolation;
+  size_t segments = 10;
+  test_static_index_numeric_scan<uint32_t, uint64_t>(index_type, segments, INVALID_INDEX_PARAM);
+}
+
 
 
 

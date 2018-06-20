@@ -359,6 +359,67 @@ TEST_F(DynamicIndexNumericTest, NonUniqueKeyFindRangeTest) {
 }
 
 
+template<typename KeyT, typename ValueT>
+void test_dynamic_index_numeric_scan(const IndexType index_type) {
+
+  size_t n = 10000;
+
+  std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
+    new DataTable<KeyT, ValueT>());
+  std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
+    create_index<KeyT, ValueT>(index_type, data_table.get()));
+
+  data_index->prepare_threads(1);
+  data_index->register_thread(0);
+
+  std::map<KeyT, std::pair<Uint64, ValueT>> validation_set;
+
+  FastRandom rand;
+  // insert
+  for (size_t i = 0; i < n; ++i) {
+
+    KeyT key = rand.next<KeyT>();
+    // KeyT key = i;
+    ValueT value = i + 2048;
+    
+    OffsetT offset = data_table->insert_tuple(key, value);
+    
+    validation_set.insert(
+      std::pair<KeyT, std::pair<Uint64, ValueT>>(
+        key, std::pair<Uint64, ValueT>(offset.raw_data(), value)));
+
+    data_index->insert(key, offset.raw_data());
+  }
+  
+  // find
+  for (size_t i = 1; i < n; i += 1000) {
+
+    std::vector<Uint64> offsets;
+    data_index->scan_full(offsets, i);
+
+    EXPECT_EQ(offsets.size(), i);
+
+    int count = 0;
+    for (auto iter = validation_set.begin(); iter != validation_set.end(); ++iter) {
+      if (count >= offsets.size()) {
+        break;
+      }
+      EXPECT_EQ(offsets.at(count), iter->second.first);
+      ++count;
+    }
+  }
+}
 
 
+TEST_F(DynamicIndexNumericTest, ScanTest) {
+
+  std::vector<IndexType> index_types {
+    IndexType::D_ST_StxBtree,
+    IndexType::D_ST_ArtTree,
+  };
+
+  for (auto index_type : index_types) {
+    test_dynamic_index_numeric_scan<uint32_t, uint64_t>(index_type);
+  }
+}
 
