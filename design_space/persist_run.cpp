@@ -1,6 +1,5 @@
-#include <iostream>
-
-#include "persist_btree.h"
+#include "base_run.h"
+#include "synopsis_run.h"
 #include "time_measurer.h"
 
 
@@ -9,24 +8,24 @@ int main() {
   TimeMeasurer timer;
 
   Storage storage;
-  PersistVector<uint64_t> vec(&storage);
+  SynopsisRun<uint64_t> run(&storage);
   for (size_t i = 1000; i > 0; --i) {
-    vec.insert(i, i + 1024);
+    run.insert(i, i + 1024);
   }
 
-  vec.persist();
+  run.persist();
 
-  vec.print();
+  run.print();
 
-  vec.cache();
+  run.cache();
 
-  vec.print();
+  run.print();
 
   std::vector<uint64_t> values;
 
   timer.tic();
 
-  vec.find(599, values);
+  run.find(599, values);
 
   timer.toc();
 
