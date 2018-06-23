@@ -2,11 +2,13 @@
 #include <cstring>
 #include <cstdlib>
 #include <vector>
+#include <unordered_map>
 #include <algorithm>
 #include <cassert>
 #include <unistd.h>
 
-const size_t BLOCK_SIZE = 64 * 1024 * 1024;
+// const size_t BLOCK_SIZE = 64 * 1024 * 1024;
+const size_t BLOCK_SIZE = 4 * 1024;
 
 class Storage {
 public:
@@ -45,6 +47,7 @@ template<typename KeyT>
 class PersistVector {
 
 typedef std::pair<KeyT, uint64_t> KVPair;
+typedef std::pair<KeyT, KeyT> BoundPair;
 
 static bool compare_func(KVPair &lhs, KVPair &rhs) {
   return lhs.first < rhs.first;
@@ -67,10 +70,18 @@ public:
 
   // sort in-memory vector, persist to disk, and clean it up.
   void persist() {
+
+    if (container_.size() == 0) {
+      return;
+    }
+
     std::sort(container_.begin(), container_.end(), compare_func);
+
+    KeyT lower_bound, upper_bound;
 
     uint64_t curr_pos = sizeof(uint64_t);
 
+    bool is_init = true;
 
     for (auto entry : container_) {
 
@@ -80,20 +91,32 @@ public:
         
         size_t block_id = storage_->write_block(block_);
         block_ids_.push_back(block_id);
+        assert(block_bounds_.find(block_id) == block_bounds_.end());
+        block_bounds_[block_id] = BoundPair(lower_bound, upper_bound);
 
         curr_pos = sizeof(uint64_t);
+        is_init = true;
+      }
+
+      if (is_init == true) {
+        lower_bound = entry.first;
+        is_init = false;
       }
 
       memcpy(block_ + curr_pos, &(entry.first), sizeof(KeyT));
       curr_pos += sizeof(KeyT);
       memcpy(block_ + curr_pos, &(entry.second), sizeof(uint64_t));
       curr_pos += sizeof(uint64_t);
+
+      upper_bound = entry.first;
     }
 
     memcpy(block_, &curr_pos, sizeof(uint64_t));
 
     size_t block_id = storage_->write_block(block_);
     block_ids_.push_back(block_id);
+    assert(block_bounds_.find(block_id) == block_bounds_.end());
+    block_bounds_[block_id] = BoundPair(lower_bound, upper_bound);
     
     container_.clear();
     is_persisted_ = true;
@@ -161,6 +184,50 @@ public:
     }
   }
 
+  void find1(const KeyT key, std::vector<uint64_t> &values) {
+    for (auto block_id : block_ids_) {
+      assert(block_bounds_.find(block_id) != block_bounds_.end());
+      BoundPair bounds = block_bounds_.at(block_id);
+      if (key < bounds.first) {
+        return;
+      }
+      if (key > bounds.second) {
+        continue;
+      }
+      
+      // find tuple in block
+
+      storage_->read_block(block_id, block_);
+
+      // read block
+      uint64_t max_pos = 0;
+      memcpy(&max_pos, block_, sizeof(uint64_t));
+      uint64_t curr_pos = sizeof(uint64_t);
+      
+
+      while (curr_pos != max_pos) {
+        assert(curr_pos < max_pos);
+
+        KeyT load_key;
+        uint64_t load_value;
+
+        memcpy(&load_key, block_ + curr_pos, sizeof(KeyT));
+        curr_pos += sizeof(KeyT);
+        memcpy(&load_value, block_ + curr_pos, sizeof(uint64_t));
+        curr_pos += sizeof(uint64_t);
+
+        if (load_key > key) {
+          return;
+        }
+
+        if (load_key == key) {
+          values.push_back(load_value);
+        }
+      }      
+
+    }
+  }
+
   void print() const {
     std::cout << "=================" << std::endl;
     std::cout << "is persisted: " << (is_persisted_ ? "true" : "false") << std::endl;
@@ -172,6 +239,10 @@ public:
       std::cout << container_.at(i).first << " " << container_.at(i).second << std::endl;
     }
 
+    for (auto entry : block_bounds_) {
+      std::cout << entry.first << " -> " << "(" << entry.second.first << " " << entry.second.second << ")" << std::endl;
+    }
+
     std::cout << "=================" << std::endl;
   }
   
@@ -181,6 +252,16 @@ private:
   Storage *storage_;
   char *block_; // buffer for holding to-be-persisted data
   std::vector<size_t> block_ids_;
+
+  std::unordered_map<size_t, std::pair<KeyT, KeyT>> block_bounds_;
+
   bool is_persisted_;
 };
+
+
+
+
+
+
+
 
