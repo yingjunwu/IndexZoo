@@ -18,8 +18,8 @@ static bool compare_func(KVPair &lhs, KVPair &rhs) {
 }
 
 public:
-  BaseRun(Storage *storage) : 
-    storage_(storage), 
+  BaseRun(const size_t run_id) : 
+    storage_("run" + std::to_string(run_id)), 
     block_(new char[BLOCK_SIZE]),
     is_persisted_(false) {}
 
@@ -32,11 +32,54 @@ public:
     container_.push_back(KVPair(key, value));
   }
 
+  void merge(BaseRun *lhs_run, BaseRun *rhs_run) {
+    assert(is_persisted_ == false);
+
+    std::vector<KVPair> lhs_container;
+    std::vector<KVPair> rhs_container;
+
+    lhs_run->cache(lhs_container);
+    rhs_run->cache(rhs_container);
+
+    container_.resize(lhs_container.size() + rhs_container.size());
+
+    std::merge(lhs_container.begin(), lhs_container.end(), rhs_container.begin(), rhs_container.end(), container_.begin());
+
+    persist();
+  }
+
+  void cache(std::vector<KVPair> &container) {
+    for (auto block_id : block_ids_) {
+
+      storage_.read_block(block_id, block_);
+
+      // read block
+      uint64_t max_pos = 0;
+      memcpy(&max_pos, block_, sizeof(uint64_t));
+      uint64_t curr_pos = sizeof(uint64_t);
+      
+      while (curr_pos != max_pos) {
+        assert(curr_pos < max_pos);
+
+        KeyT key;
+        uint64_t value;
+
+        memcpy(&key, block_ + curr_pos, sizeof(KeyT));
+        curr_pos += sizeof(KeyT);
+        memcpy(&value, block_ + curr_pos, sizeof(uint64_t));
+        curr_pos += sizeof(uint64_t);
+
+        container.push_back(KVPair(key, value));
+      }
+
+    }
+  }
+
   // fetch data from disk and store it in in-memory vector.
   void cache() {
     for (auto block_id : block_ids_) {
 
-      storage_->read_block(block_id, block_);
+      storage_.read_block(block_id, block_);
 
       // read block
       uint64_t max_pos = 0;
@@ -78,7 +121,7 @@ public:
         // if exceeds BLOCK_SIZE
         memcpy(block_, &curr_pos, sizeof(uint64_t));
         
-        size_t block_id = storage_->write_block(block_);
+        uint64_t block_id = storage_.write_block(block_);
         block_ids_.push_back(block_id);
 
         curr_pos = sizeof(uint64_t);
@@ -92,7 +135,7 @@ public:
 
     memcpy(block_, &curr_pos, sizeof(uint64_t));
 
-    size_t block_id = storage_->write_block(block_);
+    uint64_t block_id = storage_.write_block(block_);
     block_ids_.push_back(block_id);
     
     container_.clear();
@@ -102,7 +145,7 @@ public:
   virtual void find(const KeyT key, std::vector<uint64_t> &values) {
     for (auto block_id : block_ids_) {
       
-      storage_->read_block(block_id, block_);
+      storage_.read_block(block_id, block_);
 
       // read block
       uint64_t max_pos = 0;
@@ -150,9 +193,9 @@ public:
   
 protected:
   std::vector<KVPair> container_;
-  Storage *storage_;
+  Storage storage_;
   char *block_; // buffer for holding to-be-persisted data
-  std::vector<size_t> block_ids_;
+  std::vector<uint64_t> block_ids_;
 
   bool is_persisted_;
 };

@@ -1,4 +1,5 @@
 #include "base_run.h"
+#include "hash_run.h"
 #include "synopsis_run.h"
 #include "time_measurer.h"
 
@@ -7,8 +8,7 @@ int main() {
 
   TimeMeasurer timer;
 
-  Storage storage;
-  SynopsisRun<uint64_t> run(&storage);
+  HashRun<uint64_t> run(0);
   for (size_t i = 1000; i > 0; --i) {
     run.insert(i, i + 1024);
   }

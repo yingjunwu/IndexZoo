@@ -8,7 +8,7 @@ class SynopsisRun : public BaseRun<KeyT> {
 typedef std::pair<KeyT, KeyT> BoundPair;
 
 public:
-  SynopsisRun(Storage *storage) : BaseRun<KeyT>(storage) {}
+  SynopsisRun(const size_t run_id) : BaseRun<KeyT>(run_id) {}
   
   virtual ~SynopsisRun() {}
 
@@ -33,7 +33,7 @@ public:
         // if exceeds BLOCK_SIZE
         memcpy(this->block_, &curr_pos, sizeof(uint64_t));
         
-        size_t block_id = this->storage_->write_block(this->block_);
+        uint64_t block_id = this->storage_.write_block(this->block_);
         this->block_ids_.push_back(block_id);
         assert(this->block_bounds_.find(block_id) == this->block_bounds_.end());
         this->block_bounds_[block_id] = BoundPair(lower_bound, upper_bound);
@@ -57,7 +57,7 @@ public:
 
     memcpy(this->block_, &curr_pos, sizeof(uint64_t));
 
-    size_t block_id = this->storage_->write_block(this->block_);
+    uint64_t block_id = this->storage_.write_block(this->block_);
     this->block_ids_.push_back(block_id);
     assert(this->block_bounds_.find(block_id) == this->block_bounds_.end());
     this->block_bounds_[block_id] = BoundPair(lower_bound, upper_bound);
@@ -81,7 +81,7 @@ public:
       
       // find tuple in block
 
-      this->storage_->read_block(block_id, this->block_);
+      this->storage_.read_block(block_id, this->block_);
 
       // read block
       uint64_t max_pos = 0;
@@ -130,8 +130,8 @@ public:
     std::cout << "=================" << std::endl;
   }
 
-protected:
-  std::unordered_map<size_t, BoundPair> block_bounds_;
+private:
+  std::unordered_map<uint64_t, BoundPair> block_bounds_;
 
 };
 
