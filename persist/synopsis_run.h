@@ -13,7 +13,7 @@ public:
   virtual ~SynopsisRun() {}
 
   // sort in-memory vector, persist to disk, and clean it up.
-  virtual void persist() final {
+  virtual void persist() override {
 
     if (this->container_.size() == 0) {
       return;
@@ -66,7 +66,7 @@ public:
     this->is_persisted_ = true;
   }
 
-  virtual void find(const KeyT key, std::vector<uint64_t> &values) final {
+  virtual void find(const KeyT key, std::vector<uint64_t> &values) override {
     for (auto block_id : this->block_ids_) {
 
       assert(this->block_bounds_.find(block_id) != this->block_bounds_.end());
@@ -112,7 +112,7 @@ public:
     }
   }
 
-  virtual void print() const {
+  virtual void print() const override {
     std::cout << "=================" << std::endl;
     std::cout << "is persisted: " << (this->is_persisted_ ? "true" : "false") << std::endl;
     std::cout << "number of elements in cache is: " << this->container_.size() << std::endl;

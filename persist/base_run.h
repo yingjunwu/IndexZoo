@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include <iostream>
+#include <typeinfo>
 
 #include "storage.h"
 
@@ -19,7 +20,7 @@ static bool compare_func(KVPair &lhs, KVPair &rhs) {
 
 public:
   BaseRun(const size_t run_id) : 
-    storage_("run" + std::to_string(run_id)), 
+    storage_("run" + std::to_string(run_id) + ".dat"), 
     block_(new char[BLOCK_SIZE]),
     is_persisted_(false) {}
 
@@ -32,7 +33,7 @@ public:
     container_.push_back(KVPair(key, value));
   }
 
-  void merge(BaseRun *lhs_run, BaseRun *rhs_run) {
+  virtual void merge(BaseRun *lhs_run, BaseRun *rhs_run) {
     assert(is_persisted_ == false);
 
     std::vector<KVPair> lhs_container;

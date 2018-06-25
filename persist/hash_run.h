@@ -1,6 +1,6 @@
 #pragma once
 
-#include "hash_run.h"
+#include "base_run.h"
 #include <unordered_map>
 
 template<typename KeyT>
@@ -12,7 +12,7 @@ public:
   virtual ~HashRun() {}
 
   // sort in-memory vector, persist to disk, and clean it up.
-  virtual void persist() final {
+  virtual void persist() override {
 
     if (this->container_.size() == 0) {
       return;
@@ -38,9 +38,9 @@ public:
         curr_pos = sizeof(uint64_t);
       }
 
-      // if a key maps to multiple 
+      // only index the first value mapped by a key
       if (hash_table_.find(entry.first) == hash_table_.end()) {
-        hash_table_.insert(std::pair<KeyT, OffsetT>(entry.first, OffsetT(this->storage_.next_block_id(), curr_pos))); 
+        hash_table_[entry.first] = OffsetT(this->storage_.next_block_id(), curr_pos);
       }
 
       memcpy(this->block_ + curr_pos, &(entry.first), sizeof(KeyT));
@@ -62,13 +62,17 @@ public:
 
   }
 
-  virtual void find(const KeyT key, std::vector<uint64_t> &values) final {
-    OffsetT pos = hash_table_.find(key)->second;
+  virtual void find(const KeyT key, std::vector<uint64_t> &values) override {
+    if (hash_table_.find(key) == hash_table_.end()) {
+      return;
+    }
+    OffsetT pos = hash_table_.at(key);
     uint64_t curr_pos = pos.rel_offset();
 
     this->storage_.read_block(pos.block_id(), this->block_);
     KeyT load_key;
     uint64_t load_value;
+
 
     memcpy(&load_key, this->block_ + curr_pos, sizeof(KeyT));
     memcpy(&load_value, this->block_ + curr_pos + sizeof(KeyT), sizeof(uint64_t));
@@ -77,7 +81,7 @@ public:
 
   }
 
-  virtual void print() const {
+  virtual void print() const override {
     std::cout << "=================" << std::endl;
     std::cout << "is persisted: " << (this->is_persisted_ ? "true" : "false") << std::endl;
     std::cout << "number of elements in cache is: " << this->container_.size() << std::endl;
@@ -104,6 +108,6 @@ public:
   }
 
 private:
-  std::unordered_multimap<KeyT, OffsetT> hash_table_;
+  std::unordered_map<KeyT, OffsetT> hash_table_;
 
 };
