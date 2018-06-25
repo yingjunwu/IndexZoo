@@ -9,8 +9,62 @@ typedef std::pair<KeyT, KeyT> BoundPair;
 
 public:
   SynopsisRun(const size_t run_id) : BaseRun<KeyT>(run_id) {}
+
+  SynopsisRun(const std::string &run_name) : BaseRun<KeyT>(run_name) {}
   
   virtual ~SynopsisRun() {}
+
+
+  // sort in-memory vector, persist to disk, and clean it up.
+  // NOTE: input container must be sorted beforehand!
+  virtual void persist(const std::vector<typename BaseRun<KeyT>::KVPair> &container) override {
+
+    assert(this->is_persisted_ == false);
+
+    KeyT lower_bound, upper_bound;
+
+    uint64_t curr_pos = sizeof(uint64_t);
+
+    bool is_init = true;
+
+    for (auto entry : container) {
+
+      if (curr_pos + sizeof(KeyT) + sizeof(uint64_t) > BLOCK_SIZE) {
+        // if exceeds BLOCK_SIZE
+        memcpy(this->block_, &curr_pos, sizeof(uint64_t));
+        
+        uint64_t block_id = this->storage_.write_block(this->block_);
+        this->block_ids_.push_back(block_id);
+        assert(this->block_bounds_.find(block_id) == this->block_bounds_.end());
+        this->block_bounds_[block_id] = BoundPair(lower_bound, upper_bound);
+
+        curr_pos = sizeof(uint64_t);
+        is_init = true;
+      }
+
+      if (is_init == true) {
+        lower_bound = entry.first;
+        is_init = false;
+      }
+
+      memcpy(this->block_ + curr_pos, &(entry.first), sizeof(KeyT));
+      curr_pos += sizeof(KeyT);
+      memcpy(this->block_ + curr_pos, &(entry.second), sizeof(uint64_t));
+      curr_pos += sizeof(uint64_t);
+
+      upper_bound = entry.first;
+    }
+
+    memcpy(this->block_, &curr_pos, sizeof(uint64_t));
+
+    uint64_t block_id = this->storage_.write_block(this->block_);
+    this->block_ids_.push_back(block_id);
+    assert(this->block_bounds_.find(block_id) == this->block_bounds_.end());
+    this->block_bounds_[block_id] = BoundPair(lower_bound, upper_bound);
+    
+    this->is_persisted_ = true;
+  }
+
 
   // sort in-memory vector, persist to disk, and clean it up.
   virtual void persist() override {

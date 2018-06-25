@@ -19,8 +19,10 @@ static bool compare_func(KVPair &lhs, KVPair &rhs) {
 }
 
 public:
-  BaseRun(const size_t run_id) : 
-    storage_("run" + std::to_string(run_id) + ".dat"), 
+  BaseRun(const size_t run_id) : BaseRun("run" + std::to_string(run_id) + ".dat") {} 
+
+  BaseRun(const std::string &run_name) :
+    storage_(run_name),
     block_(new char[BLOCK_SIZE]),
     is_persisted_(false) {}
 
@@ -33,6 +35,7 @@ public:
     container_.push_back(KVPair(key, value));
   }
 
+  // fetch data from disk and store it into the input vector.
   void cache(std::vector<KVPair> &container) {
     for (auto block_id : block_ids_) {
 
@@ -89,6 +92,7 @@ public:
     is_persisted_ = false;
   }
 
+  virtual void persist(const std::vector<KVPair> &container) = 0;
 
   virtual void persist() = 0;
 

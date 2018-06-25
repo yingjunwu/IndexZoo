@@ -11,6 +11,8 @@ public:
 
   virtual ~HashRun() {}
 
+  virtual void persist(const std::vector<typename BaseRun<KeyT>::KVPair> &container) override {}
+
   // sort in-memory vector, persist to disk, and clean it up.
   virtual void persist() override {
 
