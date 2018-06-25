@@ -1,8 +1,6 @@
-#include "hash_run.h"
-#include "hash_run_merger.h"
-
-#include "synopsis_run.h"
 #include "synopsis_run_merger.h"
+#include "hash_run_merger.h"
+#include "logical_hash_run_merger.h"
 
 #include "time_measurer.h"
 #include "fast_random.h"
@@ -39,7 +37,8 @@ void do_merge() {
 }
 
 int main() {
-  do_merge<uint64_t, HashRun<uint64_t>, HashRunMerger<uint64_t>>();
   do_merge<uint64_t, SynopsisRun<uint64_t>, SynopsisRunMerger<uint64_t>>();
+  do_merge<uint64_t, HashRun<uint64_t>, HashRunMerger<uint64_t>>();
+  do_merge<uint64_t, HashRun<uint64_t>, LogicalHashRunMerger<uint64_t>>(); 
 
 }

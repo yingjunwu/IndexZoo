@@ -1,93 +1,60 @@
 #pragma once
 
-#include "base_run.h"
-#include <unordered_map>
+#include "base_run_merger.h"
+
+#include "hash_run.h"
 
 template<typename KeyT>
-class LogicalHashRun : public BaseRun<KeyT> {
+class LogicalHashRunMerger : public BaseRunMerger<KeyT> {
+
+typedef std::pair<HashRun<KeyT>*, OffsetT> PosPair;
 
 public:
-  LogicalHashRun(const size_t run_id) : BaseRun<KeyT>(run_id) {}
+  LogicalHashRunMerger(const std::string &name) {}
 
-  virtual ~LogicalHashRun() {}
+  virtual ~LogicalHashRunMerger() {}
 
-  // virtual void merge(BaseRun<KeyT> *lhs_run, BaseRun<KeyT> *rhs_run) override {
-  //   assert(this->is_persisted_ == false);
+  void merge(HashRun<KeyT> *lhs_run, HashRun<KeyT> *rhs_run) {
 
-  //   if (typeid(*lhs_run) == typeid(LogicalHashRun) && typeid(*rhs_run) == typeid(LogicalHashRun)) {
+    for (auto entry : lhs_run->hash_table_) {
+      hash_table_.insert(std::pair<KeyT, PosPair>(entry.first, PosPair(lhs_run, entry.second)));
+    }
 
-
-
-  //   } else {
-
-  //     std::vector<typename BaseRun<KeyT>::KVPair> lhs_container;
-  //     std::vector<typename BaseRun<KeyT>::KVPair> rhs_container;
-
-  //     lhs_run->cache(lhs_container);
-  //     rhs_run->cache(rhs_container);
-
-  //     this->container_.resize(lhs_container.size() + rhs_container.size());
-
-  //     std::merge(lhs_container.begin(), lhs_container.end(), rhs_container.begin(), rhs_container.end(), this->container_.begin());
-
-  //     // persist();
-  //   }
-  // }
-
-  // // sort in-memory vector, persist to disk, and clean it up.
-  // virtual void persist() {
-
-  //   if (container_.size() == 0) {
-  //     return;
-  //   }
-
-  //   std::sort(container_.begin(), container_.end(), compare_func);
-
-  //   uint64_t curr_pos = sizeof(uint64_t);
-
-  //   for (auto entry : container_) {
-
-  //     if (curr_pos + sizeof(KeyT) + sizeof(uint64_t) > BLOCK_SIZE) {
-  //       // if exceeds BLOCK_SIZE
-  //       memcpy(block_, &curr_pos, sizeof(uint64_t));
-        
-  //       uint64_t block_id = storage_.write_block(block_);
-  //       block_ids_.push_back(block_id);
-
-  //       curr_pos = sizeof(uint64_t);
-  //     }
-
-  //     memcpy(block_ + curr_pos, &(entry.first), sizeof(KeyT));
-  //     curr_pos += sizeof(KeyT);
-  //     memcpy(block_ + curr_pos, &(entry.second), sizeof(uint64_t));
-  //     curr_pos += sizeof(uint64_t);
-  //   }
-
-  //   memcpy(block_, &curr_pos, sizeof(uint64_t));
-
-  //   uint64_t block_id = storage_.write_block(block_);
-  //   block_ids_.push_back(block_id);
-    
-  //   container_.clear();
-  //   is_persisted_ = true;
-  // }
+    for (auto entry : rhs_run->hash_table_) {
+      hash_table_.insert(std::pair<KeyT, PosPair>(entry.first, PosPair(rhs_run, entry.second)));
+    }
+  }
 
   virtual void find(const KeyT key, std::vector<uint64_t> &values) override {
-    OffsetT pos = hash_table_.find(key)->second;
-    uint64_t curr_pos = pos.rel_offset();
 
-    this->storage_.read_block(pos.block_id(), this->block_);
-    KeyT load_key;
-    uint64_t load_value;
+    auto iter_range = hash_table_.equal_range(key);
+    
+    for (auto iter = iter_range.first; iter != iter_range.second; ++iter) {
+      iter->second.first->find(key, values);
+    }
+  }
 
-    memcpy(&load_key, this->block_ + curr_pos, sizeof(KeyT));
-    memcpy(&load_value, this->block_ + curr_pos + sizeof(KeyT), sizeof(uint64_t));
+  virtual void print() const override {
+    std::cout << "=================" << std::endl;
 
-    values.push_back(load_value);
+    size_t bound = 5;
+    bound = std::min(hash_table_.size(), bound);
 
+    size_t curr = 0;
+    for (auto entry : hash_table_) {
+      if (curr >= bound) {
+        break;
+      }
+      std::cout << entry.first << " -> " << "(" << entry.second.first << " " << entry.second.second << ")" << std::endl;
+
+      ++curr;
+    }
+
+    std::cout << "=================" << std::endl;
   }
 
 private:
-  std::unordered_multimap<KeyT, OffsetT> hash_table_;
+
+  std::unordered_multimap<KeyT, PosPair> hash_table_;
 
 };

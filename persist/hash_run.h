@@ -4,7 +4,12 @@
 #include <unordered_map>
 
 template<typename KeyT>
+class LogicalHashRunMerger;
+
+template<typename KeyT>
 class HashRun : public BaseRun<KeyT> {
+
+friend class LogicalHashRunMerger<KeyT>;
 
 public:
   HashRun(const size_t run_id) : BaseRun<KeyT>(run_id) {}

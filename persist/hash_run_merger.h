@@ -2,14 +2,13 @@
 
 #include "base_run_merger.h"
 
-#include "base_run.h"
 #include "hash_run.h"
 
 template<typename KeyT>
 class HashRunMerger : public BaseRunMerger<KeyT> {
 
 public:
-  HashRunMerger(const std::string name) : run_(name) {}
+  HashRunMerger(const std::string &name) : run_(name) {}
 
   virtual ~HashRunMerger() {}
 
@@ -26,16 +25,15 @@ public:
 
     std::merge(lhs_container.begin(), lhs_container.end(), rhs_container.begin(), rhs_container.end(), container.begin());
 
-    run_.persist(container);
-    
+    run_.persist(container);  
 
   }
 
-  virtual void find(const KeyT key, std::vector<uint64_t> &values) {
+  virtual void find(const KeyT key, std::vector<uint64_t> &values) override {
     run_.find(key, values);
   }
 
-  virtual void print() const {
+  virtual void print() const override {
     run_.print();
   }
 

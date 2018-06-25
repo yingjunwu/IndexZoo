@@ -2,14 +2,13 @@
 
 #include "base_run_merger.h"
 
-#include "base_run.h"
 #include "synopsis_run.h"
 
 template<typename KeyT>
 class SynopsisRunMerger : public BaseRunMerger<KeyT> {
 
 public:
-  SynopsisRunMerger(const std::string name) : run_(name) {}
+  SynopsisRunMerger(const std::string &name) : run_(name) {}
 
   virtual ~SynopsisRunMerger() {}
 
@@ -31,11 +30,11 @@ public:
 
   }
 
-  virtual void find(const KeyT key, std::vector<uint64_t> &values) {
+  virtual void find(const KeyT key, std::vector<uint64_t> &values) override {
     run_.find(key, values);
   }
 
-  virtual void print() const {
+  virtual void print() const override {
     run_.print();
   }
 
