@@ -1,4 +1,3 @@
-#include "base_run.h"
 #include "hash_run.h"
 #include "synopsis_run.h"
 #include "time_measurer.h"

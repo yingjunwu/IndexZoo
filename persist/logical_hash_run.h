@@ -11,28 +11,28 @@ public:
 
   virtual ~LogicalHashRun() {}
 
-  virtual void merge(BaseRun<KeyT> *lhs_run, BaseRun<KeyT> *rhs_run) override {
-    assert(this->is_persisted_ == false);
+  // virtual void merge(BaseRun<KeyT> *lhs_run, BaseRun<KeyT> *rhs_run) override {
+  //   assert(this->is_persisted_ == false);
 
-    if (typeid(*lhs_run) == typeid(LogicalHashRun) && typeid(*rhs_run) == typeid(LogicalHashRun)) {
+  //   if (typeid(*lhs_run) == typeid(LogicalHashRun) && typeid(*rhs_run) == typeid(LogicalHashRun)) {
 
 
 
-    } else {
+  //   } else {
 
-      std::vector<typename BaseRun<KeyT>::KVPair> lhs_container;
-      std::vector<typename BaseRun<KeyT>::KVPair> rhs_container;
+  //     std::vector<typename BaseRun<KeyT>::KVPair> lhs_container;
+  //     std::vector<typename BaseRun<KeyT>::KVPair> rhs_container;
 
-      lhs_run->cache(lhs_container);
-      rhs_run->cache(rhs_container);
+  //     lhs_run->cache(lhs_container);
+  //     rhs_run->cache(rhs_container);
 
-      this->container_.resize(lhs_container.size() + rhs_container.size());
+  //     this->container_.resize(lhs_container.size() + rhs_container.size());
 
-      std::merge(lhs_container.begin(), lhs_container.end(), rhs_container.begin(), rhs_container.end(), this->container_.begin());
+  //     std::merge(lhs_container.begin(), lhs_container.end(), rhs_container.begin(), rhs_container.end(), this->container_.begin());
 
-      // persist();
-    }
-  }
+  //     // persist();
+  //   }
+  // }
 
   // // sort in-memory vector, persist to disk, and clean it up.
   // virtual void persist() {
