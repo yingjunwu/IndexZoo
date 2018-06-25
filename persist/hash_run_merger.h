@@ -3,17 +3,17 @@
 #include "base_run_merger.h"
 
 #include "base_run.h"
-#include "synopsis_run.h"
+#include "hash_run.h"
 
 template<typename KeyT>
-class SynopsisRunMerger : public BaseRunMerger<KeyT> {
+class HashRunMerger : public BaseRunMerger<KeyT> {
 
 public:
-  SynopsisRunMerger(const std::string name) : run_(name) {}
+  HashRunMerger(const std::string name) : run_(name) {}
 
-  virtual ~SynopsisRunMerger() {}
+  virtual ~HashRunMerger() {}
 
-  void merge(SynopsisRun<KeyT> *lhs_run, SynopsisRun<KeyT> *rhs_run) {
+  void merge(HashRun<KeyT> *lhs_run, HashRun<KeyT> *rhs_run) {
 
     std::vector<typename BaseRun<KeyT>::KVPair> lhs_container;
     std::vector<typename BaseRun<KeyT>::KVPair> rhs_container;
@@ -40,5 +40,5 @@ public:
   }
 
 private:
-  SynopsisRun<KeyT> run_;
+  HashRun<KeyT> run_;
 };

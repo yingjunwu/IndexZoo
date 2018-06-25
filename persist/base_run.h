@@ -11,7 +11,7 @@
 template<typename KeyT>
 class BaseRun {
 
-protected:
+public:
 typedef std::pair<KeyT, uint64_t> KVPair;
 
 static bool compare_func(KVPair &lhs, KVPair &rhs) {
@@ -19,10 +19,10 @@ static bool compare_func(KVPair &lhs, KVPair &rhs) {
 }
 
 public:
-  BaseRun(const size_t run_id) : BaseRun("run" + std::to_string(run_id) + ".dat") {} 
+  BaseRun(const size_t run_id) : BaseRun("run" + std::to_string(run_id)) {} 
 
   BaseRun(const std::string &run_name) :
-    storage_(run_name),
+    storage_(run_name + ".dat"),
     block_(new char[BLOCK_SIZE]),
     is_persisted_(false) {}
 

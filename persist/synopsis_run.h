@@ -14,7 +14,6 @@ public:
   
   virtual ~SynopsisRun() {}
 
-
   // sort in-memory vector, persist to disk, and clean it up.
   // NOTE: input container must be sorted beforehand!
   virtual void persist(const std::vector<typename BaseRun<KeyT>::KVPair> &container) override {
