@@ -31,19 +31,32 @@ public:
   
   virtual void erase(const KeyT &key) final {}
 
-  void scan(const KeyT &key, std::vector<Uint64> &values) override {
+  virtual void scan(const KeyT &key, std::vector<Uint64> &values) final {
     for (size_t i = 0; i < this->size_; ++i) {
       if (this->container_[i].key_ == key) {
         values.push_back(this->container_[i].value_);
       }
+      if (this->container_[i].key_ > key) {
+        return;
+      }
     }
   }
 
-  void scan_reverse(const KeyT &key, std::vector<Uint64> &values) override {
+  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) final {
     for (int i = this->size_ - 1; i >= 0; --i) {
       if (this->container_[i].key_ == key) {
         values.push_back(this->container_[i].value_);
       }
+      if (this->container_[i].key_ < key) {
+        return;
+      }
+    }
+  }
+
+  virtual void scan_full(std::vector<Uint64> &values, const size_t count) final {
+    size_t bound = std::min(count, this->size_);
+    for (size_t i = 0; i < bound; ++i) {
+      values.push_back(this->container_[i].value_);
     }
   }
   

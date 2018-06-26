@@ -44,6 +44,33 @@ public:
     }
   }
 
+  virtual void scan(const KeyT &key, std::vector<Uint64> &values) final {
+    for (auto it = container_.begin(); it != container_.end(); ++it) {
+      if (it->first == key) {
+        values.push_back(it->second);
+      }
+      if (it->first > key) {
+        return;
+      }
+    }
+  }
+
+  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) final {
+
+  }
+
+  virtual void scan_full(std::vector<Uint64> &values, const size_t count) final {
+    size_t i = 0;
+    for (auto it = container_.begin(); it != container_.end(); ++it) {
+      if (i < count) {
+        values.push_back(it->second);
+        ++i;
+      } else {
+        return;
+      }
+    }
+  }
+
   virtual void erase(const KeyT &key) final {
     // container_.erase(key);
   }

@@ -71,7 +71,6 @@ TEST_F(DynamicIndexNumericTest, UniqueKeyFindTest) {
     // dynamic indexes - singlethread
     IndexType::D_ST_StxBtree,
     IndexType::D_ST_ArtTree,
-    // IndexType::D_ST_Btree, // unimplemented
     
     // dynamic indexes - multithread
     IndexType::D_MT_Libcuckoo,
@@ -152,8 +151,7 @@ TEST_F(DynamicIndexNumericTest, NonUniqueKeyFindTest) {
 
     // dynamic indexes - singlethread
     IndexType::D_ST_StxBtree,
-    // IndexType::D_ST_ArtTree, // do not support non-unique keys
-    // IndexType::D_ST_Btree, // unimplemented
+    IndexType::D_ST_ArtTree,
     
     // dynamic indexes - multithread
     IndexType::D_MT_Libcuckoo,
@@ -197,6 +195,7 @@ void test_dynamic_index_numeric_unique_key_find_range(const IndexType index_type
   for (size_t i = 0; i < n; ++i) {
 
     KeyT key = rand.next<KeyT>();
+    // KeyT key = i;
     ValueT value = i + 2048;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -212,7 +211,7 @@ void test_dynamic_index_numeric_unique_key_find_range(const IndexType index_type
   std::sort(keys_vector.begin(), keys_vector.end());
   
   // find
-  for (size_t i = 0; i < n / 2; i += 10) {
+  for (size_t i = 0; i < n / 2; i += 100) {
     KeyT lower_key = keys_vector.at(i);
     KeyT upper_key = keys_vector.at(keys_vector.size() - 1 - i);
 
@@ -244,13 +243,12 @@ TEST_F(DynamicIndexNumericTest, UniqueKeyFindRangeTest) {
     // dynamic indexes - singlethread
     IndexType::D_ST_StxBtree,
     // IndexType::D_ST_ArtTree,
-    // IndexType::D_ST_Btree, // unimplemented
     
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
     // IndexType::D_MT_ArtTree,
     IndexType::D_MT_BwTree,
-    // IndexType::D_MT_Masstree,
+    // IndexType::D_MT_Masstree, // do not support range queries
   };
 
   for (auto index_type : index_types) {
@@ -303,7 +301,7 @@ void test_dynamic_index_numeric_non_unique_key_find_range(const IndexType index_
   std::sort(keys_vector.begin(), keys_vector.end());
 
   // find
-  for (size_t i = 0; i < n / 2; i += 10) {
+  for (size_t i = 0; i < n / 2; i += 100) {
     KeyT lower_key = keys_vector.at(i);
     KeyT upper_key = keys_vector.at(keys_vector.size() - 1 - i);
 
@@ -339,11 +337,10 @@ TEST_F(DynamicIndexNumericTest, NonUniqueKeyFindRangeTest) {
     // dynamic indexes - singlethread
     IndexType::D_ST_StxBtree,
     // IndexType::D_ST_ArtTree, // do not support non-unique keys
-    // IndexType::D_ST_Btree, // unimplemented
     
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
-    // IndexType::D_MT_ArtTree,
+    IndexType::D_MT_ArtTree,
     IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree, // do not support non-unique keys
   };
@@ -362,6 +359,67 @@ TEST_F(DynamicIndexNumericTest, NonUniqueKeyFindRangeTest) {
 }
 
 
+template<typename KeyT, typename ValueT>
+void test_dynamic_index_numeric_scan(const IndexType index_type) {
+
+  size_t n = 10000;
+
+  std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
+    new DataTable<KeyT, ValueT>());
+  std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
+    create_index<KeyT, ValueT>(index_type, data_table.get()));
+
+  data_index->prepare_threads(1);
+  data_index->register_thread(0);
+
+  std::map<KeyT, std::pair<Uint64, ValueT>> validation_set;
+
+  FastRandom rand;
+  // insert
+  for (size_t i = 0; i < n; ++i) {
+
+    KeyT key = rand.next<KeyT>();
+    // KeyT key = i;
+    ValueT value = i + 2048;
+    
+    OffsetT offset = data_table->insert_tuple(key, value);
+    
+    validation_set.insert(
+      std::pair<KeyT, std::pair<Uint64, ValueT>>(
+        key, std::pair<Uint64, ValueT>(offset.raw_data(), value)));
+
+    data_index->insert(key, offset.raw_data());
+  }
+  
+  // find
+  for (size_t i = 1; i < n; i += 1000) {
+
+    std::vector<Uint64> offsets;
+    data_index->scan_full(offsets, i);
+
+    EXPECT_EQ(offsets.size(), i);
+
+    int count = 0;
+    for (auto iter = validation_set.begin(); iter != validation_set.end(); ++iter) {
+      if (count >= offsets.size()) {
+        break;
+      }
+      EXPECT_EQ(offsets.at(count), iter->second.first);
+      ++count;
+    }
+  }
+}
 
 
+TEST_F(DynamicIndexNumericTest, ScanTest) {
+
+  std::vector<IndexType> index_types {
+    IndexType::D_ST_StxBtree,
+    IndexType::D_ST_ArtTree,
+  };
+
+  for (auto index_type : index_types) {
+    test_dynamic_index_numeric_scan<uint32_t, uint64_t>(index_type);
+  }
+}
 

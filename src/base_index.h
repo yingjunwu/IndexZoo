@@ -28,6 +28,8 @@ public:
 
   virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) = 0;
 
+  virtual void scan_full(std::vector<Uint64> &values, const size_t count = std::numeric_limits<std::size_t>::max()) = 0;
+
   virtual void erase(const KeyT &key) = 0;
 
   virtual size_t size() const = 0;

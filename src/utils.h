@@ -13,6 +13,7 @@ typedef uint64_t Uint64;
 
 
 static double get_memory_mb() {
+#if defined(NDEBUG)
   uint64_t epoch = 1;
   size_t sz = sizeof(epoch);
   mallctl("epoch", &epoch, &sz, &epoch, sz);
@@ -23,9 +24,13 @@ static double get_memory_mb() {
     return allocated * 1.0 / 1024 / 1024;
   }
   return -1;
+#else
+  return -1;
+#endif
 }
 
 static double get_memory_gb() {
+#if defined(NDEBUG)
   uint64_t epoch = 1;
   size_t sz = sizeof(epoch);
   mallctl("epoch", &epoch, &sz, &epoch, sz);
@@ -36,6 +41,9 @@ static double get_memory_gb() {
     return allocated * 1.0 / 1024 / 1024 / 1024;
   }
   return -1;
+#else
+  return -1;
+#endif
 }
 
 static void pin_to_core(const size_t core) {
@@ -49,6 +57,19 @@ static void pin_to_core(const size_t core) {
   }
   #endif
 }
+
+template<typename KeyT>
+static KeyT byte_swap(KeyT x);
+
+template<>
+uint64_t byte_swap(uint64_t x) { return __builtin_bswap64(x); }
+
+template<>
+uint32_t byte_swap(uint32_t x) { return __builtin_bswap32(x); }
+
+template<>
+uint16_t byte_swap(uint16_t x) { return __builtin_bswap16(x); }
+
 
 #define ASSERT(condition, string) \
   if ((!(condition))) { \

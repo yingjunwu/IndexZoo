@@ -11,9 +11,11 @@ public:
 
   virtual ~BaseDynamicIndex() {}
 
-  virtual void scan(const KeyT &key, std::vector<Uint64> &values) final {}
+  virtual void scan(const KeyT &key, std::vector<Uint64> &values) override {}
 
-  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) final {}
+  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) override {}
+
+  virtual void scan_full(std::vector<Uint64> &values, const size_t count) override {}
 
   virtual void prepare_threads(const size_t thread_count) override {}
 
