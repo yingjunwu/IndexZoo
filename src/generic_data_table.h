@@ -4,22 +4,22 @@
 #include <vector>
 
 #include "data_block.h"
-#include "generic_key.h"
 
-template<size_t KeySize, typename ValueT>
+template<typename ValueT>
 class GenericDataTableIterator;
 
-template<size_t KeySize, typename ValueT>
+template<typename ValueT>
 class GenericDataTable {
 
-  friend GenericDataTableIterator<KeySize, ValueT>;
+  friend GenericDataTableIterator<ValueT>;
 
 public:
-  GenericDataTable(const uint64_t max_block_capacity = MaxBlockCapacity) {
+  GenericDataTable(const uint64_t max_key_size, const uint64_t max_block_capacity = MaxBlockCapacity) {
 
+    max_key_size_ = max_key_size;
     max_block_capacity_ = max_block_capacity;
 
-    data_blocks_.emplace_back(new DataBlock(0, KeySize + sizeof(ValueT), max_block_capacity_));
+    data_blocks_.emplace_back(new DataBlock(0, max_key_size_ + sizeof(ValueT), max_block_capacity_));
     active_data_block_ = data_blocks_.at(0);
   }
   
@@ -30,7 +30,9 @@ public:
     }
   }
 
-  OffsetT insert_tuple(const char *key, const ValueT &value) {
+  OffsetT insert_tuple(const char *key, const uint64_t key_size, const ValueT &value) {
+    // key_size must be at least 1 byte smaller than max_key_size_
+    ASSERT(key_size < max_key_size_, "exceed max key size: " << key_size << " " << max_key_size_);
 
     while (true) {
       DataBlock* tmp_block = active_data_block_;
@@ -43,11 +45,11 @@ public:
 
         // copy data.
         char* data = tmp_block->get_tuple(rel_offset);
-        memcpy(data, key, KeySize);
-        memcpy(data + KeySize, &value, sizeof(ValueT));
+        memcpy(data, key, key_size);
+        memcpy(data + max_key_size_, &value, sizeof(ValueT));
 
         if (rel_offset == tmp_block->get_max_rel_offset() - 1) {
-          auto new_block = new DataBlock(tmp_block->get_block_id() + 1, KeySize + sizeof(ValueT), max_block_capacity_);
+          auto new_block = new DataBlock(tmp_block->get_block_id() + 1, max_key_size_ + sizeof(ValueT), max_block_capacity_);
           data_blocks_.emplace_back(new_block);
 
           COMPILER_MEMORY_FENCE;
@@ -69,7 +71,7 @@ public:
   ValueT* get_tuple_value(const BlockIDT block_id, const RelOffsetT rel_offset) const {
 
     char *data = data_blocks_.at(block_id)->get_tuple(rel_offset);
-    return (ValueT*)(data + KeySize);
+    return (ValueT*)(data + max_key_size_);
   }
 
   char* get_tuple_key(const OffsetT offset) const {
@@ -81,7 +83,7 @@ public:
   ValueT* get_tuple_value(const OffsetT offset) const {
 
     char *data = data_blocks_.at(offset.block_id())->get_tuple(offset.rel_offset());
-    return (ValueT*)(data + KeySize);
+    return (ValueT*)(data + max_key_size_);
   }
 
   size_t size() const {
@@ -100,13 +102,14 @@ public:
   }
 
 private:
+  uint64_t max_key_size_;
   uint64_t max_block_capacity_;
   std::vector<DataBlock*> data_blocks_;
   DataBlock* active_data_block_;
 
 };
 
-template<size_t KeySize, typename ValueT>
+template<typename ValueT>
 class GenericDataTableIterator {
 
 public:
@@ -119,7 +122,7 @@ public:
   };
 
 public:
-  GenericDataTableIterator(GenericDataTable<KeySize, ValueT> *table_ptr) : 
+  GenericDataTableIterator(GenericDataTable<ValueT> *table_ptr) : 
     table_ptr_(table_ptr), curr_block_id_(0), curr_rel_offset_(0) {
     
     ASSERT(table_ptr_->data_blocks_.size() != 0, "table must contain at least one data block!");
@@ -161,7 +164,7 @@ public:
 
 
 private:
-  GenericDataTable<KeySize, ValueT> *table_ptr_;
+  GenericDataTable<ValueT> *table_ptr_;
 
   BlockIDT curr_block_id_;
   RelOffsetT curr_rel_offset_;

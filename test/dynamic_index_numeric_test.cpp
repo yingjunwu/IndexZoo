@@ -35,6 +35,10 @@ void test_dynamic_index_numeric_unique_key_find(const IndexType index_type) {
   for (size_t i = 0; i < n; ++i) {
 
     KeyT key = rand.next<KeyT>();
+    while (validation_set.find(key) != validation_set.end()) {
+      key = rand.next<KeyT>();
+    }
+
     ValueT value = i + 2048;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -81,7 +85,7 @@ TEST_F(DynamicIndexNumericTest, UniqueKeyFindTest) {
 
   for (auto index_type : index_types) {
     // key type is set to uint16_t
-    // test_dynamic_index_numeric_unique_key_find<uint16_t, uint64_t>(index_type);
+    test_dynamic_index_numeric_unique_key_find<uint16_t, uint64_t>(index_type);
     
     // key type is set to uint32_t
     test_dynamic_index_numeric_unique_key_find<uint32_t, uint64_t>(index_type);
@@ -163,7 +167,7 @@ TEST_F(DynamicIndexNumericTest, NonUniqueKeyFindTest) {
   for (auto index_type : index_types) {
 
     // key type is set to uint16_t
-    // test_dynamic_index_numeric_non_unique_key_find<uint16_t, uint64_t>(index_type);
+    test_dynamic_index_numeric_non_unique_key_find<uint16_t, uint64_t>(index_type);
 
     // key type is set to uint32_t
     test_dynamic_index_numeric_non_unique_key_find<uint32_t, uint64_t>(index_type);
@@ -195,7 +199,10 @@ void test_dynamic_index_numeric_unique_key_find_range(const IndexType index_type
   for (size_t i = 0; i < n; ++i) {
 
     KeyT key = rand.next<KeyT>();
-    // KeyT key = i;
+    while (validation_set.find(key) != validation_set.end()) {
+      key = rand.next<KeyT>();
+    }
+
     ValueT value = i + 2048;
     
     OffsetT offset = data_table->insert_tuple(key, value);
@@ -242,18 +249,18 @@ TEST_F(DynamicIndexNumericTest, UniqueKeyFindRangeTest) {
 
     // dynamic indexes - singlethread
     IndexType::D_ST_StxBtree,
-    // IndexType::D_ST_ArtTree,
+    // IndexType::D_ST_ArtTree, // do not fully support range queries
     
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
-    // IndexType::D_MT_ArtTree,
+    // IndexType::D_MT_ArtTree, // do not fully support range queries
     IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree, // do not support range queries
   };
 
   for (auto index_type : index_types) {
     // key type is set to uint16_t
-    // test_dynamic_index_numeric_unique_key_find_range<uint16_t, uint64_t>(index_type);
+    test_dynamic_index_numeric_unique_key_find_range<uint16_t, uint64_t>(index_type);
     
     // key type is set to uint32_t
     test_dynamic_index_numeric_unique_key_find_range<uint32_t, uint64_t>(index_type);
@@ -348,7 +355,7 @@ TEST_F(DynamicIndexNumericTest, NonUniqueKeyFindRangeTest) {
   for (auto index_type : index_types) {
 
     // key type is set to uint16_t
-    // test_dynamic_index_numeric_non_unique_key_find_range<uint16_t, uint64_t>(index_type);
+    test_dynamic_index_numeric_non_unique_key_find_range<uint16_t, uint64_t>(index_type);
 
     // key type is set to uint32_t
     test_dynamic_index_numeric_non_unique_key_find_range<uint32_t, uint64_t>(index_type);

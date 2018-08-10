@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "generic_key.h"
 #include "generic_data_table.h"
 #include "data_table.h"
 #include "fast_random.h"
@@ -56,7 +57,7 @@ TEST_F(DataTableTest, NumericTest) {
 }
 
 
-template<size_t KeySize>
+template<size_t MaxKeySize>
 void data_table_generic_test() {
   // size_t n = 54321;
   size_t n = 1000;
@@ -64,26 +65,28 @@ void data_table_generic_test() {
   std::vector<std::pair<char*, uint64_t>> validation_vector;
   std::vector<std::pair<char*, uint64_t>> test_vector;
 
-  std::unique_ptr<GenericDataTable<KeySize, uint64_t>> data_table(
-    new GenericDataTable<KeySize, uint64_t>());
+  std::unique_ptr<GenericDataTable<uint64_t>> data_table(
+    new GenericDataTable<uint64_t>(MaxKeySize));
 
   FastRandom fast_rand(0);
 
-  GenericKey<KeySize> key;
+  uint64_t key_size = MaxKeySize - 1;
+
+  GenericKey key(key_size);
   // insert
   for (size_t i = 0; i < n; ++i) {
 
-    fast_rand.next_readable_chars(KeySize, key.raw());
+    fast_rand.next_readable_chars(key_size, key.raw());
     uint64_t value = i + 2048;
     
-    OffsetT offset = data_table->insert_tuple(key.raw(), value);
+    OffsetT offset = data_table->insert_tuple(key.raw(), key_size, value);
 
-    char *tmp = new char[KeySize];
-    memcpy(tmp, key.raw(), KeySize);    
+    char *tmp = new char[key_size];
+    memcpy(tmp, key.raw(), key_size);
     validation_vector.emplace_back(std::pair<char*, uint64_t>(tmp, offset.raw_data()));
   }
 
-  GenericDataTableIterator<KeySize, uint64_t> iterator(data_table.get());
+  GenericDataTableIterator<uint64_t> iterator(data_table.get());
   while (iterator.has_next()) {
     auto entry = iterator.next();
     test_vector.emplace_back(std::pair<char*, uint64_t>(entry.key_, entry.offset_));
@@ -93,7 +96,7 @@ void data_table_generic_test() {
   EXPECT_EQ(test_vector.size(), n);
 
   for (size_t i = 0; i < test_vector.size(); ++i) {
-    EXPECT_EQ(strncmp(test_vector.at(i).first, validation_vector.at(i).first, KeySize), 0);
+    EXPECT_EQ(strncmp(test_vector.at(i).first, validation_vector.at(i).first, key_size), 0);
     EXPECT_EQ(test_vector.at(i).second, validation_vector.at(i).second);
   }
 

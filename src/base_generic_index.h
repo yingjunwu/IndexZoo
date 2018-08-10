@@ -7,15 +7,16 @@
 
 #include "data_table.h"
 #include "offset.h"
+#include "generic_key.h"
 
 template<typename KeyT, typename ValueT>
-class BaseIndex {
+class BaseGenericIndex {
 
 public:
-  BaseIndex(DataTable<KeyT, ValueT> *table_ptr) :
+  BaseGenericIndex(DataTable<KeyT, ValueT> *table_ptr) :
     table_ptr_(table_ptr) {}
     
-  virtual ~BaseIndex() {}
+  virtual ~BaseGenericIndex() {}
 
   virtual void insert(const KeyT &key, const Uint64 &value) = 0;
 
