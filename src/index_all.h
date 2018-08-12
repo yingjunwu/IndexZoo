@@ -17,6 +17,8 @@
 #include "dynamic_index/multithread/bw_tree_index.h"
 #include "dynamic_index/multithread/masstree_index.h"
 
+#include "dynamic_index/singlethread/stx_btree_generic_index.h"
+
 
 enum class IndexType {
   // static indexes
@@ -145,7 +147,7 @@ static void validate_index_params(const IndexType index_type, const int index_pa
 }
 
 template<typename KeyT, typename ValueT>
-static BaseIndex<KeyT, ValueT>* create_index(const IndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const int index_param_1 = INVALID_INDEX_PARAM, const int index_param_2 = INVALID_INDEX_PARAM) {
+static BaseIndex<KeyT, ValueT>* create_numeric_index(const IndexType index_type, DataTable<KeyT, uint64_t> *table_ptr, const int index_param_1 = INVALID_INDEX_PARAM, const int index_param_2 = INVALID_INDEX_PARAM) {
 
   if (index_type == IndexType::S_Interpolation) {
 
@@ -197,3 +199,64 @@ static BaseIndex<KeyT, ValueT>* create_index(const IndexType index_type, DataTab
     return nullptr;
   }
 }
+
+template<typename ValueT>
+static BaseGenericIndex<ValueT>* create_generic_index(const IndexType index_type, GenericDataTable<uint64_t> *table_ptr, const int index_param_1 = INVALID_INDEX_PARAM, const int index_param_2 = INVALID_INDEX_PARAM) {
+
+  // if (index_type == IndexType::S_Interpolation) {
+
+  //   return new static_index::InterpolationIndex<KeyT, ValueT>(table_ptr, index_param_1);
+  
+  // } else if (index_type == IndexType::S_Binary) {
+
+  //   return new static_index::BinaryIndex<KeyT, ValueT>(table_ptr, index_param_1);
+
+  // } else if (index_type == IndexType::S_KAry) {
+
+  //   return new static_index::KAryIndex<KeyT, ValueT>(table_ptr, index_param_1, index_param_2);
+
+  // } else if (index_type == IndexType::S_Fast) {
+
+  //   return new static_index::FastIndex<KeyT, ValueT>(table_ptr, index_param_1);
+
+  // } else 
+  if (index_type == IndexType::D_ST_StxBtree) {
+
+    return new dynamic_index::singlethread::StxBtreeGenericIndex<ValueT>(table_ptr);
+
+  } 
+  // else if (index_type == IndexType::D_ST_ArtTree) {
+
+  //   return new dynamic_index::singlethread::ArtTreeIndex<KeyT, ValueT>(table_ptr);
+
+  // } else if (index_type == IndexType::D_ST_Skiplist) {
+
+  //   return new dynamic_index::singlethread::SkiplistIndex<KeyT, ValueT>(table_ptr);
+
+  // } else 
+  // if (index_type == IndexType::D_MT_Libcuckoo) {
+
+  //   return new dynamic_index::multithread::LibcuckooIndex<KeyT, ValueT>(table_ptr);
+
+  // } 
+  // else if (index_type == IndexType::D_MT_ArtTree) {
+
+  //   return new dynamic_index::multithread::ArtTreeIndex<KeyT, ValueT>(table_ptr);
+
+  // } else if (index_type == IndexType::D_MT_BwTree) {
+
+  //   return new dynamic_index::multithread::BwTreeIndex<KeyT, ValueT>(table_ptr);
+
+  // } else if (index_type == IndexType::D_MT_Masstree) {
+
+  //   return new dynamic_index::multithread::MasstreeIndex<KeyT, ValueT>(table_ptr);
+
+  // } 
+  else {
+
+    ASSERT(false, "unsupported index type");
+    return nullptr;
+  }
+}
+
+

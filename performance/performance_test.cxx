@@ -14,7 +14,7 @@ void scan_performance(const IndexType index_type) {
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get(), 2, INVALID_INDEX_PARAM));
+    create_numeric_index<KeyT, ValueT>(index_type, data_table.get(), 2, INVALID_INDEX_PARAM));
 
   data_index->prepare_threads(1);
   data_index->register_thread(0);

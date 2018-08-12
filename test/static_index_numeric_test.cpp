@@ -22,7 +22,7 @@ void test_static_index_numeric_unique_key_find(const IndexType index_type, const
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
+    create_numeric_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
 
   std::unordered_map<KeyT, std::pair<Uint64, ValueT>> validation_set;
   
@@ -105,7 +105,7 @@ void test_static_index_numeric_non_unique_key_find(const IndexType index_type, c
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
+    create_numeric_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
 
   std::unordered_map<KeyT, std::unordered_map<Uint64, ValueT>> validation_set;
 
@@ -185,7 +185,7 @@ void test_static_index_numeric_unique_key_find_range(const IndexType index_type,
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
+    create_numeric_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
 
   std::map<KeyT, std::pair<Uint64, ValueT>> validation_set;
   std::vector<KeyT> keys_vector;
@@ -281,7 +281,7 @@ void test_static_index_numeric_non_unique_key_find_range(const IndexType index_t
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
+    create_numeric_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
 
   std::map<KeyT, std::unordered_map<Uint64, ValueT>> validation_set;
   std::vector<KeyT> keys_vector;
@@ -375,7 +375,7 @@ void test_static_index_numeric_scan(const IndexType index_type, const size_t ind
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
+    create_numeric_index<KeyT, ValueT>(index_type, data_table.get(), index_param_1, index_param_2));
 
   std::map<KeyT, std::pair<Uint64, ValueT>> validation_set;
 

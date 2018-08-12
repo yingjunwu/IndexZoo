@@ -15,85 +15,82 @@
 
 class DynamicIndexGenericTest : public IndexZooTest {};
 
-template<size_t MaxKeySize, typename ValueT>
-void test_dynamic_index_generic_unique_key(const IndexType index_type) {
+template<typename ValueT>
+void test_dynamic_index_generic_unique_key_find(const uint64_t max_key_size, const IndexType index_type) {
 
   size_t n = 10000;
 
   std::unique_ptr<GenericDataTable<ValueT>> data_table(
-    new GenericDataTable<ValueT>(MaxKeySize));
+    new GenericDataTable<ValueT>(max_key_size));
+  std::unique_ptr<BaseGenericIndex<ValueT>> data_index(
+    create_generic_index<ValueT>(index_type, data_table.get()));
 
-  // data_index->prepare_threads(1);
-  // data_index->register_thread(0);
+  data_index->prepare_threads(1);
+  data_index->register_thread(0);
 
-  std::unordered_map<std::string, std::pair<Uint64, ValueT>> validation_set;
+  std::map<GenericKey, std::pair<Uint64, ValueT>> validation_set;
   
-  FastRandom fast_rand(0);
+  FastRandom rand;
 
-  size_t key_size = MaxKeySize - 1;
+  size_t key_size = max_key_size - 1;
+
   GenericKey key(key_size);
+
   // insert
-  // for (size_t i = 0; i < 10; ++i) {
-    
-  //   fast_rand.next_chars(MaxKeySize, key.raw());
-  //   ValueT value = i + 2048;
+  for (size_t i = 0; i < n; ++i) {
 
-  //   OffsetT offset = data_table->insert_tuple(key, value);
-    
-  // }
+    rand.next_readable_chars(key_size, key.raw());
 
-  // stx::btree_multimap<GenericKey<MaxKeySize>, Uint64> container;
+    ValueT value = i + 2048;
 
-  // // insert
-  // for (size_t i = 0; i < n; ++i) {
+    OffsetT offset = data_table->insert_tuple(key.raw(), key_size, value);
 
-  //   KeyT key = n - i - 1;
-  //   ValueT value = i + 2048;
-    
-  //   OffsetT offset = data_table->insert_tuple(key, value);
-    
-  //   validation_set.insert(
-  //     std::pair<KeyT, std::pair<Uint64, ValueT>>(
-  //       key, std::pair<Uint64, ValueT>(offset.raw_data(), value)));
+    validation_set.insert(
+      std::pair<GenericKey, std::pair<Uint64, ValueT>>(
+        key, std::pair<Uint64, ValueT>(offset.raw_data(), value)));
 
-  // }
+    // data_index->insert(key.raw(), key_size, value);
+  }
 
-  // // reorganize data
-  // data_index->reorganize();
-
-  // // find
-  // for (size_t i = 0; i < n; ++i) {
-  //   KeyT key = i;
+  // find
+  // for (auto entry : validation_set) {
+  //   GenericKey key = entry.first;
 
   //   std::vector<Uint64> offsets;
 
-  //   data_index->find(key, offsets);
+  //   data_index->find(key.raw(), key.size(), offsets);
 
-  //   EXPECT_EQ(offsets.size(), 1);
+  //   // EXPECT_EQ(offsets.size(), 1);
 
-  //   ValueT *value = data_table->get_tuple_value(offsets.at(0));
+  //   // ValueT *value = data_table->get_tuple_value(offsets.at(0));
 
-  //   EXPECT_EQ(offsets.at(0), validation_set.find(key)->second.first);
+  //   // EXPECT_EQ(offsets.at(0), entry.second.first);
 
-  //   EXPECT_EQ(*value, validation_set.find(key)->second.second);
+  //   // EXPECT_EQ(*value, entry.second.second);
   // }
 }
 
 
-TEST_F(DynamicIndexGenericTest, RandomKeyTest) {
+TEST_F(DynamicIndexGenericTest, UniqueKeyFindTest) {
   
-  test_dynamic_index_generic_unique_key<32, uint64_t>(IndexType::D_ST_ArtTree);
+  std::vector<IndexType> index_types {
 
-  // for (auto index_type : index_types) {
-  //   // key type is set to uint16_t
-  //   test_dynamic_index_numeric_unique_key<uint16_t, uint64_t>(index_type);
+    // dynamic indexes - singlethread
+    IndexType::D_ST_StxBtree,
+    // IndexType::D_ST_ArtTree,
     
-  //   // key type is set to uint32_t
-  //   test_dynamic_index_numeric_unique_key<uint32_t, uint64_t>(index_type);
-    
-  //   // key type is set to uint64_t
-  //   test_dynamic_index_numeric_unique_key<uint64_t, uint64_t>(index_type);
-  // }
+    // // dynamic indexes - multithread
+    // IndexType::D_MT_Libcuckoo,
+    // IndexType::D_MT_ArtTree,
+    // IndexType::D_MT_BwTree,
+    // IndexType::D_MT_Masstree,
+  };
+
+  for (auto index_type : index_types) {
+    test_dynamic_index_generic_unique_key_find<uint64_t>(32, index_type);
+
+    test_dynamic_index_generic_unique_key_find<uint64_t>(64, index_type);
+  }
 
 
 }

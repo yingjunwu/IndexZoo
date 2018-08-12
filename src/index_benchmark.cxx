@@ -278,7 +278,7 @@ void run_workload(const Config &config) {
 
   // create index
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(nullptr);
-  data_index.reset(create_index<KeyT, ValueT>(config.index_type_, data_table.get(), config.index_param_1_, config.index_param_2_));
+  data_index.reset(create_numeric_index<KeyT, ValueT>(config.index_type_, data_table.get(), config.index_param_1_, config.index_param_2_));
 
   // prepare threads
   data_index->prepare_threads(config.thread_count_);

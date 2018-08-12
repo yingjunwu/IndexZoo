@@ -22,13 +22,13 @@ void test_dynamic_index_numeric_unique_key_find(const IndexType index_type) {
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get()));
+    create_numeric_index<KeyT, ValueT>(index_type, data_table.get()));
 
   data_index->prepare_threads(1);
   data_index->register_thread(0);
 
   std::unordered_map<KeyT, std::pair<Uint64, ValueT>> validation_set;
-    
+
   FastRandom rand;
 
   // insert
@@ -108,7 +108,7 @@ void test_dynamic_index_numeric_non_unique_key_find(const IndexType index_type) 
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get()));
+    create_numeric_index<KeyT, ValueT>(index_type, data_table.get()));
 
   data_index->prepare_threads(1);
   data_index->register_thread(0);
@@ -186,7 +186,7 @@ void test_dynamic_index_numeric_unique_key_find_range(const IndexType index_type
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get()));
+    create_numeric_index<KeyT, ValueT>(index_type, data_table.get()));
 
   data_index->prepare_threads(1);
   data_index->register_thread(0);
@@ -282,7 +282,7 @@ void test_dynamic_index_numeric_non_unique_key_find_range(const IndexType index_
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get()));
+    create_numeric_index<KeyT, ValueT>(index_type, data_table.get()));
 
   data_index->prepare_threads(1);
   data_index->register_thread(0);
@@ -374,7 +374,7 @@ void test_dynamic_index_numeric_scan(const IndexType index_type) {
   std::unique_ptr<DataTable<KeyT, ValueT>> data_table(
     new DataTable<KeyT, ValueT>());
   std::unique_ptr<BaseIndex<KeyT, ValueT>> data_index(
-    create_index<KeyT, ValueT>(index_type, data_table.get()));
+    create_numeric_index<KeyT, ValueT>(index_type, data_table.get()));
 
   data_index->prepare_threads(1);
   data_index->register_thread(0);

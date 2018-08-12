@@ -5,32 +5,32 @@
 #include <cstdint>
 #include <vector>
 
-#include "data_table.h"
-#include "offset.h"
 #include "generic_key.h"
+#include "generic_data_table.h"
+#include "offset.h"
 
-template<typename KeyT, typename ValueT>
+template<typename ValueT>
 class BaseGenericIndex {
 
 public:
-  BaseGenericIndex(DataTable<KeyT, ValueT> *table_ptr) :
+  BaseGenericIndex(GenericDataTable<ValueT> *table_ptr) :
     table_ptr_(table_ptr) {}
     
   virtual ~BaseGenericIndex() {}
 
-  virtual void insert(const KeyT &key, const Uint64 &value) = 0;
+  virtual void insert(const char *key, const uint64_t key_size, const Uint64 &value) = 0;
 
-  virtual void find(const KeyT &key, std::vector<Uint64> &values) = 0;
+  virtual void find(const char *key, const uint64_t key_size, std::vector<Uint64> &values) = 0;
 
-  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) = 0;
+  virtual void find_range(const char *lhs_key, const uint64_t lhs_key_size, const char *rhs_key, const uint64_t rhs_key_size, std::vector<Uint64> &values) = 0;
 
-  virtual void scan(const KeyT &key, std::vector<Uint64> &values) = 0;
+  virtual void scan(const char *key, const uint64_t key_size, std::vector<Uint64> &values) = 0;
 
-  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) = 0;
+  virtual void scan_reverse(const char *key, const uint64_t key_size, std::vector<Uint64> &values) = 0;
 
   virtual void scan_full(std::vector<Uint64> &values, const size_t count = std::numeric_limits<std::size_t>::max()) = 0;
 
-  virtual void erase(const KeyT &key) = 0;
+  virtual void erase(const char *key, const uint64_t key_size) = 0;
 
   virtual size_t size() const = 0;
 
@@ -44,6 +44,6 @@ public:
 
 protected:
 
-  DataTable<KeyT, ValueT> *table_ptr_;
+  GenericDataTable<ValueT> *table_ptr_;
 
 };

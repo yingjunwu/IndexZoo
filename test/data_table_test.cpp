@@ -57,8 +57,7 @@ TEST_F(DataTableTest, NumericTest) {
 }
 
 
-template<size_t MaxKeySize>
-void data_table_generic_test() {
+void data_table_generic_test(const uint64_t max_key_size) {
   // size_t n = 54321;
   size_t n = 1000;
 
@@ -66,11 +65,11 @@ void data_table_generic_test() {
   std::vector<std::pair<char*, uint64_t>> test_vector;
 
   std::unique_ptr<GenericDataTable<uint64_t>> data_table(
-    new GenericDataTable<uint64_t>(MaxKeySize));
+    new GenericDataTable<uint64_t>(max_key_size));
 
   FastRandom fast_rand(0);
 
-  uint64_t key_size = MaxKeySize - 1;
+  uint64_t key_size = max_key_size - 1;
 
   GenericKey key(key_size);
   // insert
@@ -106,5 +105,5 @@ void data_table_generic_test() {
 }
 
 TEST_F(DataTableTest, GenericTest) {
-  data_table_generic_test<16>();
+  data_table_generic_test(16);
 }
