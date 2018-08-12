@@ -30,22 +30,22 @@ public:
 
   virtual void find_range(const char *lhs_key, const uint64_t lhs_key_size, const char *rhs_key, const uint64_t rhs_key_size, std::vector<Uint64> &values) final {
     
-    GenericKey lhs_generic_key(lhs_key, lhs_key_size);
-    GenericKey rhs_generic_key(rhs_key, rhs_key_size);
+    // GenericKey lhs_generic_key(lhs_key, lhs_key_size);
+    // GenericKey rhs_generic_key(rhs_key, rhs_key_size);
 
-    if (lhs_generic_key > rhs_generic_key) { return; }
+    // if (lhs_generic_key > rhs_generic_key) { return; }
 
-    if (lhs_generic_key == rhs_generic_key) { 
-      find(lhs_key, lhs_key_size, values);
-      return;
-    }
+    // if (lhs_generic_key == rhs_generic_key) { 
+    //   find(lhs_key, lhs_key_size, values);
+    //   return;
+    // }
 
-    auto itlow = container_.lower_bound(lhs_generic_key);
-    auto itup = container_.upper_bound(rhs_generic_key);
+    // auto itlow = container_.lower_bound(lhs_generic_key);
+    // auto itup = container_.upper_bound(rhs_generic_key);
 
-    for (auto it = itlow; it != itup; ++it) {
-      values.push_back(it->second);
-    }
+    // for (auto it = itlow; it != itup; ++it) {
+    //   values.push_back(it->second);
+    // }
   }
 
   virtual void scan(const char *key, const uint64_t key_size, std::vector<Uint64> &values) final {
@@ -84,7 +84,7 @@ public:
   }
 
 private:
-  stx::btree_multimap<GenericKey, Uint64, GenericComparator> container_;
+  stx::btree_multimap<GenericKey, Uint64> container_;
 };
 
 }

@@ -49,25 +49,25 @@ void test_dynamic_index_generic_unique_key_find(const uint64_t max_key_size, con
       std::pair<GenericKey, std::pair<Uint64, ValueT>>(
         key, std::pair<Uint64, ValueT>(offset.raw_data(), value)));
 
-    // data_index->insert(key.raw(), key_size, value);
+    data_index->insert(key.raw(), key_size, offset.raw_data());
   }
 
   // find
-  // for (auto entry : validation_set) {
-  //   GenericKey key = entry.first;
+  for (auto entry : validation_set) {
+    GenericKey key = entry.first;
 
-  //   std::vector<Uint64> offsets;
+    std::vector<Uint64> offsets;
 
-  //   data_index->find(key.raw(), key.size(), offsets);
+    data_index->find(key.raw(), key.size(), offsets);
 
-  //   // EXPECT_EQ(offsets.size(), 1);
+    EXPECT_EQ(offsets.size(), 1);
 
-  //   // ValueT *value = data_table->get_tuple_value(offsets.at(0));
+    ValueT *value = data_table->get_tuple_value(offsets.at(0));
 
-  //   // EXPECT_EQ(offsets.at(0), entry.second.first);
+    EXPECT_EQ(offsets.at(0), entry.second.first);
 
-  //   // EXPECT_EQ(*value, entry.second.second);
-  // }
+    EXPECT_EQ(*value, entry.second.second);
+  }
 }
 
 
