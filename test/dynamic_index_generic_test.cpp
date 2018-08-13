@@ -82,8 +82,8 @@ TEST_F(DynamicIndexGenericTest, UniqueKeyFindTest) {
     // // dynamic indexes - multithread
     IndexType::D_MT_Libcuckoo,
     IndexType::D_MT_ArtTree,
-    // IndexType::D_MT_BwTree,
-    // IndexType::D_MT_Masstree,
+    IndexType::D_MT_BwTree,
+    IndexType::D_MT_Masstree,
   };
 
   for (auto index_type : index_types) {
@@ -171,7 +171,7 @@ TEST_F(DynamicIndexGenericTest, NonUniqueKeyFindTest) {
     // dynamic indexes - multithread
     IndexType::D_MT_Libcuckoo,
     IndexType::D_MT_ArtTree,
-    // IndexType::D_MT_BwTree,
+    IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree, // do not support non-unique keys
   };
 
@@ -263,7 +263,7 @@ TEST_F(DynamicIndexGenericTest, UniqueKeyFindRangeTest) {
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
     // IndexType::D_MT_ArtTree, // do not fully support range queries
-    // IndexType::D_MT_BwTree,
+    IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree, // do not support range queries
   };
 
@@ -364,7 +364,7 @@ TEST_F(DynamicIndexGenericTest, NonUniqueKeyFindRangeTest) {
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
     IndexType::D_MT_ArtTree,
-    // IndexType::D_MT_BwTree,
+    IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree, // do not support non-unique keys
   };
 

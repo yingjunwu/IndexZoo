@@ -119,8 +119,43 @@ private:
   size_t data_size_ = 0;
 };
 
+// "less than" relation
+struct GenericKeyComparator {
+  inline bool operator()(const GenericKey &lhs, const GenericKey &rhs) const {
+    size_t cmp_len = (lhs.size() < rhs.size()) ? lhs.size() : rhs.size();
+    int rt = memcmp(lhs.raw(), rhs.raw(), cmp_len);
+    if (rt == 0) {
+      if (lhs.size() < rhs.size()) {
+        return true;
+      } else {
+        return false;
+      }
+    } else if (rt < 0) {
+      return true;
+    } else {
+      return false;
+    }
+
+  }
+};
+
+struct GenericKeyEqualityChecker {
+  inline bool operator()(const GenericKey &lhs, const GenericKey &rhs) const {
+    if (lhs.size() != rhs.size()) {
+      return false;
+    }
+    int rt = memcmp(lhs.raw(), rhs.raw(), lhs.size());
+    if (rt == 0) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+};
+
 struct GenericKeyHasher {
-  std::size_t operator()(const GenericKey &key) const {
+  inline std::size_t operator()(const GenericKey &key) const {
     return CityHash64(key.raw(), key.size());
   }
 };
+
