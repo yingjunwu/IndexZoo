@@ -80,7 +80,7 @@ TEST_F(DynamicIndexGenericTest, UniqueKeyFindTest) {
     // IndexType::D_ST_ArtTree,
     
     // // dynamic indexes - multithread
-    // IndexType::D_MT_Libcuckoo,
+    IndexType::D_MT_Libcuckoo,
     // IndexType::D_MT_ArtTree,
     // IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree,

@@ -55,9 +55,7 @@ public:
     }
   }
 
-  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) final {
-
-  }
+  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) final {}
 
   virtual void scan_full(std::vector<Uint64> &values, const size_t count) final {
     size_t i = 0;
@@ -72,7 +70,7 @@ public:
   }
 
   virtual void erase(const KeyT &key) final {
-    // container_.erase(key);
+    container_.erase(key);
   }
 
   virtual size_t size() const final {

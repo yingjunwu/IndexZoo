@@ -12,7 +12,6 @@ template<typename KeyT, typename ValueT>
 class LibcuckooIndex : public BaseDynamicIndex<KeyT, ValueT> {
 
 public:
-  // LibcuckooIndex(DataTable<KeyT, ValueT> *table_ptr, const size_t size_hint) : BaseDynamicIndex<KeyT, ValueT>(table_ptr), container_(size_hint) {}
   LibcuckooIndex(DataTable<KeyT, ValueT> *table_ptr) : BaseDynamicIndex<KeyT, ValueT>(table_ptr) {}
   virtual ~LibcuckooIndex() {}
 
@@ -21,7 +20,7 @@ public:
     container_.upsert(key, [&value](std::vector<Uint64>& vec) { vec.push_back(value); }, 1, value);
   }
 
-  virtual void find(const KeyT &key, std::vector<Uint64> &values) final {    
+  virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
     container_.find(key, values);
   }
 

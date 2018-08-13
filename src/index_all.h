@@ -19,6 +19,8 @@
 
 #include "dynamic_index/singlethread/stx_btree_generic_index.h"
 
+#include "dynamic_index/multithread/libcuckoo_generic_index.h"
+
 
 enum class IndexType {
   // static indexes
@@ -234,11 +236,11 @@ static BaseGenericIndex<ValueT>* create_generic_index(const IndexType index_type
   //   return new dynamic_index::singlethread::SkiplistIndex<KeyT, ValueT>(table_ptr);
 
   // } else 
-  // if (index_type == IndexType::D_MT_Libcuckoo) {
+  else if (index_type == IndexType::D_MT_Libcuckoo) {
 
-  //   return new dynamic_index::multithread::LibcuckooIndex<KeyT, ValueT>(table_ptr);
+    return new dynamic_index::multithread::LibcuckooGenericIndex<ValueT>(table_ptr);
 
-  // } 
+  } 
   // else if (index_type == IndexType::D_MT_ArtTree) {
 
   //   return new dynamic_index::multithread::ArtTreeIndex<KeyT, ValueT>(table_ptr);

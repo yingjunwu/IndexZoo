@@ -4,6 +4,7 @@
 #include <cassert>
 
 #include "utils.h"
+#include "cityhash.h"
 
 struct GenericComparator;
 
@@ -116,4 +117,10 @@ public:
 private:
   char *data_ = nullptr;
   size_t data_size_ = 0;
+};
+
+struct GenericKeyHasher {
+  std::size_t operator()(const GenericKey &key) const {
+    return CityHash64(key.raw(), key.size());
+  }
 };

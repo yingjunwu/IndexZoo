@@ -55,20 +55,18 @@ public:
     }
   }
 
-  virtual void scan_reverse(const GenericKey &key, std::vector<Uint64> &values) final {
-
-  }
+  virtual void scan_reverse(const GenericKey &key, std::vector<Uint64> &values) final {}
 
   virtual void scan_full(std::vector<Uint64> &values, const size_t count) final {
-    // size_t i = 0;
-    // for (auto it = container_.begin(); it != container_.end(); ++it) {
-    //   if (i < count) {
-    //     values.push_back(it->second);
-    //     ++i;
-    //   } else {
-    //     return;
-    //   }
-    // }
+    size_t i = 0;
+    for (auto it = container_.begin(); it != container_.end(); ++it) {
+      if (i < count) {
+        values.push_back(it->second);
+        ++i;
+      } else {
+        return;
+      }
+    }
   }
 
   virtual void erase(const GenericKey &key) final {
