@@ -18,19 +18,19 @@ public:
     
   virtual ~BaseGenericIndex() {}
 
-  virtual void insert(const char *key, const uint64_t key_size, const Uint64 &value) = 0;
+  virtual void insert(const GenericKey &key, const Uint64 &value) = 0;
 
-  virtual void find(const char *key, const uint64_t key_size, std::vector<Uint64> &values) = 0;
+  virtual void find(const GenericKey &key, std::vector<Uint64> &values) = 0;
 
-  virtual void find_range(const char *lhs_key, const uint64_t lhs_key_size, const char *rhs_key, const uint64_t rhs_key_size, std::vector<Uint64> &values) = 0;
+  virtual void find_range(const GenericKey &lhs_key, const GenericKey &rhs_key, std::vector<Uint64> &values) = 0;
 
-  virtual void scan(const char *key, const uint64_t key_size, std::vector<Uint64> &values) = 0;
+  virtual void scan(const GenericKey &key, std::vector<Uint64> &values) = 0;
 
-  virtual void scan_reverse(const char *key, const uint64_t key_size, std::vector<Uint64> &values) = 0;
+  virtual void scan_reverse(const GenericKey &key, std::vector<Uint64> &values) = 0;
 
   virtual void scan_full(std::vector<Uint64> &values, const size_t count = std::numeric_limits<std::size_t>::max()) = 0;
 
-  virtual void erase(const char *key, const uint64_t key_size) = 0;
+  virtual void erase(const GenericKey &key) = 0;
 
   virtual size_t size() const = 0;
 

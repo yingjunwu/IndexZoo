@@ -11,9 +11,9 @@ public:
 
   virtual ~BaseDynamicGenericIndex() {}
 
-  virtual void scan(const char *key, const uint64_t key_size, std::vector<Uint64> &values) override {}
+  virtual void scan(const GenericKey &key, std::vector<Uint64> &values) override {}
 
-  virtual void scan_reverse(const char *key, const uint64_t key_size, std::vector<Uint64> &values) override {}
+  virtual void scan_reverse(const GenericKey &key, std::vector<Uint64> &values) override {}
 
   virtual void scan_full(std::vector<Uint64> &values, const size_t count) override {}
 
