@@ -18,8 +18,10 @@
 #include "dynamic_index/multithread/masstree_index.h"
 
 #include "dynamic_index/singlethread/stx_btree_generic_index.h"
+#include "dynamic_index/singlethread/art_tree_generic_index.h"
 
 #include "dynamic_index/multithread/libcuckoo_generic_index.h"
+#include "dynamic_index/multithread/art_tree_generic_index.h"
 
 
 enum class IndexType {
@@ -226,12 +228,12 @@ static BaseGenericIndex<ValueT>* create_generic_index(const IndexType index_type
 
     return new dynamic_index::singlethread::StxBtreeGenericIndex<ValueT>(table_ptr);
 
+  } else if (index_type == IndexType::D_ST_ArtTree) {
+
+    return new dynamic_index::singlethread::ArtTreeGenericIndex<ValueT>(table_ptr);
+
   } 
-  // else if (index_type == IndexType::D_ST_ArtTree) {
-
-  //   return new dynamic_index::singlethread::ArtTreeIndex<KeyT, ValueT>(table_ptr);
-
-  // } else if (index_type == IndexType::D_ST_Skiplist) {
+  // else if (index_type == IndexType::D_ST_Skiplist) {
 
   //   return new dynamic_index::singlethread::SkiplistIndex<KeyT, ValueT>(table_ptr);
 
@@ -241,11 +243,12 @@ static BaseGenericIndex<ValueT>* create_generic_index(const IndexType index_type
     return new dynamic_index::multithread::LibcuckooGenericIndex<ValueT>(table_ptr);
 
   } 
-  // else if (index_type == IndexType::D_MT_ArtTree) {
+  else if (index_type == IndexType::D_MT_ArtTree) {
 
-  //   return new dynamic_index::multithread::ArtTreeIndex<KeyT, ValueT>(table_ptr);
+    return new dynamic_index::multithread::ArtTreeGenericIndex<ValueT>(table_ptr);
 
-  // } else if (index_type == IndexType::D_MT_BwTree) {
+  } 
+  // else if (index_type == IndexType::D_MT_BwTree) {
 
   //   return new dynamic_index::multithread::BwTreeIndex<KeyT, ValueT>(table_ptr);
 
