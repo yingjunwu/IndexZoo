@@ -207,7 +207,7 @@ static BaseIndex<KeyT, ValueT>* create_numeric_index(const IndexType index_type,
 }
 
 template<typename ValueT>
-static BaseGenericIndex<ValueT>* create_generic_index(const IndexType index_type, GenericDataTable<uint64_t> *table_ptr, const int index_param_1 = INVALID_INDEX_PARAM, const int index_param_2 = INVALID_INDEX_PARAM) {
+static BaseGenericIndex<ValueT>* create_generic_index(const IndexType index_type, GenericDataTable<uint64_t> *table_ptr) {
 
   if (index_type == IndexType::D_ST_StxBtree) {
 

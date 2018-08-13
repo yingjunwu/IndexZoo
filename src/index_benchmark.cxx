@@ -21,7 +21,7 @@
 
 void usage(FILE *out) {
   fprintf(out,
-          "Command line options : olap_benchmark <options> \n"
+          "Command line options : index_benchmark <options> \n"
           "   -h --help              :  print help message \n"
           // index structure
           "   -i --index             :  index type: \n"
@@ -57,8 +57,7 @@ void usage(FILE *out) {
           "                              -- (3) log-normal distribution \n"
           "   -P --key_bound         :  key upper bound \n"
           "   -Q --key_stddev        :  key standard deviation \n"
-          // " string type \n"
-          // // workload configuration
+          // workload configuration
           // "   skewness \n"
           // "   for read, percentage of failed lookup \n"
           "   -c --record           :  record all keys \n"
