@@ -6,8 +6,6 @@
 
 void test() {
 
-  std::cout << "hello world" << std::endl;
-
   PersistTrie trie;
 
   size_t n = 10;
@@ -27,8 +25,12 @@ void test() {
 
   std::vector<uint64_t> ret_vals;
   for (auto &entry : keys) {
-    trie.find((unsigned char*)key.raw(), key_size, ret_vals);
-    std::cout << ret_vals.size() << std::endl;
+    trie.find((unsigned char*)entry.raw(), key_size, ret_vals);
+    if (ret_vals.size() != 0) {
+      std::cout << ret_vals.at(0) << std::endl;
+    } else {
+      std::cout << "found nothing!" << std::endl;
+    }
     ret_vals.clear();
   }
 
