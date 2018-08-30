@@ -11,16 +11,20 @@ namespace dynamic_index {
 namespace multithread {
 
 
-template<typename ValueT>
-class ArtTreeGenericIndex : public BaseDynamicGenericIndex<ValueT> {
+class ArtTreeGenericIndex : public BaseDynamicGenericIndex {
 
 static void load_key_internal(void *ctx, TID tid, art::Key &tree_key) {
 
-  auto data_table_ptr = reinterpret_cast<GenericDataTable<ValueT>*>(ctx);  
+  auto data_table_ptr = reinterpret_cast<GenericDataTable*>(ctx);  
 
   char *key_ptr = data_table_ptr->get_tuple_key(OffsetT(tid));
 
   size_t key_len = strlen(key_ptr);
+  size_t max_key_size = data_table_ptr->get_max_key_size();
+  if (key_len > max_key_size) {
+    key_len = max_key_size;
+  }
+  // std::cout << "key len = " << key_len << " " << max_key_size << std::endl;
 
   tree_key.setKeyLen(key_len);
 
@@ -30,8 +34,8 @@ static void load_key_internal(void *ctx, TID tid, art::Key &tree_key) {
 
 public:
 
-  ArtTreeGenericIndex(GenericDataTable<ValueT> *table_ptr) : 
-    BaseDynamicGenericIndex<ValueT>(table_ptr), 
+  ArtTreeGenericIndex(GenericDataTable *table_ptr) : 
+    BaseDynamicGenericIndex(table_ptr), 
     container_(load_key_internal, table_ptr), 
     ti_(container_.getThreadInfo()) {}
   

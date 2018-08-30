@@ -206,32 +206,32 @@ static BaseIndex<KeyT, ValueT>* create_numeric_index(const IndexType index_type,
   }
 }
 
-template<typename ValueT>
-static BaseGenericIndex<ValueT>* create_generic_index(const IndexType index_type, GenericDataTable<uint64_t> *table_ptr) {
+
+static BaseGenericIndex* create_generic_index(const IndexType index_type, GenericDataTable *table_ptr) {
 
   if (index_type == IndexType::D_ST_StxBtree) {
 
-    return new dynamic_index::singlethread::StxBtreeGenericIndex<ValueT>(table_ptr);
+    return new dynamic_index::singlethread::StxBtreeGenericIndex(table_ptr);
 
   } else if (index_type == IndexType::D_ST_ArtTree) {
 
-    return new dynamic_index::singlethread::ArtTreeGenericIndex<ValueT>(table_ptr);
+    return new dynamic_index::singlethread::ArtTreeGenericIndex(table_ptr);
 
   } else if (index_type == IndexType::D_MT_Libcuckoo) {
 
-    return new dynamic_index::multithread::LibcuckooGenericIndex<ValueT>(table_ptr);
+    return new dynamic_index::multithread::LibcuckooGenericIndex(table_ptr);
 
   } else if (index_type == IndexType::D_MT_ArtTree) {
 
-    return new dynamic_index::multithread::ArtTreeGenericIndex<ValueT>(table_ptr);
+    return new dynamic_index::multithread::ArtTreeGenericIndex(table_ptr);
 
   } else if (index_type == IndexType::D_MT_BwTree) {
 
-    return new dynamic_index::multithread::BwTreeGenericIndex<ValueT>(table_ptr);
+    return new dynamic_index::multithread::BwTreeGenericIndex(table_ptr);
 
   } else if (index_type == IndexType::D_MT_Masstree) {
 
-    return new dynamic_index::multithread::MasstreeGenericIndex<ValueT>(table_ptr);
+    return new dynamic_index::multithread::MasstreeGenericIndex(table_ptr);
 
   } else {
 

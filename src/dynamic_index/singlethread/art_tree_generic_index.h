@@ -7,11 +7,10 @@
 namespace dynamic_index {
 namespace singlethread {
 
-template<typename ValueT>
-class ArtTreeGenericIndex : public BaseDynamicGenericIndex<ValueT> {
+class ArtTreeGenericIndex : public BaseDynamicGenericIndex {
 
 public:
-  ArtTreeGenericIndex(GenericDataTable<ValueT> *table_ptr) : BaseDynamicGenericIndex<ValueT>(table_ptr) {
+  ArtTreeGenericIndex(GenericDataTable *table_ptr) : BaseDynamicGenericIndex(table_ptr) {
     art_tree_init(&container_);
   }
   

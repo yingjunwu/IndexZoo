@@ -10,11 +10,10 @@ namespace multithread {
 
 using namespace wangziqi2013::bwtree;
 
-template<typename ValueT>
-class BwTreeGenericIndex : public BaseDynamicGenericIndex<ValueT> {
+class BwTreeGenericIndex : public BaseDynamicGenericIndex {
 
 public:
-  BwTreeGenericIndex(GenericDataTable<ValueT> *table_ptr) : BaseDynamicGenericIndex<ValueT>(table_ptr) {
+  BwTreeGenericIndex(GenericDataTable *table_ptr) : BaseDynamicGenericIndex(table_ptr) {
     container_ = new BwTree<GenericKey, Uint64, GenericKeyComparator, GenericKeyEqualityChecker, GenericKeyHasher>{true};
   }
 

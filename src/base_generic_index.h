@@ -9,11 +9,10 @@
 #include "generic_data_table.h"
 #include "offset.h"
 
-template<typename ValueT>
 class BaseGenericIndex {
 
 public:
-  BaseGenericIndex(GenericDataTable<ValueT> *table_ptr) :
+  BaseGenericIndex(GenericDataTable *table_ptr) :
     table_ptr_(table_ptr) {}
     
   virtual ~BaseGenericIndex() {}
@@ -44,6 +43,6 @@ public:
 
 protected:
 
-  GenericDataTable<ValueT> *table_ptr_;
+  GenericDataTable *table_ptr_;
 
 };

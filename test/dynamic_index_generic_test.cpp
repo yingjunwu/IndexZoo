@@ -15,24 +15,23 @@
 
 class DynamicIndexGenericTest : public IndexZooTest {};
 
-template<typename ValueT>
 void test_dynamic_index_generic_unique_key_find(const uint64_t max_key_size, const IndexType index_type) {
 
   size_t n = 10000;
 
-  std::unique_ptr<GenericDataTable<ValueT>> data_table(
-    new GenericDataTable<ValueT>(max_key_size));
-  std::unique_ptr<BaseGenericIndex<ValueT>> data_index(
-    create_generic_index<ValueT>(index_type, data_table.get()));
+  std::unique_ptr<GenericDataTable> data_table(
+    new GenericDataTable(max_key_size, sizeof(uint64_t)));
+  std::unique_ptr<BaseGenericIndex> data_index(
+    create_generic_index(index_type, data_table.get()));
 
   data_index->prepare_threads(1);
   data_index->register_thread(0);
 
-  std::map<GenericKey, std::pair<Uint64, ValueT>> validation_set;
+  std::map<GenericKey, std::pair<Uint64, uint64_t>> validation_set;
   
   FastRandom rand;
 
-  size_t key_size = max_key_size - 1;
+  size_t key_size = max_key_size;
 
   GenericKey key(key_size);
 
@@ -43,11 +42,11 @@ void test_dynamic_index_generic_unique_key_find(const uint64_t max_key_size, con
 
     ValueT value = i + 2048;
 
-    OffsetT offset = data_table->insert_tuple(key.raw(), key.size(), value);
+    OffsetT offset = data_table->insert_tuple(key.raw(), key.size(), (char*)(&value), sizeof(value));
 
     validation_set.insert(
-      std::pair<GenericKey, std::pair<Uint64, ValueT>>(
-        key, std::pair<Uint64, ValueT>(offset.raw_data(), value)));
+      std::pair<GenericKey, std::pair<Uint64, uint64_t>>(
+        key, std::pair<Uint64, uint64_t>(offset.raw_data(), value)));
 
     data_index->insert(key, offset.raw_data());
   }
@@ -62,11 +61,11 @@ void test_dynamic_index_generic_unique_key_find(const uint64_t max_key_size, con
 
     EXPECT_EQ(offsets.size(), 1);
 
-    ValueT *value = data_table->get_tuple_value(offsets.at(0));
+    char *value = data_table->get_tuple_value(offsets.at(0));
 
     EXPECT_EQ(offsets.at(0), entry.second.first);
 
-    EXPECT_EQ(*value, entry.second.second);
+    EXPECT_EQ((*(uint64_t*)value), entry.second.second);
   }
 }
 
@@ -87,15 +86,14 @@ TEST_F(DynamicIndexGenericTest, UniqueKeyFindTest) {
   };
 
   for (auto index_type : index_types) {
-    test_dynamic_index_generic_unique_key_find<uint64_t>(32, index_type);
+    test_dynamic_index_generic_unique_key_find(32, index_type);
 
-    test_dynamic_index_generic_unique_key_find<uint64_t>(64, index_type);
+    test_dynamic_index_generic_unique_key_find(64, index_type);
   }
 
 }
 
 
-template<typename ValueT>
 void test_dynamic_index_generic_non_unique_key_find(const uint64_t max_key_size, const IndexType index_type) {
 
   size_t n = 10000;
@@ -103,19 +101,19 @@ void test_dynamic_index_generic_non_unique_key_find(const uint64_t max_key_size,
   
   FastRandom rand_gen(0);
 
-  std::unique_ptr<GenericDataTable<ValueT>> data_table(
-    new GenericDataTable<ValueT>(max_key_size));
-  std::unique_ptr<BaseGenericIndex<ValueT>> data_index(
-    create_generic_index<ValueT>(index_type, data_table.get()));
+  std::unique_ptr<GenericDataTable> data_table(
+    new GenericDataTable(max_key_size, sizeof(uint64_t)));
+  std::unique_ptr<BaseGenericIndex> data_index(
+    create_generic_index(index_type, data_table.get()));
 
   data_index->prepare_threads(1);
   data_index->register_thread(0);
 
-  std::map<GenericKey, std::unordered_map<Uint64, ValueT>> validation_set;
+  std::map<GenericKey, std::unordered_map<Uint64, uint64_t>> validation_set;
   
   std::vector<GenericKey> unique_keys;
 
-  size_t key_size = max_key_size - 1;
+  size_t key_size = max_key_size;
   
   GenericKey key(key_size);
   
@@ -132,7 +130,7 @@ void test_dynamic_index_generic_non_unique_key_find(const uint64_t max_key_size,
 
     ValueT value = i + 2048;
     
-    OffsetT offset = data_table->insert_tuple(key.raw(), key.size(), value);
+    OffsetT offset = data_table->insert_tuple(key.raw(), key.size(), (char*)(&value), sizeof(uint64_t));
     
     validation_set[key][offset.raw_data()] = value;
 
@@ -150,11 +148,11 @@ void test_dynamic_index_generic_non_unique_key_find(const uint64_t max_key_size,
     EXPECT_EQ(offsets.size(), entry.second.size());
 
     for (auto offset : offsets) {
-      ValueT *value = data_table->get_tuple_value(offset);
+      char *value = data_table->get_tuple_value(offset);
 
       EXPECT_NE(entry.second.end(), entry.second.find(offset));
 
-      EXPECT_EQ(*value, entry.second.at(offset));
+      EXPECT_EQ((*(uint64_t*)value), entry.second.at(offset));
     }
   }
 }
@@ -176,30 +174,29 @@ TEST_F(DynamicIndexGenericTest, NonUniqueKeyFindTest) {
   };
 
   for (auto index_type : index_types) {
-    test_dynamic_index_generic_non_unique_key_find<uint64_t>(32, index_type);
+    test_dynamic_index_generic_non_unique_key_find(32, index_type);
 
-    test_dynamic_index_generic_non_unique_key_find<uint64_t>(64, index_type);
+    test_dynamic_index_generic_non_unique_key_find(64, index_type);
   }
 }
 
 
-template<typename ValueT>
 void test_dynamic_index_generic_unique_key_find_range(const uint64_t max_key_size, const IndexType index_type) {
 
   size_t n = 10000;
 
-  std::unique_ptr<GenericDataTable<ValueT>> data_table(
-    new GenericDataTable<ValueT>(max_key_size));
-  std::unique_ptr<BaseGenericIndex<ValueT>> data_index(
-    create_generic_index<ValueT>(index_type, data_table.get()));
+  std::unique_ptr<GenericDataTable> data_table(
+    new GenericDataTable(max_key_size, sizeof(uint64_t)));
+  std::unique_ptr<BaseGenericIndex> data_index(
+    create_generic_index(index_type, data_table.get()));
 
   data_index->prepare_threads(1);
   data_index->register_thread(0);
 
-  std::map<GenericKey, std::pair<Uint64, ValueT>> validation_set;
+  std::map<GenericKey, std::pair<Uint64, uint64_t>> validation_set;
   std::vector<GenericKey> keys_vector;
 
-  size_t key_size = max_key_size - 1;
+  size_t key_size = max_key_size;
   GenericKey key(key_size);
 
   FastRandom rand;
@@ -212,13 +209,13 @@ void test_dynamic_index_generic_unique_key_find_range(const uint64_t max_key_siz
       rand.next_readable_chars(key_size, key.raw());
     }
 
-    ValueT value = i + 2048;
+    uint64_t value = i + 2048;
     
-    OffsetT offset = data_table->insert_tuple(key.raw(), key.size(), value);
+    OffsetT offset = data_table->insert_tuple(key.raw(), key.size(), (char*)(&value), sizeof(uint64_t));
     
     validation_set.insert(
-      std::pair<GenericKey, std::pair<Uint64, ValueT>>(
-        key, std::pair<Uint64, ValueT>(offset.raw_data(), value)));
+      std::pair<GenericKey, std::pair<Uint64, uint64_t>>(
+        key, std::pair<Uint64, uint64_t>(offset.raw_data(), value)));
     keys_vector.push_back(key);
 
     data_index->insert(key, offset.raw_data());
@@ -268,14 +265,14 @@ TEST_F(DynamicIndexGenericTest, UniqueKeyFindRangeTest) {
   };
 
   for (auto index_type : index_types) {
-    test_dynamic_index_generic_unique_key_find_range<uint64_t>(32, index_type);
+    test_dynamic_index_generic_unique_key_find_range(32, index_type);
     
-    test_dynamic_index_generic_unique_key_find_range<uint64_t>(64, index_type);
+    test_dynamic_index_generic_unique_key_find_range(64, index_type);
   }
 
 }
 
-template<typename ValueT>
+
 void test_dynamic_index_generic_non_unique_key_find_range(const uint64_t max_key_size, const IndexType index_type) {
 
   size_t n = 10000;
@@ -283,25 +280,24 @@ void test_dynamic_index_generic_non_unique_key_find_range(const uint64_t max_key
   
   FastRandom rand_gen(0);
 
-  std::unique_ptr<GenericDataTable<ValueT>> data_table(
-    new GenericDataTable<ValueT>(max_key_size));
-  std::unique_ptr<BaseGenericIndex<ValueT>> data_index(
-    create_generic_index<ValueT>(index_type, data_table.get()));
+  std::unique_ptr<GenericDataTable> data_table(
+    new GenericDataTable(max_key_size, sizeof(uint64_t)));
+  std::unique_ptr<BaseGenericIndex> data_index(
+    create_generic_index(index_type, data_table.get()));
 
   data_index->prepare_threads(1);
   data_index->register_thread(0);
 
-  std::map<GenericKey, std::unordered_map<Uint64, ValueT>> validation_set;
+  std::map<GenericKey, std::unordered_map<Uint64, uint64_t>> validation_set;
   std::vector<GenericKey> unique_keys;
   std::vector<GenericKey> keys_vector;
 
-  size_t key_size = max_key_size - 1;
-
-  GenericKey key(key_size);
+  size_t key_size = max_key_size;
+  GenericKey rand_key(key_size);
 
   for (size_t i = 0; i < m; ++i) {
-    rand_gen.next_readable_chars(key_size, key.raw());
-    unique_keys.push_back(key);
+    rand_gen.next_readable_chars(key_size, rand_key.raw());
+    unique_keys.push_back(rand_key);
   }
   
   // insert
@@ -310,9 +306,9 @@ void test_dynamic_index_generic_non_unique_key_find_range(const uint64_t max_key
     uint64_t key_id = rand_gen.next<uint64_t>() % m;
     GenericKey key = unique_keys.at(key_id);
 
-    ValueT value = i + 2048;
+    uint64_t value = i + 2048;
     
-    OffsetT offset = data_table->insert_tuple(key.raw(), key.size(), value);
+    OffsetT offset = data_table->insert_tuple(key.raw(), key.size(), (char*)(&value), sizeof(uint64_t));
     
     validation_set[key][offset.raw_data()] = value;
     keys_vector.push_back(key);
@@ -363,51 +359,49 @@ TEST_F(DynamicIndexGenericTest, NonUniqueKeyFindRangeTest) {
     
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
-    IndexType::D_MT_ArtTree,
+    // IndexType::D_MT_ArtTree, // do not fully support range queries
     IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree, // do not support non-unique keys
   };
 
   for (auto index_type : index_types) {
 
-    test_dynamic_index_generic_non_unique_key_find_range<uint64_t>(32, index_type);
+    test_dynamic_index_generic_non_unique_key_find_range(32, index_type);
 
-    test_dynamic_index_generic_non_unique_key_find_range<uint64_t>(64, index_type);
+    test_dynamic_index_generic_non_unique_key_find_range(64, index_type);
 
   }
 }
 
 
-template<typename ValueT>
 void test_dynamic_index_generic_scan(const uint64_t max_key_size, const IndexType index_type) {
 
   size_t n = 10000;
 
-  std::unique_ptr<GenericDataTable<ValueT>> data_table(
-    new GenericDataTable<ValueT>(max_key_size));
-  std::unique_ptr<BaseGenericIndex<ValueT>> data_index(
-    create_generic_index<ValueT>(index_type, data_table.get()));
+  std::unique_ptr<GenericDataTable> data_table(
+    new GenericDataTable(max_key_size, sizeof(uint64_t)));
+  std::unique_ptr<BaseGenericIndex> data_index(
+    create_generic_index(index_type, data_table.get()));
 
   data_index->prepare_threads(1);
   data_index->register_thread(0);
 
-  std::map<GenericKey, std::pair<Uint64, ValueT>> validation_set;
+  std::map<GenericKey, std::pair<Uint64, uint64_t>> validation_set;
 
   FastRandom rand;
 
-  size_t key_size = max_key_size - 1;
-  GenericKey key(key_size);
+  GenericKey key(max_key_size);
   // insert
   for (size_t i = 0; i < n; ++i) {
 
-    rand.next_readable_chars(key_size, key.raw());
-    ValueT value = i + 2048;
+    rand.next_readable_chars(max_key_size, key.raw());
+    uint64_t value = i + 2048;
     
-    OffsetT offset = data_table->insert_tuple(key.raw(), key.size(), value);
+    OffsetT offset = data_table->insert_tuple(key.raw(), key.size(), (char*)(&value), sizeof(uint64_t));
     
     validation_set.insert(
-      std::pair<GenericKey, std::pair<Uint64, ValueT>>(
-        key, std::pair<Uint64, ValueT>(offset.raw_data(), value)));
+      std::pair<GenericKey, std::pair<Uint64, uint64_t>>(
+        key, std::pair<Uint64, uint64_t>(offset.raw_data(), value)));
 
     data_index->insert(key, offset.raw_data());
   }
@@ -440,8 +434,8 @@ TEST_F(DynamicIndexGenericTest, ScanTest) {
   };
 
   for (auto index_type : index_types) {
-    test_dynamic_index_generic_scan<uint64_t>(32, index_type);
-    test_dynamic_index_generic_scan<uint64_t>(64, index_type);
+    test_dynamic_index_generic_scan(32, index_type);
+    test_dynamic_index_generic_scan(64, index_type);
 
   }
 }

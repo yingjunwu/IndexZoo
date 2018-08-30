@@ -51,6 +51,7 @@ struct LeafNode : public BaseNode {
     memset(kvs_, 0, kvs_len);
     memcpy(kvs_, key, key_len);
     memcpy(kvs_ + key_len, &value, sizeof(uint64_t));
+    
   }
 
   ~LeafNode() {

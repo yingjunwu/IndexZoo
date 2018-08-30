@@ -64,28 +64,26 @@ void data_table_generic_test(const uint64_t max_key_size) {
   std::vector<std::pair<char*, uint64_t>> validation_vector;
   std::vector<std::pair<char*, uint64_t>> test_vector;
 
-  std::unique_ptr<GenericDataTable<uint64_t>> data_table(
-    new GenericDataTable<uint64_t>(max_key_size));
+  std::unique_ptr<GenericDataTable> data_table(
+    new GenericDataTable(max_key_size, sizeof(uint64_t)));
 
   FastRandom fast_rand(0);
 
-  uint64_t key_size = max_key_size - 1;
-
-  GenericKey key(key_size);
+  GenericKey key(max_key_size);
   // insert
   for (size_t i = 0; i < n; ++i) {
 
-    fast_rand.next_readable_chars(key_size, key.raw());
+    fast_rand.next_readable_chars(max_key_size, key.raw());
     uint64_t value = i + 2048;
     
-    OffsetT offset = data_table->insert_tuple(key.raw(), key_size, value);
+    OffsetT offset = data_table->insert_tuple(key.raw(), max_key_size, (char*)(&value), sizeof(uint64_t));
 
-    char *tmp = new char[key_size];
-    memcpy(tmp, key.raw(), key_size);
+    char *tmp = new char[max_key_size];
+    memcpy(tmp, key.raw(), max_key_size);
     validation_vector.emplace_back(std::pair<char*, uint64_t>(tmp, offset.raw_data()));
   }
 
-  GenericDataTableIterator<uint64_t> iterator(data_table.get());
+  GenericDataTableIterator iterator(data_table.get());
   while (iterator.has_next()) {
     auto entry = iterator.next();
     test_vector.emplace_back(std::pair<char*, uint64_t>(entry.key_, entry.offset_));
@@ -95,7 +93,7 @@ void data_table_generic_test(const uint64_t max_key_size) {
   EXPECT_EQ(test_vector.size(), n);
 
   for (size_t i = 0; i < test_vector.size(); ++i) {
-    EXPECT_EQ(strncmp(test_vector.at(i).first, validation_vector.at(i).first, key_size), 0);
+    EXPECT_EQ(strncmp(test_vector.at(i).first, validation_vector.at(i).first, max_key_size), 0);
     EXPECT_EQ(test_vector.at(i).second, validation_vector.at(i).second);
   }
 

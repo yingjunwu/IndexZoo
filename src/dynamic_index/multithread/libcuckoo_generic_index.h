@@ -7,11 +7,10 @@
 namespace dynamic_index {
 namespace multithread {
 
-template<typename ValueT>
-class LibcuckooGenericIndex : public BaseDynamicGenericIndex<ValueT> {
+class LibcuckooGenericIndex : public BaseDynamicGenericIndex {
 
 public:
-  LibcuckooGenericIndex(GenericDataTable<ValueT> *table_ptr) : BaseDynamicGenericIndex<ValueT>(table_ptr) {}
+  LibcuckooGenericIndex(GenericDataTable *table_ptr) : BaseDynamicGenericIndex(table_ptr) {}
   virtual ~LibcuckooGenericIndex() {}
 
   virtual void insert(const GenericKey &key, const Uint64 &value) final {

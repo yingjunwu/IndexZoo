@@ -2,12 +2,11 @@
 
 #include "base_generic_index.h"
 
-template<typename ValueT>
-class BaseDynamicGenericIndex : public BaseGenericIndex<ValueT> {
+class BaseDynamicGenericIndex : public BaseGenericIndex {
 
 public:
-  BaseDynamicGenericIndex(GenericDataTable<ValueT> *table_ptr) : 
-    BaseGenericIndex<ValueT>(table_ptr) {}
+  BaseDynamicGenericIndex(GenericDataTable *table_ptr) : 
+    BaseGenericIndex(table_ptr) {}
 
   virtual ~BaseDynamicGenericIndex() {}
 

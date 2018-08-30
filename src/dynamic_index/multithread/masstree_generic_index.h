@@ -23,11 +23,11 @@ extern thread_local threadinfo *ti_;
 namespace dynamic_index {
 namespace multithread {
 
-template<typename ValueT>
-class MasstreeGenericIndex : public BaseDynamicGenericIndex<ValueT> {
+
+class MasstreeGenericIndex : public BaseDynamicGenericIndex {
 
 public:
-  MasstreeGenericIndex(GenericDataTable<ValueT> *table_ptr) : BaseDynamicGenericIndex<ValueT>(table_ptr) {
+  MasstreeGenericIndex(GenericDataTable *table_ptr) : BaseDynamicGenericIndex(table_ptr) {
     container_ = new Masstree::default_table();
 
     threadinfo *main_ti = threadinfo::make(threadinfo::TI_MAIN, -1);
