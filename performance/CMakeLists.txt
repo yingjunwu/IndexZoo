@@ -14,13 +14,6 @@ TARGET_LINK_LIBRARIES (generic_index_perf_test indexzoo)
 TARGET_LINK_LIBRARIES (generic_index_perf_test pthread)
 
 
-ADD_EXECUTABLE (general_test general_test.cxx ${SRC_LIST})
-
-TARGET_LINK_LIBRARIES (general_test indexzoo)
-TARGET_LINK_LIBRARIES (general_test pthread)
-
-
-
 ADD_DEFINITIONS(-DWORDS_BIGENDIAN_SET=1)
 ADD_DEFINITIONS(-DSTDC_HEADERS=1)
 ADD_DEFINITIONS(-DHAVE_SYS_TYPES_H=1)
@@ -42,9 +35,5 @@ INSTALL (TARGETS index_perf_test
     )
 
 INSTALL (TARGETS generic_index_perf_test 
-    RUNTIME DESTINATION bin
-    )
-
-INSTALL (TARGETS general_test 
     RUNTIME DESTINATION bin
     )
