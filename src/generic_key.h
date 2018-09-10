@@ -28,8 +28,8 @@ public:
 
   GenericKey(const char* data, const size_t data_size) { 
     if (data_size == 0) {
-      data_ = nullptr;
       data_size_ = 0;
+      ASSERT(data == nullptr, "data must be nullptr");
     } else {
       data_ = new char[data_size];
       memcpy(data_, data, data_size);
@@ -69,6 +69,15 @@ public:
   inline char* raw() const { return data_; }
 
   inline size_t size() const { return data_size_; }
+
+  // transfer ownership
+  void reset(char *data, const size_t data_size) {
+    ASSERT(data_ == nullptr && data_size_ == 0, "must be uninitiated");
+
+    data_ = data;
+    data_size_ = data_size;
+
+  }
 
   bool operator==(const GenericKey &rhs) const {
     if (data_size_ != rhs.data_size_) {
