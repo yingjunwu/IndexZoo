@@ -119,11 +119,12 @@ class GenericDataTableIterator {
 
 public:
   struct IteratorEntry {
-    IteratorEntry(const BlockIDT block_id, const RelOffsetT rel_offset, char *key) : 
-      offset_(OffsetT::construct_raw_data(block_id, rel_offset)), key_(key) {}
+    IteratorEntry(const BlockIDT block_id, const RelOffsetT rel_offset, char *key, char *value) : 
+      offset_(OffsetT::construct_raw_data(block_id, rel_offset)), key_(key), value_(value) {}
 
     Uint64 offset_;
     char* key_;
+    char* value_;
   };
 
 public:
@@ -164,7 +165,7 @@ public:
       curr_block_id_++;
       curr_rel_offset_ = 0;
     }
-    return IteratorEntry(ret_block_id, ret_rel_offset, table_ptr_->get_tuple_key(ret_block_id, ret_rel_offset));
+    return IteratorEntry(ret_block_id, ret_rel_offset, table_ptr_->get_tuple_key(ret_block_id, ret_rel_offset), table_ptr_->get_tuple_value(ret_block_id, ret_rel_offset));
   }
 
 

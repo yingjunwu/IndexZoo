@@ -246,12 +246,12 @@ void run_thread(const size_t &thread_id, const Config &config, const KeyT *read_
     if (next_rand < config.read_ratio_) {
       KeyT key = read_keys[operation_count % config.generated_read_key_count_];
 
-      std::vector<Uint64> values;
+      std::vector<Uint64> offsets;
 
       // retrieve tuple locations
-      data_index->find(key, values);
+      data_index->find(key, offsets);
 
-      // ASSERT(values.size() == 1, "must be 1! " << key);
+      // ASSERT(offsets.size() == 1, "must be 1! " << key);
     } else {
       // insert
       KeyT key = key_generator->get_next_key();

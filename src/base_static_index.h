@@ -6,15 +6,15 @@ template<typename KeyT, typename ValueT>
 class BaseStaticIndex : public BaseIndex<KeyT, ValueT> {
 
 protected:
-  struct KeyValuePair {
-    KeyValuePair() : key_(0), value_(0) {}
-    KeyValuePair(const KeyT key, const Uint64 value) : key_(key), value_(value) {}
+  struct KeyOffsetPair {
+    KeyOffsetPair() : key_(0), offset_(0) {}
+    KeyOffsetPair(const KeyT key, const Uint64 offset) : key_(key), offset_(offset) {}
 
     KeyT key_;
-    Uint64 value_;
+    Uint64 offset_;
   };
 
-  static bool compare_func(KeyValuePair &lhs, KeyValuePair &rhs) {
+  static bool compare_func(KeyOffsetPair &lhs, KeyOffsetPair &rhs) {
     return lhs.key_ < rhs.key_;
   }
 
@@ -27,14 +27,14 @@ public:
     container_ = nullptr;
   }
 
-  virtual void insert(const KeyT &key, const Uint64 &value) final {}
+  virtual void insert(const KeyT &key, const Uint64 &offset) final {}
   
   virtual void erase(const KeyT &key) final {}
 
-  virtual void scan(const KeyT &key, std::vector<Uint64> &values) final {
+  virtual void scan(const KeyT &key, std::vector<Uint64> &offsets) final {
     for (size_t i = 0; i < this->size_; ++i) {
       if (this->container_[i].key_ == key) {
-        values.push_back(this->container_[i].value_);
+        offsets.push_back(this->container_[i].offset_);
       }
       if (this->container_[i].key_ > key) {
         return;
@@ -42,10 +42,10 @@ public:
     }
   }
 
-  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &values) final {
+  virtual void scan_reverse(const KeyT &key, std::vector<Uint64> &offsets) final {
     for (int i = this->size_ - 1; i >= 0; --i) {
       if (this->container_[i].key_ == key) {
-        values.push_back(this->container_[i].value_);
+        offsets.push_back(this->container_[i].offset_);
       }
       if (this->container_[i].key_ < key) {
         return;
@@ -53,10 +53,10 @@ public:
     }
   }
 
-  virtual void scan_full(std::vector<Uint64> &values, const size_t count) final {
+  virtual void scan_full(std::vector<Uint64> &offsets, const size_t count) final {
     size_t bound = std::min(count, this->size_);
     for (size_t i = 0; i < bound; ++i) {
-      values.push_back(this->container_[i].value_);
+      offsets.push_back(this->container_[i].offset_);
     }
   }
   
@@ -74,13 +74,13 @@ protected:
     size_t capacity = 0;
     capacity = this->table_ptr_->size();
     
-    container_ = new KeyValuePair[capacity];
+    container_ = new KeyOffsetPair[capacity];
 
     DataTableIterator<KeyT, ValueT> iterator(this->table_ptr_);
     while (iterator.has_next()) {
       auto entry = iterator.next();
       container_[size_].key_ = *(entry.key_);
-      container_[size_].value_ = entry.offset_;
+      container_[size_].offset_ = entry.offset_;
       ++size_;
     }
 
@@ -90,7 +90,7 @@ protected:
 
 protected:
 
-  KeyValuePair *container_;
+  KeyOffsetPair *container_;
   size_t size_;
 
 };

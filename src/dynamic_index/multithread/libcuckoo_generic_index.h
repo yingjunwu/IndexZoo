@@ -13,16 +13,16 @@ public:
   LibcuckooGenericIndex(GenericDataTable *table_ptr) : BaseDynamicGenericIndex(table_ptr) {}
   virtual ~LibcuckooGenericIndex() {}
 
-  virtual void insert(const GenericKey &key, const Uint64 &value) final {
+  virtual void insert(const GenericKey &key, const Uint64 &offset) final {
 
-    container_.upsert(key, [&value](std::vector<Uint64>& vec) { vec.push_back(value); }, 1, value);
+    container_.upsert(key, [&offset](std::vector<Uint64>& vec) { vec.push_back(offset); }, 1, offset);
   }
 
-  virtual void find(const GenericKey &key, std::vector<Uint64> &values) final {
-    container_.find(key, values);
+  virtual void find(const GenericKey &key, std::vector<Uint64> &offsets) final {
+    container_.find(key, offsets);
   }
 
-  virtual void find_range(const GenericKey &lhs_key, const GenericKey &rhs_key, std::vector<Uint64> &values) final {
+  virtual void find_range(const GenericKey &lhs_key, const GenericKey &rhs_key, std::vector<Uint64> &offsets) final {
     assert(false);
   }
 

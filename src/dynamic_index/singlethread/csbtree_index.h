@@ -15,13 +15,13 @@ public:
   virtual ~CSBTreeIndex() {
   }
 
-  virtual void insert(const KeyT &key, const Uint64 &value) final {
+  virtual void insert(const KeyT &key, const Uint64 &offset) final {
   }
 
-  virtual void find(const KeyT &key, std::vector<Uint64> &values) final {    
+  virtual void find(const KeyT &key, std::vector<Uint64> &offsets) final {    
   }
 
-  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
+  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &offsets) final {
   }
 
   virtual void erase(const KeyT &key) final {

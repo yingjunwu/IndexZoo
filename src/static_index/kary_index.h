@@ -23,7 +23,7 @@ public:
     }
   }
 
-  virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
+  virtual void find(const KeyT &key, std::vector<Uint64> &offsets) final {
 
     if (this->size_ == 0) {
       return;
@@ -35,7 +35,7 @@ public:
     if (key_max_ == key_min_) {
       if (key_max_ == key) {
         for (size_t i = 0; i < this->size_; ++i) {
-          values.push_back(this->container_[i].value_);
+          offsets.push_back(this->container_[i].offset_);
         }
       }
       return;
@@ -54,14 +54,14 @@ public:
       return;
     }
 
-    values.push_back(this->container_[offset_find].value_);
+    offsets.push_back(this->container_[offset_find].offset_);
 
     // move left
     int offset_find_lhs = offset_find - 1;
     while (offset_find_lhs >= 0) {
 
       if (this->container_[offset_find_lhs].key_ == key) {
-        values.push_back(this->container_[offset_find_lhs].value_);
+        offsets.push_back(this->container_[offset_find_lhs].offset_);
         offset_find_lhs -= 1;
       } else {
         break;
@@ -72,7 +72,7 @@ public:
     while (offset_find_rhs <= this->size_ - 1) {
 
       if (this->container_[offset_find_rhs].key_ == key) {
-        values.push_back(this->container_[offset_find_rhs].value_);
+        offsets.push_back(this->container_[offset_find_rhs].offset_);
         offset_find_rhs += 1;
       } else {
         break;
@@ -81,7 +81,7 @@ public:
   }
 
 
-  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
+  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &offsets) final {
     ASSERT(lhs_key < rhs_key, "lhs_key must be smaller than rhs_key: " << lhs_key << " " << rhs_key);
 
     if (this->size_ == 0) {
