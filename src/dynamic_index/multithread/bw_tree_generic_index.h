@@ -32,25 +32,25 @@ public:
     container_->AssignGCID(thread_id);
   }
 
-  virtual void insert(const GenericKey &key, const Uint64 &value) final {
-    container_->Insert(key, value);
+  virtual void insert(const GenericKey &key, const Uint64 &offset) final {
+    container_->Insert(key, offset);
   }
 
-  virtual void find(const GenericKey &key, std::vector<Uint64> &values) final {
-    container_->GetValue(key, values);
+  virtual void find(const GenericKey &key, std::vector<Uint64> &offsets) final {
+    container_->GetValue(key, offsets);
   }
 
-  virtual void find_range(const GenericKey &lhs_key, const GenericKey &rhs_key, std::vector<Uint64> &values) final {
+  virtual void find_range(const GenericKey &lhs_key, const GenericKey &rhs_key, std::vector<Uint64> &offsets) final {
 
     if (lhs_key > rhs_key) { return; }
 
     if (lhs_key == rhs_key) {
-      find(lhs_key, values);
+      find(lhs_key, offsets);
       return;
     }
     for (auto scan_itr = container_->Begin(lhs_key); (scan_itr.IsEnd() == false) && (container_->KeyCmpLessEqual(scan_itr->first, rhs_key)); scan_itr++) {
 
-      values.push_back(scan_itr->second);
+      offsets.push_back(scan_itr->second);
     }
   }
 

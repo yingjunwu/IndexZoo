@@ -37,23 +37,23 @@ public:
   
   virtual ~ArtTreeIndex() {}
 
-  virtual void insert(const KeyT &key, const Uint64 &value) final {
+  virtual void insert(const KeyT &key, const Uint64 &offset) final {
 
     art::Key tree_key;
     load_key(key, tree_key);
 
-    bool rt = container_.insert(tree_key, value, ti_);
+    bool rt = container_.insert(tree_key, offset, ti_);
   }
 
-  virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
+  virtual void find(const KeyT &key, std::vector<Uint64> &offsets) final {
 
     art::Key tree_key;
     load_key(key, tree_key);
 
-    bool rt = container_.lookup(tree_key, values, ti_);
+    bool rt = container_.lookup(tree_key, offsets, ti_);
   }
 
-  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
+  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &offsets) final {
     art::Key start_key, end_key;
     load_key(lhs_key, start_key);
     load_key(rhs_key, end_key);
@@ -73,7 +73,7 @@ public:
 
       // Copy the results to the vector
       for (const auto &tid : tmp_result) {
-        values.push_back(tid);
+        offsets.push_back(tid);
       }
 
       // Set the next key

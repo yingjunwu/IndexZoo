@@ -71,7 +71,7 @@ public:
 
   }
 
-  virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
+  virtual void find(const KeyT &key, std::vector<Uint64> &offsets) final {
 
     stats_.increment_find_op_counter();
 
@@ -87,7 +87,7 @@ public:
     if (key_min_ == key_max_) {
       if (key_min_ == key) {
         for (size_t i = 0; i < this->size_; ++i) {
-          values.push_back(this->container_[i].value_);
+          offsets.push_back(this->container_[i].offset_);
         }
       }
       return;
@@ -137,14 +137,14 @@ public:
 
       stats_.measure_find_op_guess_distance(origin_guess, guess);
 
-      values.push_back(this->container_[guess].value_);
+      offsets.push_back(this->container_[guess].offset_);
       
       // move left
       int64_t guess_lhs = guess - 1;
       while (guess_lhs >= 0) {
 
         if (this->container_[guess_lhs].key_ == key) {
-          values.push_back(this->container_[guess_lhs].value_);
+          offsets.push_back(this->container_[guess_lhs].offset_);
           guess_lhs -= 1;
         } else {
           break;
@@ -155,7 +155,7 @@ public:
       while (guess_rhs <= this->size_ - 1) {
 
         if (this->container_[guess_rhs].key_ == key) {
-          values.push_back(this->container_[guess_rhs].value_);
+          offsets.push_back(this->container_[guess_rhs].offset_);
           guess_rhs += 1;
         } else {
           break;
@@ -179,7 +179,7 @@ public:
 
           stats_.measure_find_op_guess_distance(origin_guess, guess);
 
-          values.push_back(this->container_[guess].value_);
+          offsets.push_back(this->container_[guess].offset_);
           guess -= 1;
           continue;
         }
@@ -202,7 +202,7 @@ public:
           
           stats_.measure_find_op_guess_distance(origin_guess, guess);
 
-          values.push_back(this->container_[guess].value_);
+          offsets.push_back(this->container_[guess].offset_);
           guess += 1;
           continue;
         }
@@ -211,12 +211,12 @@ public:
     return;
   }
 
-  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
+  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &offsets) final {
 
     if (lhs_key > rhs_key) { return; }
 
     if (lhs_key == rhs_key) {
-      find(lhs_key, values);
+      find(lhs_key, offsets);
       return;
     }
 
@@ -232,7 +232,7 @@ public:
     if (key_min_ == key_max_) {
       if (key_min_ >= lhs_key && key_min_ <= rhs_key) {
         for (size_t i = 0; i < this->size_; ++i) {
-          values.push_back(this->container_[i].value_);
+          offsets.push_back(this->container_[i].offset_);
         }
       }
       return;
@@ -242,7 +242,7 @@ public:
     int64_t upper_bound = find_upper_bound(rhs_key);
 
     for (size_t i = lower_bound; i <= upper_bound; ++i) {
-      values.push_back(this->container_[i].value_);
+      offsets.push_back(this->container_[i].offset_);
     }
     return;
   }
@@ -252,8 +252,8 @@ public:
 
     this->base_reorganize();
 
-    key_min_ = this->container_[0].key_; // min value
-    key_max_ = this->container_[this->size_ - 1].key_; // max value
+    key_min_ = this->container_[0].key_; // min key
+    key_max_ = this->container_[this->size_ - 1].key_; // max key
 
     segment_key_boundaries_[0] = key_min_;
     segment_key_boundaries_[num_segments_] = key_max_;
@@ -283,9 +283,6 @@ public:
   }
 
   virtual void print() const final {
-    // for (size_t i = 0; i < this->size_; ++i) {
-    //   std::cout << this->container_[i].key_ << " " << this->container_[i].value_ << std::endl;
-    // }
 
     std::cout << "aggregated guess distance = " << stats_.find_op_guess_distance_ << std::endl;
 
@@ -438,12 +435,12 @@ private:
   }
 
 
-  void find_range_by_scan(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) {
+  void find_range_by_scan(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &offsets) {
 
     if (lhs_key > rhs_key) { return; }
 
     if (lhs_key == rhs_key) {
-      find(lhs_key, values);
+      find(lhs_key, offsets);
       return;
     }
 
@@ -459,7 +456,7 @@ private:
     if (key_min_ == key_max_) {
       if (key_min_ >= lhs_key && key_min_ <= rhs_key) {
         for (size_t i = 0; i < this->size_; ++i) {
-          values.push_back(this->container_[i].value_);
+          offsets.push_back(this->container_[i].offset_);
         }
       }
       return;
@@ -508,13 +505,13 @@ private:
 
     // if the guess is in [lhs_key, rhs_key]
     if (this->container_[guess].key_ >= lhs_key && this->container_[guess].key_ <= rhs_key) {
-      values.push_back(this->container_[guess].value_);
+      offsets.push_back(this->container_[guess].offset_);
       
       // move left
       int64_t guess_lhs = guess - 1;
       while (guess_lhs >= 0) {
         if (this->container_[guess_lhs].key_ >= lhs_key) {
-          values.push_back(this->container_[guess_lhs].value_);
+          offsets.push_back(this->container_[guess_lhs].offset_);
           guess_lhs -= 1;
         } else {
           break;
@@ -524,7 +521,7 @@ private:
       int64_t guess_rhs = guess + 1;
       while (guess_rhs <= this->size_ - 1) {
         if (this->container_[guess_rhs].key_ <= rhs_key) {
-          values.push_back(this->container_[guess_rhs].value_);
+          offsets.push_back(this->container_[guess_rhs].offset_);
           guess_rhs += 1;
         } else {
           break;
@@ -538,7 +535,7 @@ private:
         if (this->container_[guess_lhs].key_ < lhs_key) {
           break;
         } else if (this->container_[guess_lhs].key_ <= rhs_key) {
-          values.push_back(this->container_[guess_lhs].value_);
+          offsets.push_back(this->container_[guess_lhs].offset_);
           guess_lhs -= 1;
         } else {
           guess_lhs -= 1;
@@ -558,7 +555,7 @@ private:
           break;
         }
         else {
-          values.push_back(this->container_[guess].value_);
+          offsets.push_back(this->container_[guess].offset_);
           guess += 1;
           continue;
         }

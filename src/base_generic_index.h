@@ -17,17 +17,17 @@ public:
     
   virtual ~BaseGenericIndex() {}
 
-  virtual void insert(const GenericKey &key, const Uint64 &value) = 0;
+  virtual void insert(const GenericKey &key, const Uint64 &offset) = 0;
 
-  virtual void find(const GenericKey &key, std::vector<Uint64> &values) = 0;
+  virtual void find(const GenericKey &key, std::vector<Uint64> &offsets) = 0;
 
-  virtual void find_range(const GenericKey &lhs_key, const GenericKey &rhs_key, std::vector<Uint64> &values) = 0;
+  virtual void find_range(const GenericKey &lhs_key, const GenericKey &rhs_key, std::vector<Uint64> &offsets) = 0;
 
-  virtual void scan(const GenericKey &key, std::vector<Uint64> &values) = 0;
+  virtual void scan(const GenericKey &key, std::vector<Uint64> &offsets) = 0;
 
-  virtual void scan_reverse(const GenericKey &key, std::vector<Uint64> &values) = 0;
+  virtual void scan_reverse(const GenericKey &key, std::vector<Uint64> &offsets) = 0;
 
-  virtual void scan_full(std::vector<Uint64> &values, const size_t count = std::numeric_limits<std::size_t>::max()) = 0;
+  virtual void scan_full(std::vector<Uint64> &offsets, const size_t count = std::numeric_limits<std::size_t>::max()) = 0;
 
   virtual void erase(const GenericKey &key) = 0;
 

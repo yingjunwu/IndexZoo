@@ -10,11 +10,11 @@ public:
 
   virtual ~BaseDynamicGenericIndex() {}
 
-  virtual void scan(const GenericKey &key, std::vector<Uint64> &values) override {}
+  virtual void scan(const GenericKey &key, std::vector<Uint64> &offsets) override {}
 
-  virtual void scan_reverse(const GenericKey &key, std::vector<Uint64> &values) override {}
+  virtual void scan_reverse(const GenericKey &key, std::vector<Uint64> &offsets) override {}
 
-  virtual void scan_full(std::vector<Uint64> &values, const size_t count) override {}
+  virtual void scan_full(std::vector<Uint64> &offsets, const size_t count) override {}
 
   virtual void prepare_threads(const size_t thread_count) override {}
 

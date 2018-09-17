@@ -50,7 +50,7 @@ public:
     }
   }
 
-  virtual void insert(const KeyT &key, const Uint64 &value) final {
+  virtual void insert(const KeyT &key, const Uint64 &offset) final {
     
     typename Masstree::default_table::cursor_type lp(container_->table(), (char*)(&key), sizeof(key));
     bool found = lp.find_insert(*ti_);
@@ -65,23 +65,23 @@ public:
       lp.value()->deallocate_rcu(*ti_);
     }
     
-    lp.value() = row_type::create1(Str((char*)(&value), sizeof(value)), qtimes_.ts, *ti_);
+    lp.value() = row_type::create1(Str((char*)(&offset), sizeof(offset)), qtimes_.ts, *ti_);
     lp.finish(1, *ti_);
 
   }
 
-  virtual void find(const KeyT &key, std::vector<Uint64> &values) final {
+  virtual void find(const KeyT &key, std::vector<Uint64> &offsets) final {
 
     Str value;
     typename Masstree::default_table::unlocked_cursor_type lp(container_->table(), (char*)(&key), sizeof(key));
     bool found = lp.find_unlocked(*ti_);
     if (found) {
       value = lp.value()->col(0);
-      values.push_back(*(Uint64*)(value.s));
+      offsets.push_back(*(Uint64*)(value.s));
     }
   }
 
-  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &values) final {
+  virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &offsets) final {
     // assert(false);
   }
 
