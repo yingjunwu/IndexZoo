@@ -1,7 +1,7 @@
 # IndexZoo
 
 [![GitHub license](https://img.shields.io/badge/license-apache-green.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
-[![Build Status](https://travis-ci.org/yingjunwu/IndexZoo.svg?branch=master)](https://travis-ci.org/yingjunwu/IndexZoo)
+<!-- [![Build Status](https://travis-ci.org/yingjunwu/IndexZoo.svg?branch=master)](https://travis-ci.org/yingjunwu/IndexZoo) -->
 
 ## Overview
 The IndexZoo project aims at developing a general platform for performance evaluation of index structures in modern main-memory database systems.
