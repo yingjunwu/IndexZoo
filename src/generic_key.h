@@ -79,6 +79,19 @@ public:
 
   }
 
+  void resize(const size_t data_size) {
+    ASSERT(data_ == nullptr && data_size_ == 0, "must be uninitiated");
+    
+    if (data_size == 0) {
+      data_ = nullptr;
+      data_size_ = 0;
+    } else {
+      data_ = new char[data_size];
+      memset(data_, 0, data_size);
+      data_size_ = data_size;
+    }
+  }
+
   bool operator==(const GenericKey &rhs) const {
     if (data_size_ != rhs.data_size_) {
       return false;

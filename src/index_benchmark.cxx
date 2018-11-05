@@ -25,16 +25,16 @@ void usage(FILE *out) {
           "   -h --help              :  print help message \n"
           // index structure
           "   -i --index             :  index type: \n"
-          "                              --  (0) static  - interpolation index (default) \n"
-          "                              --  (1) static  - binary index \n"
-          "                              --  (2) static  - kary index \n"
-          "                              --  (3) static  - fast index \n"
-          "                              -- (10) dynamic - singlethread - stx-btree index \n"
-          "                              -- (11) dynamic - singlethread - art-tree index \n"
-          "                              -- (20) dynamic - multithread  - libcuckoo index \n"
-          "                              -- (21) dynamic - multithread  - art-tree index \n"
-          "                              -- (22) dynamic - multithread  - bw-tree index \n"
-          "                              -- (23) dynamic - multithread  - masstree index \n"
+          "                              --  (0) dynamic - singlethread - stx-btree index (default)  \n"
+          "                              --  (1) dynamic - singlethread - art-tree index \n"
+          "                              -- (10) dynamic - multithread  - libcuckoo index \n"
+          "                              -- (11) dynamic - multithread  - art-tree index \n"
+          "                              -- (12) dynamic - multithread  - bw-tree index \n"
+          "                              -- (13) dynamic - multithread  - masstree index \n"
+          "                              -- (20) static  - interpolation index \n"
+          "                              -- (21) static  - binary index \n"
+          "                              -- (22) static  - kary index \n"
+          "                              -- (23) static  - fast index \n"
           "   -k --key_size          :  index key size (default: 8 bytes) \n"
           "   -S --index_param_1     :  1st index parameter \n"
           "   -T --index_param_2     :  2nd index parameter \n"
@@ -92,7 +92,7 @@ enum class ReadType {
 
 struct Config {
   // index structure
-  IndexType index_type_ = IndexType::S_Interpolation;
+  IndexType index_type_ = IndexType::D_ST_StxBtree;
   int key_size_ = 8; // unit: bytes
   int index_param_1_ = INVALID_INDEX_PARAM;
   int index_param_2_ = INVALID_INDEX_PARAM;

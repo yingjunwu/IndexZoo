@@ -9,9 +9,9 @@ TARGET_LINK_LIBRARIES (index_benchmark indexzoo)
 TARGET_LINK_LIBRARIES (index_benchmark jemalloc pthread)
 
 
-# ADD_EXECUTABLE (generic_index_benchmark generic_index_benchmark.cxx)
-# TARGET_LINK_LIBRARIES (generic_index_benchmark indexzoo)
-# TARGET_LINK_LIBRARIES (generic_index_benchmark jemalloc pthread)
+ADD_EXECUTABLE (generic_index_benchmark generic_index_benchmark.cxx)
+TARGET_LINK_LIBRARIES (generic_index_benchmark indexzoo)
+TARGET_LINK_LIBRARIES (generic_index_benchmark jemalloc pthread)
 
 
 ADD_DEFINITIONS(-DWORDS_BIGENDIAN_SET=1)
@@ -33,6 +33,6 @@ INSTALL (TARGETS index_benchmark
     RUNTIME DESTINATION bin
     )
 
-# INSTALL (TARGETS generic_index_benchmark
-#     RUNTIME DESTINATION bin
-#     )
+INSTALL (TARGETS generic_index_benchmark
+    RUNTIME DESTINATION bin
+    )

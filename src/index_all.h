@@ -25,21 +25,22 @@
 
 
 enum class IndexType {
-  // static indexes
-  S_Interpolation = 0,
-  S_Binary, 
-  S_KAry, 
-  S_Fast,
 
   // dynamic indexes - singlethread
-  D_ST_StxBtree = 10,
+  D_ST_StxBtree = 0,
   D_ST_ArtTree,
   
   // dynamic indexes - multithread
-  D_MT_Libcuckoo = 20,
+  D_MT_Libcuckoo = 10,
   D_MT_ArtTree,
   D_MT_BwTree,
   D_MT_Masstree,
+
+  // static indexes
+  S_Interpolation = 20,
+  S_Binary, 
+  S_KAry, 
+  S_Fast,
 
 };
 
