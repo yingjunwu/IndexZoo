@@ -9,8 +9,6 @@
 
 #include "dynamic_index/singlethread/stx_btree_index.h"
 #include "dynamic_index/singlethread/art_tree_index.h"
-#include "dynamic_index/singlethread/skiplist_index.h"
-#include "dynamic_index/singlethread/csbtree_index.h"
 
 #include "dynamic_index/multithread/libcuckoo_index.h"
 #include "dynamic_index/multithread/art_tree_index.h"
@@ -36,8 +34,6 @@ enum class IndexType {
   // dynamic indexes - singlethread
   D_ST_StxBtree = 10,
   D_ST_ArtTree,
-  D_ST_Skiplist,
-  D_ST_CSBtree,
   
   // dynamic indexes - multithread
   D_MT_Libcuckoo = 20,
@@ -61,8 +57,6 @@ static std::string get_index_name(const IndexType index_type) {
     return "dynamic - singlethread - stx-btree index";
   } else if (index_type == IndexType::D_ST_ArtTree) {
     return "dynamic - singlethread - art-tree index";
-  } else if (index_type == IndexType::D_ST_Skiplist) {
-    return "dynamic - singlethread - skiplist index";
   } else if (index_type == IndexType::D_MT_Libcuckoo) {
     return "dynamic - multithread - libcuckoo index";
   } else if (index_type == IndexType::D_MT_ArtTree) {
@@ -178,10 +172,6 @@ static BaseIndex<KeyT, ValueT>* create_numeric_index(const IndexType index_type,
   } else if (index_type == IndexType::D_ST_ArtTree) {
 
     return new dynamic_index::singlethread::ArtTreeIndex<KeyT, ValueT>(table_ptr);
-
-  } else if (index_type == IndexType::D_ST_Skiplist) {
-
-    return new dynamic_index::singlethread::SkiplistIndex<KeyT, ValueT>(table_ptr);
 
   } else if (index_type == IndexType::D_MT_Libcuckoo) {
 

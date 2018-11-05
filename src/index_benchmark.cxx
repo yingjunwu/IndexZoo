@@ -31,8 +31,6 @@ void usage(FILE *out) {
           "                              --  (3) static  - fast index \n"
           "                              -- (10) dynamic - singlethread - stx-btree index \n"
           "                              -- (11) dynamic - singlethread - art-tree index \n"
-          "                              -- (12) dynamic - singlethread - skiplist index (unsupported) \n"
-          "                              -- (13) dynamic - singlethread - btree index (unsupported) \n"
           "                              -- (20) dynamic - multithread  - libcuckoo index \n"
           "                              -- (21) dynamic - multithread  - art-tree index \n"
           "                              -- (22) dynamic - multithread  - bw-tree index \n"
