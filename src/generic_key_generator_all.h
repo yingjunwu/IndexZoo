@@ -8,11 +8,13 @@ enum class WorkloadType {
   UrlType = 2,
 };
 
-static BaseGenericKeyGenerator* construct_generic_key_generator(const WorkloadType workload_type, const uint64_t thread_id) {
+static BaseGenericKeyGenerator* construct_generic_key_generator(const WorkloadType workload_type, const uint64_t thread_id, const size_t key_size) {
 
   if (workload_type == WorkloadType::SyntheticType) {
 
-    return new SyntheticGenericKeyGenerator(thread_id);
+    ASSERT(key_size >= 8, "key size must be larger than 8");
+
+    return new SyntheticGenericKeyGenerator(thread_id, key_size);
 
   } else {
     ASSERT(false, "unsupported yet...");

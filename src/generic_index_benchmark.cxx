@@ -89,7 +89,6 @@ struct Config {
   WorkloadType workload_type_ = WorkloadType::SyntheticType;
   bool record_ = false;
   bool verbose_ = false;
-  uint64_t generated_read_key_count_ = 100 * 1000 * 1000; // 100 millions
 
   void print() {
     std::cout << "=====     INDEX STRUCTURE    =====" << std::endl;
@@ -166,8 +165,6 @@ void parse_args(int argc, char* argv[], Config &config) {
     }
   }
 
-  config.generated_read_key_count_ = config.generated_read_key_count_ * config.read_ratio_;
-  
   config.print();
 
 }
@@ -175,50 +172,51 @@ void parse_args(int argc, char* argv[], Config &config) {
 bool is_running = false;
 uint64_t *operation_counts = nullptr;
 
-// void run_thread(const size_t &thread_id, const Config &config, const KeyT *read_keys, DataTable<KeyT, ValueT> *data_table, BaseIndex<KeyT, ValueT> *data_index) {
+void run_thread(const size_t &thread_id, const Config &config, const GenericKey *query_keys, GenericDataTable *data_table, BaseGenericIndex *data_index) {
 
-//   pin_to_core(thread_id);
+  pin_to_core(thread_id);
 
-//   data_index->register_thread(thread_id);
+  data_index->register_thread(thread_id);
 
-//   std::unique_ptr<BaseKeyGenerator<KeyT>> key_generator(construct_key_generator<KeyT>(config.distribution_type_, thread_id, config.key_bound_, config.key_stddev_));
+  std::unique_ptr<BaseGenericKeyGenerator> key_generator(construct_generic_key_generator(config.workload_type_, thread_id, config.key_size_));
 
-//   uint64_t &operation_count = operation_counts[thread_id];
-//   operation_count = 0;
+  uint64_t &operation_count = operation_counts[thread_id];
+  operation_count = 0;
 
-//   FastRandom rand_gen(thread_id);
+  FastRandom rand_gen(thread_id);
 
-//   while (true) {
-//     if (is_running == false) {
-//       break;
-//     }
+  GenericKey insert_key;
 
-//     double next_rand = rand_gen.next_uniform();
+  ValueT value = 100;
 
-//     if (next_rand < config.read_ratio_) {
-//       KeyT key = read_keys[operation_count % config.generated_read_key_count_];
+  while (true) {
+    if (is_running == false) {
+      break;
+    }
 
-//       std::vector<Uint64> offsets;
+    double next_rand = rand_gen.next_uniform();
 
-//       // retrieve tuple locations
-//       data_index->find(key, offsets);
+    if (next_rand < config.read_ratio_) {
 
-//       // ASSERT(offsets.size() == 1, "must be 1! " << key);
-//     } else {
-//       // insert
-//       KeyT key = key_generator->get_next_key();
+      std::vector<Uint64> offsets;
 
-//       ValueT value = 100;
+      // retrieve tuple locations
+      data_index->find(query_keys[rand_gen.next<uint64_t>() % config.key_count_], offsets);
+
+      // ASSERT(offsets.size() == 1, "must be 1! " << key);
+    } else {
+      // insert
+      key_generator->get_next_key(insert_key);
       
-//       OffsetT offset = data_table->insert_tuple(key, value);
+      OffsetT offset = data_table->insert_tuple(insert_key.raw(), insert_key.size(), (char*)(&value), sizeof(value));
 
-//       // insert tuple locations into index
-//       data_index->insert(key, offset.raw_data());
-//     }
+      // insert tuple locations into index
+      data_index->insert(insert_key, offset.raw_data());
+    }
 
-//     ++operation_count;
-//   }
-// }
+    ++operation_count;
+  }
+}
 
 void run_workload(const Config &config) {
 
@@ -237,7 +235,9 @@ void run_workload(const Config &config) {
   //=================================
   // populate table
   //=================================
-  std::unique_ptr<BaseGenericKeyGenerator> key_generator(construct_generic_key_generator(config.workload_type_, 0));
+  std::unique_ptr<BaseGenericKeyGenerator> key_generator(construct_generic_key_generator(config.workload_type_, 0, config.key_size_));
+
+  double query_key_size_mb = 0;
 
   GenericKey *init_keys = new GenericKey[config.key_count_]; // store all init keys
 
@@ -245,16 +245,18 @@ void run_workload(const Config &config) {
 
   for (size_t i = 0; i < config.key_count_; ++i) {
 
-    init_keys[i].resize(config.key_size_);
-
     key_generator->get_next_key(init_keys[i]);
     
     OffsetT offset = data_table->insert_tuple(init_keys[i].raw(), init_keys[i].size(), (char*)(&value), sizeof(value));
 
     data_index->insert(init_keys[i], offset.raw_data());
 
+    query_key_size_mb += init_keys[i].size();
+
   }
   data_index->reorganize();
+
+  query_key_size_mb = query_key_size_mb * 1.0 / 1024 / 1024;
   //=================================
 
   //=================================
@@ -273,26 +275,6 @@ void run_workload(const Config &config) {
     // return;
   }
   //=================================
-
-  //=================================
-  // prepare query keys
-  //=================================
-  // GenericKey** read_keys = new GenericKey*[config.thread_count_];
-  
-  // // generate keys for each thread
-  // for (size_t i = 0; i < config.thread_count_; ++i) {
-
-  //   read_keys[i] = new GenericKey[config.generated_read_key_count_];
-
-  //   FastRandom rand_gen(i);
-    
-  //   for (size_t j = 0; j < config.generated_read_key_count_; ++j) {
-  //     read_keys[i][j] = init_keys[rand_gen.next<uint64_t>() % config.key_count_];
-  //   }
-  // }
-
-  // double query_key_size_mb = (config.key_count_ + config.generated_read_key_count_) * sizeof(KeyT) / 1024 / 1024;
-  double query_key_size_mb = 0;
 
   //=================================
 
@@ -319,9 +301,9 @@ void run_workload(const Config &config) {
   // PAPIProfiler::init_papi();
   // PAPIProfiler::start_measure_cache_miss_rate();
   
-  // for (uint64_t thread_id = 0; thread_id < config.thread_count_; ++thread_id) {
-  //   worker_threads.push_back(std::move(std::thread(run_thread, thread_id, std::ref(config), read_keys[thread_id], data_table.get(), data_index.get())));
-  // }
+  for (uint64_t thread_id = 0; thread_id < config.thread_count_; ++thread_id) {
+    worker_threads.push_back(std::move(std::thread(run_thread, thread_id, std::ref(config), init_keys, data_table.get(), data_index.get())));
+  }
 
   std::cout << "        TIME       THROUGHPUT   RAM (tot.)   RAM (tab.)" << std::endl;
 
