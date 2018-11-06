@@ -6,6 +6,41 @@
 ## Overview
 The IndexZoo project aims at developing a general platform for performance evaluation of index structures in modern main-memory database systems.
 
+
+
+## Installation
+
+IndexZoo has been tested under the following platforms:
+
+- Ubuntu 16.04
+
+To use the platform, please run the following scripts:
+```
+sudo apt-get install libjemalloc-dev
+git clone --recursive https://github.com/yingjunwu/IndexZoo.git
+mkdir build
+cmake ..
+make -j
+cd build
+./src/index_benchmark -h
+```
+
+## Benchmarks
+
+Currently, IndexZoo supports both numeric- and string-based workloads.
+
+To run numeric-based workloads, please try:
+
+```
+./src/index_benchmark -h
+```
+
+To run string-based workloads, please try:
+
+```
+./src/generic_index_benchmark -h
+```
+
 ## Supported Index Structures
 
 ### Multi-thread Dynamic Index Structures (for OLTP workloads)
@@ -34,28 +69,7 @@ The IndexZoo project aims at developing a general platform for performance evalu
 | FAST Index          | [C. Kim, et al.](https://dl.acm.org/citation.cfm?id=1807206) | [yingjunwu]() | |
 
 
-## Benchmarks
 
-Currently, IndexZoo only supports integer-based keys. In the future, we are going to support float/double/string key types.
-
-
-
-## Installation
-
-IndexZoo has been tested under the following platforms:
-
-- Ubuntu 16.04
-
-To use the platform, please run the following scripts:
-```
-sudo apt-get install libjemalloc-dev
-git clone --recursive https://github.com/yingjunwu/IndexZoo.git
-mkdir build
-cmake ..
-make -j
-cd build
-./src/index_benchmark -h
-```
 
 ## License
 
