@@ -31,7 +31,7 @@ void usage(FILE *out) {
           "                              -- (11) dynamic - multithread  - art-tree index \n"
           "                              -- (12) dynamic - multithread  - bw-tree index \n"
           "                              -- (13) dynamic - multithread  - masstree index \n"
-          "   -k --key_size          :  index key size (default: 8 bytes) \n"
+          "   -k --key_size          :  index max key size (default: 8 bytes) \n"
           // configuration
           "   -t --time_duration     :  time duration (default: 10) \n"
           "   -y --read_type         :  read type: \n"
@@ -92,7 +92,7 @@ struct Config {
 
   void print() {
     std::cout << "=====     INDEX STRUCTURE    =====" << std::endl;
-    std::cout << "key size: " << key_size_ << std::endl;
+    std::cout << "max key size: " << key_size_ << std::endl;
     std::cout << "===== WORKLOAD CONFIGURATION =====" << std::endl;
     std::cout << "read ratio: " << read_ratio_ << std::endl;
     std::cout << "thread count: " << thread_count_ << std::endl;
@@ -222,7 +222,11 @@ void run_workload(const Config &config) {
 
   // create table
   std::unique_ptr<GenericDataTable> data_table(nullptr);
-  data_table.reset(new GenericDataTable(config.key_size_, config.value_size_));
+  // note that the max_key_size passed to GenericDataTable must be at least 1 byte
+  // larger than the real key_size.
+  // this is because some index structures need to access base table to determine
+  // key data. 
+  data_table.reset(new GenericDataTable(config.key_size_ + 1, config.value_size_));
 
   // create index
   std::unique_ptr<BaseGenericIndex> data_index(nullptr);
@@ -312,8 +316,7 @@ void run_workload(const Config &config) {
     
     memcpy(operation_counts_profiles[round_id], operation_counts, sizeof(uint64_t) * config.thread_count_);
 
-    // double table_size_approx = data_table->size_approx() * (sizeof(KeyT) + sizeof(ValueT)) * 1.0 / 1024 / 1024;
-    double table_size_approx = 0;
+    double table_size_approx = data_table->size_approx() * (config.key_size_ + 1 + config.value_size_) * 1.0 / 1024 / 1024;
 
     table_size_profiles.push_back(table_size_approx);
     act_size_profiles.push_back(get_memory_mb() - query_key_size_mb);
