@@ -15,6 +15,7 @@
  */
 #ifndef MASSTREE_STRUCT_HH
 #define MASSTREE_STRUCT_HH
+#include <vector>
 #include "masstree.hh"
 #include "nodeversion.hh"
 #include "stringbag.hh"
