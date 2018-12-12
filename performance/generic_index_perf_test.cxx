@@ -48,6 +48,7 @@ int main() {
   std::vector<IndexType> index_types {
     IndexType::D_ST_StxBtree,
     IndexType::D_ST_ArtTree,
+    // IndexType::D_MT_BwTree,
   };
 
   for (auto index_type : index_types) {

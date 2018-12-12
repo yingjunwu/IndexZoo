@@ -2,10 +2,10 @@ PROJECT (IndexZoo)
 
 FILE (GLOB_RECURSE SRC_LIST "*.cpp")
 
-ADD_EXECUTABLE (index_perf_test index_perf_test.cxx ${SRC_LIST})
+ADD_EXECUTABLE (numeric_index_perf_test numeric_index_perf_test.cxx ${SRC_LIST})
 
-TARGET_LINK_LIBRARIES (index_perf_test indexzoo)
-TARGET_LINK_LIBRARIES (index_perf_test pthread)
+TARGET_LINK_LIBRARIES (numeric_index_perf_test indexzoo)
+TARGET_LINK_LIBRARIES (numeric_index_perf_test pthread)
 
 
 ADD_EXECUTABLE (generic_index_perf_test generic_index_perf_test.cxx ${SRC_LIST})
@@ -30,7 +30,7 @@ ADD_DEFINITIONS(-DHAVE___BUILTIN_CLZ=1)
 ADD_DEFINITIONS(-DHAVE___BUILTIN_CLZL=1)
 
 
-INSTALL (TARGETS index_perf_test 
+INSTALL (TARGETS numeric_index_perf_test 
     RUNTIME DESTINATION bin
     )
 

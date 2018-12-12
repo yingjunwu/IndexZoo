@@ -2142,7 +2142,8 @@ class BwTree : public BwTreeBase {
           element_p != End();
           element_p++) {
         // Manually calls destructor when the node is destroyed
-        element_p->~ElementType();
+        // YINGJUN: Comment out for now!!!!!!
+        // element_p->~ElementType();
       }
       
       return;
