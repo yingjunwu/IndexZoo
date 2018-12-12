@@ -17,6 +17,7 @@
 
 #include "dynamic_index/singlethread/stx_btree_generic_index.h"
 #include "dynamic_index/singlethread/art_tree_generic_index.h"
+#include "dynamic_index/singlethread/approx_tree_generic_index.h"
 
 #include "dynamic_index/multithread/libcuckoo_generic_index.h"
 #include "dynamic_index/multithread/art_tree_generic_index.h"
@@ -29,6 +30,7 @@ enum class IndexType {
   // dynamic indexes - singlethread
   D_ST_StxBtree = 0,
   D_ST_ArtTree,
+  D_ST_ApproxTree,
   
   // dynamic indexes - multithread
   D_MT_Libcuckoo = 10,
@@ -58,6 +60,8 @@ static std::string get_index_name(const IndexType index_type) {
     return "dynamic - singlethread - stx-btree index";
   } else if (index_type == IndexType::D_ST_ArtTree) {
     return "dynamic - singlethread - art-tree index";
+  } else if (index_type == IndexType::D_ST_ApproxTree) {
+    return "dynamic - singlethread - approx-tree index";
   } else if (index_type == IndexType::D_MT_Libcuckoo) {
     return "dynamic - multithread - libcuckoo index";
   } else if (index_type == IndexType::D_MT_ArtTree) {
@@ -207,6 +211,10 @@ static BaseGenericIndex* create_generic_index(const IndexType index_type, Generi
   } else if (index_type == IndexType::D_ST_ArtTree) {
 
     return new dynamic_index::singlethread::ArtTreeGenericIndex(table_ptr);
+
+  } else if (index_type == IndexType::D_ST_ApproxTree) {
+    
+    return new dynamic_index::singlethread::ApproxTreeGenericIndex(table_ptr);
 
   } else if (index_type == IndexType::D_MT_Libcuckoo) {
 
