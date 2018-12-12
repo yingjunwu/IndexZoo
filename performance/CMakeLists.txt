@@ -6,12 +6,14 @@ ADD_EXECUTABLE (numeric_index_perf_test numeric_index_perf_test.cxx ${SRC_LIST})
 
 TARGET_LINK_LIBRARIES (numeric_index_perf_test indexzoo)
 TARGET_LINK_LIBRARIES (numeric_index_perf_test pthread)
+TARGET_LINK_LIBRARIES (numeric_index_perf_test jemalloc)
 
 
 ADD_EXECUTABLE (generic_index_perf_test generic_index_perf_test.cxx ${SRC_LIST})
 
 TARGET_LINK_LIBRARIES (generic_index_perf_test indexzoo)
 TARGET_LINK_LIBRARIES (generic_index_perf_test pthread)
+TARGET_LINK_LIBRARIES (generic_index_perf_test jemalloc)
 
 
 ADD_DEFINITIONS(-DWORDS_BIGENDIAN_SET=1)

@@ -52,6 +52,7 @@ public:
     delete[] data_;
     data_ = nullptr;
     data_size_ = 0;
+    COMPILER_MEMORY_FENCE;
   }
 
   GenericKey& operator=(const GenericKey &key) {

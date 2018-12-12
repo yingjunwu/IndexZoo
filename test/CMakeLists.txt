@@ -6,6 +6,7 @@ ADD_EXECUTABLE (test_driver test_driver.cxx ${SRC_LIST})
 
 TARGET_LINK_LIBRARIES (test_driver indexzoo)
 TARGET_LINK_LIBRARIES (test_driver gtest pthread)
+TARGET_LINK_LIBRARIES (test_driver jemalloc)
 
 
 ADD_DEFINITIONS(-DWORDS_BIGENDIAN_SET=1)

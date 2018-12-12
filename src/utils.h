@@ -11,9 +11,7 @@ typedef uint64_t Uint64;
 
 #define COMPILER_MEMORY_FENCE asm volatile("" ::: "memory")
 
-
 static double get_memory_mb() {
-// #if defined(NDEBUG)
   uint64_t epoch = 1;
   size_t sz = sizeof(epoch);
   mallctl("epoch", &epoch, &sz, &epoch, sz);
@@ -24,13 +22,9 @@ static double get_memory_mb() {
     return allocated * 1.0 / 1024 / 1024;
   }
   return -1;
-// #else
-//   return -1;
-// #endif
 }
 
 static double get_memory_gb() {
-// #if defined(NDEBUG)
   uint64_t epoch = 1;
   size_t sz = sizeof(epoch);
   mallctl("epoch", &epoch, &sz, &epoch, sz);
@@ -41,9 +35,6 @@ static double get_memory_gb() {
     return allocated * 1.0 / 1024 / 1024 / 1024;
   }
   return -1;
-// #else
-//   return -1;
-// #endif
 }
 
 static void pin_to_core(const size_t core) {
