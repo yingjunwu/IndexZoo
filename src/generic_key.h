@@ -72,13 +72,13 @@ public:
   inline size_t size() const { return data_size_; }
 
   // transfer ownership
-  void reset(char *data, const size_t data_size) {
-    ASSERT(data_ == nullptr && data_size_ == 0, "must be uninitiated");
+  // void reset(char *data, const size_t data_size) {
+  //   ASSERT(data_ == nullptr && data_size_ == 0, "must be uninitiated");
 
-    data_ = data;
-    data_size_ = data_size;
+  //   data_ = data;
+  //   data_size_ = data_size;
 
-  }
+  // }
 
   void resize(const size_t data_size) {
     ASSERT(data_ == nullptr && data_size_ == 0, "must be uninitiated");
