@@ -62,8 +62,8 @@ int main() {
   std::vector<IndexType> index_types {
     IndexType::D_ST_StxBtree,
     IndexType::D_ST_ArtTree,
-    IndexType::D_ST_ApproxTree,
-    // IndexType::D_MT_BwTree,
+    // IndexType::D_ST_SdTree,
+    IndexType::D_MT_BwTree,
   };
 
   for (auto index_type : index_types) {

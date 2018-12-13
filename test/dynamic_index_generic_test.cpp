@@ -77,7 +77,7 @@ TEST_F(DynamicIndexGenericTest, UniqueKeyFindTest) {
     // dynamic indexes - singlethread
     IndexType::D_ST_StxBtree,
     IndexType::D_ST_ArtTree,
-    IndexType::D_ST_ApproxTree,
+    // IndexType::D_ST_SdTree,
     
     // dynamic indexes - multithread
     IndexType::D_MT_Libcuckoo,
