@@ -18,7 +18,7 @@ static void load_key_internal(void *ctx, TID tid, art::Key &tree_key) {
 
   auto data_table_ptr = reinterpret_cast<DataTable<KeyT, ValueT>*>(ctx);  
 
-  KeyT *key_ptr = data_table_ptr->get_tuple_key(OffsetT(tid));
+  KeyT *key_ptr = data_table_ptr->get_tuple_key(OffsetT(tid - 1));
 
   tree_key.setKeyLen(sizeof(KeyT));
 
@@ -42,7 +42,7 @@ public:
     art::Key tree_key;
     load_key(key, tree_key);
 
-    bool rt = container_.insert(tree_key, offset, ti_);
+    bool rt = container_.insert(tree_key, offset + 1, ti_);
   }
 
   virtual void find(const KeyT &key, std::vector<Uint64> &offsets) final {
@@ -51,6 +51,9 @@ public:
     load_key(key, tree_key);
 
     bool rt = container_.lookup(tree_key, offsets, ti_);
+    for (size_t i = 0; i < offsets.size(); ++i) {
+      offsets[i] -= 1;
+    }
   }
 
   virtual void find_range(const KeyT &lhs_key, const KeyT &rhs_key, std::vector<Uint64> &offsets) final {
@@ -73,7 +76,7 @@ public:
 
       // Copy the results to the vector
       for (const auto &tid : tmp_result) {
-        offsets.push_back(tid);
+        offsets.push_back(tid - 1);
       }
 
       // Set the next key

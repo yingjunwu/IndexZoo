@@ -235,17 +235,22 @@ void test_dynamic_index_generic_unique_key_find_range(const uint64_t max_key_siz
     auto lower_bound = validation_set.lower_bound(lower_key);
     auto upper_bound = validation_set.upper_bound(upper_key);
 
-    std::unordered_set<Uint64> real_offsets;
+    std::vector<Uint64> real_offsets;
     for (auto iter = lower_bound; iter != upper_bound; ++iter) {
 
-      real_offsets.insert(iter->second.first);
+      real_offsets.push_back(iter->second.first);
     }
 
     EXPECT_EQ(real_offsets.size(), offsets.size());
 
-    for (auto entry : real_offsets) {
+    if (real_offsets.size() == offsets.size()) {
 
-      EXPECT_NE(real_offsets.end(), real_offsets.find(entry));
+      std::sort(real_offsets.begin(), real_offsets.end());
+      std::sort(offsets.begin(), offsets.end());
+
+      for (size_t i = 0; i < real_offsets.size(); ++i) {
+        EXPECT_EQ(real_offsets[i], offsets[i]);
+      }
     }
   }
 }
@@ -260,7 +265,7 @@ TEST_F(DynamicIndexGenericTest, UniqueKeyFindRangeTest) {
     
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
-    // IndexType::D_MT_ArtTree, // do not fully support range queries
+    IndexType::D_MT_ArtTree,
     IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree, // do not support range queries
   };
@@ -331,19 +336,24 @@ void test_dynamic_index_generic_non_unique_key_find_range(const uint64_t max_key
     auto lower_bound = validation_set.lower_bound(lower_key);
     auto upper_bound = validation_set.upper_bound(upper_key);
 
-    std::unordered_set<Uint64> real_offsets;
+    std::vector<Uint64> real_offsets;
     for (auto iter = lower_bound; iter != upper_bound; ++iter) {
 
       for (auto entry : iter->second) {
-        real_offsets.insert(entry.first);
+        real_offsets.push_back(entry.first);
       }
     }
     
     EXPECT_EQ(real_offsets.size(), offsets.size());
 
-    for (auto entry : real_offsets) {
+    if (real_offsets.size() == offsets.size()) {
 
-      EXPECT_NE(real_offsets.end(), real_offsets.find(entry));      
+      std::sort(real_offsets.begin(), real_offsets.end());
+      std::sort(offsets.begin(), offsets.end());
+
+      for (size_t i = 0; i < real_offsets.size(); ++i) {
+        EXPECT_EQ(real_offsets[i], offsets[i]);
+      }
     }
 
   }
@@ -360,7 +370,7 @@ TEST_F(DynamicIndexGenericTest, NonUniqueKeyFindRangeTest) {
     
     // dynamic indexes - multithread
     // IndexType::D_MT_Libcuckoo, // do not support range queries
-    // IndexType::D_MT_ArtTree, // do not fully support range queries
+    IndexType::D_MT_ArtTree,
     IndexType::D_MT_BwTree,
     // IndexType::D_MT_Masstree, // do not support non-unique keys
   };
